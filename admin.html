@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 
   <script>
     if (sessionStorage.getItem("admin") !== "true") {
@@ -12,24 +12,22 @@
     }
   </script>
 </head>
-
 <body>
 
-  <div class="container">
-    <h1>Admin Dashboard</h1>
+<div class="container">
+  <h1>Admin Dashboard</h1>
 
-    <div class="card">
-      <input id="id" placeholder="Tracking ID">
-      <input id="status" placeholder="Status">
-      <input id="location" placeholder="Current Location">
-      <input id="fee" placeholder="Outstanding Fee">
-
-      <button onclick="save()">Save Shipment</button>
-      <button onclick="logout()">Logout</button>
-    </div>
-
-    <div id="msg" class="result"></div>
+  <div class="card">
+    <input id="id" placeholder="Tracking ID">
+    <input id="status" placeholder="Status">
+    <input id="location" placeholder="Current Location">
+    <input id="fee" placeholder="Outstanding Fee">
+    <button onclick="save()">Save Shipment</button>
+    <button onclick="logout()">Logout</button>
   </div>
+
+  <div id="msg" class="result"></div>
+</div>
 
 <script>
 function save() {
@@ -39,13 +37,16 @@ function save() {
   const fee = document.getElementById("fee").value.trim();
 
   if (!id || !status || !location || !fee) {
-    alert("Please fill all fields");
+    document.getElementById("msg").innerHTML =
+      "<span style='color:red'>Fill all fields.</span>";
     return;
   }
 
-  const shipment = { status, location, fee };
+  const shipments = JSON.parse(localStorage.getItem("shipments") || "{}");
 
-  localStorage.setItem("shipment_" + id, JSON.stringify(shipment));
+  shipments[id] = { status, location, fee };
+
+  localStorage.setItem("shipments", JSON.stringify(shipments));
 
   document.getElementById("msg").innerHTML =
     "<span style='color:green'>Shipment saved successfully ✅</span>";
