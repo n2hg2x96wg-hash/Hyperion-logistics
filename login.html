@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Hyperion Logistics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <h1>Admin Access</h1>
+    <p>Authorized personnel only</p>
+
+    <div class="card">
+      <input id="password" type="password" placeholder="Enter Admin Password">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="msg" class="result"></div>
+  </div>
+
+  <script>
+    function login() {
+      const pass = document.getElementById("password").value;
+
+      if (pass === "Hyperion@2026") {
+        localStorage.setItem("adminAuth", "true");
+        window.location.href = "admin.html";
+      } else {
+        document.getElementById("msg").innerHTML = "❌ Access Denied";
+      }
+    }
+  </script>
+
+</body>
+</html>
