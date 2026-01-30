@@ -1,73 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
+  <title>Hyperion Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-
-  <script>
-    if (sessionStorage.getItem("admin") !== "true") {
-      window.location.href = "login.html";
-    }
-  </script>
+  <style>
+    body { font-family: system-ui; background:#0f172a; color:white; padding:40px; }
+    input, button { padding:12px; width:100%; margin:6px 0; font-size:16px; }
+    button { cursor:pointer; background:#22c55e; border:none; }
+  </style>
 </head>
-
 <body>
 
-  <div class="container">
-    <h1>Admin Dashboard</h1>
+<h2>Shipment Admin Panel</h2>
 
-    <div class="card">
-      <input id="id" placeholder="Tracking ID">
-      <input id="status" placeholder="Status">
-      <input id="location" placeholder="Current Location">
-      <input id="fee" placeholder="Outstanding Fee">
+<input id="id" placeholder="Tracking ID">
+<input id="status" placeholder="Status">
+<input id="location" placeholder="Location">
+<input id="fee" placeholder="Fee">
 
-      <button onclick="save()">Save Shipment</button>
-      <button onclick="logout()">Logout</button>
-    </div>
+<button onclick="save()">Save Shipment</button>
 
-    <div id="msg" class="result"></div>
-  </div>
+<p id="msg"></p>
 
-  <script>
-    function save() {
-      const id = document.getElementById("id").value.trim();
-      const status = document.getElementById("status").value.trim();
-      const location = document.getElementById("location").value.trim();
-      const fee = document.getElementById("fee").value.trim();
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-      if (!id || !status || !location || !fee) {
-        document.getElementById("msg").innerHTML =
-          "<span style='color:red;'>Fill all fields.</span>";
-        return;
-      }
+const firebaseConfig = {
+  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+  authDomain: "hyperion-logistics.firebaseapp.com",
+  projectId: "hyperion-logistics",
+  storageBucket: "hyperion-logistics.firebasestorage.app",
+  messagingSenderId: "481927084665",
+  appId: "1:481927084665:web:6c067752a922890e44f2a8",
+  measurementId: "G-JWBT2EH4WY"
+};
 
-      let shipments = JSON.parse(localStorage.getItem("shipments")) || {};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-      shipments[id] = {
-        status,
-        location,
-        fee
-      };
+window.save = async () => {
+  const id = document.getElementById("id").value.trim();
+  if (!id) return;
 
-      localStorage.setItem("shipments", JSON.stringify(shipments));
+  await setDoc(doc(db, "shipments", id), {
+    id,
+    status: document.getElementById("status").value,
+    location: document.getElementById("location").value,
+    fee: document.getElementById("fee").value
+  });
 
-      document.getElementById("msg").innerHTML =
-        "<span style='color:green;'>Shipment saved successfully ✅</span>";
-
-      document.getElementById("id").value = "";
-      document.getElementById("status").value = "";
-      document.getElementById("location").value = "";
-      document.getElementById("fee").value = "";
-    }
-
-    function logout() {
-      sessionStorage.removeItem("admin");
-      window.location.href = "login.html";
-    }
-  </script>
+  document.getElementById("msg").innerText = "Shipment saved successfully.";
+};
+</script>
 
 </body>
 </html>
