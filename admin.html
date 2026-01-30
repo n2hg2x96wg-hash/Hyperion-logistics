@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
+  <script>
+  if (localStorage.getItem("admin") !== "true") {
+    window.location.href = "login.html";
+  }
+</script>
   <div class="container">
     <h1>Admin Dashboard</h1>
 
