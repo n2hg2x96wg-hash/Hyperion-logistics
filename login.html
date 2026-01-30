@@ -1,16 +1,10 @@
-<script>
-  if (localStorage.getItem("adminAuth") !== "true") {
-    window.location.href = "login.html";
-  }
-</script>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Login — Hyperion Logistics</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
 
@@ -19,7 +13,7 @@
     <p>Authorized personnel only</p>
 
     <div class="card">
-      <input id="password" type="password" placeholder="Enter Admin Password">
+      <input id="password" type="password" placeholder="Enter admin password"/>
       <button onclick="login()">Login</button>
     </div>
 
@@ -31,10 +25,10 @@
       const pass = document.getElementById("password").value;
 
       if (pass === "Hyperion@2026") {
-        localStorage.setItem("adminAuth", "true");
+        localStorage.setItem("admin", "true");
         window.location.href = "admin.html";
       } else {
-        document.getElementById("msg").innerHTML = "❌ Access Denied";
+        document.getElementById("msg").innerHTML = "❌ Wrong password";
       }
     }
   </script>
