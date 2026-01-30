@@ -20,28 +20,24 @@
     <div id="result" class="result"></div>
   </div>
 
-<script>
-function track() {
-  const id = document.getElementById("tracking").value.trim();
-  const shipments = JSON.parse(localStorage.getItem("shipments") || "{}");
+  <script>
+    function track() {
+      const id = document.getElementById("tracking").value.trim();
+      const data = JSON.parse(localStorage.getItem("shipments")) || {};
 
-  if (!shipments[id]) {
-    document.getElementById("result").innerHTML =
-      "<span style='color:red'>Tracking ID not found.</span>";
-    return;
-  }
-
-  const s = shipments[id];
-
-  document.getElementById("result").innerHTML = `
-    <div class="card">
-      <b>Status:</b> ${s.status}<br>
-      <b>Current Location:</b> ${s.location}<br>
-      <b>Outstanding Fee:</b> ${s.fee}
-    </div>
-  `;
-}
-</script>
+      if (data[id]) {
+        const s = data[id];
+        document.getElementById("result").innerHTML = `
+          <strong>Status:</strong> ${s.status}<br>
+          <strong>Location:</strong> ${s.location}<br>
+          <strong>Outstanding Fee:</strong> ${s.fee}
+        `;
+      } else {
+        document.getElementById("result").innerHTML =
+          '<span style="color:red;">Tracking ID not found.</span>';
+      }
+    }
+  </script>
 
 </body>
 </html>
