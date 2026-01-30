@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 
   <script>
     if (sessionStorage.getItem("admin") !== "true") {
       window.location.href = "login.html";
     }
   </script>
-
 </head>
+
 <body>
 
   <div class="container">
@@ -20,25 +20,47 @@
 
     <div class="card">
       <input id="id" placeholder="Tracking ID">
-      <input id="status" placeholder="Shipment Status">
+      <input id="status" placeholder="Status">
       <input id="location" placeholder="Current Location">
       <input id="fee" placeholder="Outstanding Fee">
-      
+
       <button onclick="save()">Save Shipment</button>
       <button onclick="logout()">Logout</button>
     </div>
 
-    <p class="note">This system uses browser storage (local).</p>
+    <div id="msg" class="result"></div>
   </div>
 
-  <script src="script.js"></script>
+<script>
+function save() {
+  const id = document.getElementById("id").value.trim();
+  const status = document.getElementById("status").value.trim();
+  const location = document.getElementById("location").value.trim();
+  const fee = document.getElementById("fee").value.trim();
 
-  <script>
-    function logout() {
-      sessionStorage.removeItem("admin");
-      window.location.href = "login.html";
-    }
-  </script>
+  if (!id || !status || !location || !fee) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const shipment = { status, location, fee };
+
+  localStorage.setItem("shipment_" + id, JSON.stringify(shipment));
+
+  document.getElementById("msg").innerHTML =
+    "<span style='color:green'>Shipment saved successfully ✅</span>";
+
+  document.getElementById("id").value = "";
+  document.getElementById("status").value = "";
+  document.getElementById("location").value = "";
+  document.getElementById("fee").value = "";
+}
+
+function logout() {
+  sessionStorage.removeItem("admin");
+  window.location.href = "login.html";
+}
+</script>
 
 </body>
 </html>
