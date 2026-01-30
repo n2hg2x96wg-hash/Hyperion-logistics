@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hyperion Logistics</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -13,7 +13,7 @@
     <p>Premium logistics & reward tracking system</p>
 
     <div class="card">
-      <input id="tracking" placeholder="Enter Tracking ID" />
+      <input id="tracking" placeholder="Enter Tracking ID">
       <button onclick="track()">Track Shipment</button>
     </div>
 
@@ -23,22 +23,21 @@
 <script>
 function track() {
   const id = document.getElementById("tracking").value.trim();
-  const data = localStorage.getItem("shipment_" + id);
+  const shipments = JSON.parse(localStorage.getItem("shipments") || "{}");
 
-  if (!data) {
+  if (!shipments[id]) {
     document.getElementById("result").innerHTML =
       "<span style='color:red'>Tracking ID not found.</span>";
     return;
   }
 
-  const shipment = JSON.parse(data);
+  const s = shipments[id];
 
   document.getElementById("result").innerHTML = `
     <div class="card">
-      <b>Tracking ID:</b> ${id}<br>
-      <b>Status:</b> ${shipment.status}<br>
-      <b>Current Location:</b> ${shipment.location}<br>
-      <b>Outstanding Fee:</b> ${shipment.fee}
+      <b>Status:</b> ${s.status}<br>
+      <b>Current Location:</b> ${s.location}<br>
+      <b>Outstanding Fee:</b> ${s.fee}
     </div>
   `;
 }
