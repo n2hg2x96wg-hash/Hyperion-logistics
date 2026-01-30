@@ -1,39 +1,54 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
+  <title>Admin Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login — Hyperion Logistics</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display:flex; justify-content:center; align-items:center; height:100vh; font-family:system-ui; background:#020617; color:white; }
+    .box { background:#020617; padding:30px; border-radius:10px; width:300px; }
+    input, button { width:100%; padding:12px; margin:8px 0; }
+    button { background:#2563eb; border:none; color:white; cursor:pointer; }
+  </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>Admin Access</h1>
-    <p>Authorized personnel only</p>
+<div class="box">
+  <h2>Admin Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="msg"></p>
+</div>
 
-    <div class="card">
-      <input id="password" type="password" placeholder="Enter admin password">
-      <button onclick="login()">Login</button>
-    </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    <div id="msg" class="result"></div>
-  </div>
+const firebaseConfig = {
+  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+  authDomain: "hyperion-logistics.firebaseapp.com",
+  projectId: "hyperion-logistics",
+  storageBucket: "hyperion-logistics.firebasestorage.app",
+  messagingSenderId: "481927084665",
+  appId: "1:481927084665:web:6c067752a922890e44f2a8",
+  measurementId: "G-JWBT2EH4WY"
+};
 
-  <script>
-    const ADMIN_PASSWORD = "crane999";  // 👈 Your admin password
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-    function login() {
-      const pass = document.getElementById("password").value;
-
-      if (pass === ADMIN_PASSWORD) {
-        sessionStorage.setItem("admin", "true");
-        window.location.href = "admin.html";
-      } else {
-        document.getElementById("msg").innerHTML = "Incorrect password.";
-      }
-    }
-  </script>
+window.login = async () => {
+  try {
+    await signInWithEmailAndPassword(auth,
+      email.value,
+      password.value
+    );
+    location.href = "admin.html";
+  } catch (err) {
+    msg.innerText = err.message;
+  }
+};
+</script>
 
 </body>
 </html>
