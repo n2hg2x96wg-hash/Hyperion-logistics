@@ -12,9 +12,11 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <script>
-  if (localStorage.getItem("admin") !== "true") {
+  <<script>
+  if (sessionStorage.getItem("admin") !== "true") {
     window.location.href = "login.html";
+  }
+</script>
   }
 </script>
   <div class="container">
