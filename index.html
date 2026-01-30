@@ -2,42 +2,72 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Hyperion Logistics - Track Shipment</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperion Logistics</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:40px; background:#f8fafc;}
+    h1 { font-size:40px; }
+    input, button { padding:12px; font-size:18px; }
+    button { cursor:pointer; }
+    .error { color:red; margin-top:10px; }
+    .card { background:#fff; padding:20px; margin-top:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,.08); }
+  </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>Hyperion Logistics</h1>
-    <p>Premium logistics & reward tracking system</p>
+<h1>Hyperion Logistics</h1>
+<p>Premium logistics & reward tracking system</p>
 
+<input id="trackingInput" placeholder="Enter Tracking ID">
+<button onclick="track()">Track Shipment</button>
+
+<p class="error" id="error"></p>
+
+<div id="result"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+  authDomain: "hyperion-logistics.firebaseapp.com",
+  projectId: "hyperion-logistics",
+  storageBucket: "hyperion-logistics.firebasestorage.app",
+  messagingSenderId: "481927084665",
+  appId: "1:481927084665:web:6c067752a922890e44f2a8",
+  measurementId: "G-JWBT2EH4WY"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+window.track = async () => {
+  const id = document.getElementById("trackingInput").value.trim();
+  document.getElementById("error").innerText = "";
+  document.getElementById("result").innerHTML = "";
+
+  if (!id) return;
+
+  const ref = doc(db, "shipments", id);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    document.getElementById("error").innerText = "Tracking ID not found.";
+    return;
+  }
+
+  const d = snap.data();
+
+  document.getElementById("result").innerHTML = `
     <div class="card">
-      <input id="tracking" placeholder="Enter Tracking ID">
-      <button onclick="track()">Track Shipment</button>
+      <h3>Status: ${d.status}</h3>
+      <p><b>Location:</b> ${d.location}</p>
+      <p><b>Fee:</b> ${d.fee}</p>
     </div>
-
-    <div id="result" class="result"></div>
-  </div>
-
-  <script>
-    function track() {
-      const id = document.getElementById("tracking").value.trim();
-      const data = JSON.parse(localStorage.getItem("shipments")) || {};
-
-      if (data[id]) {
-        const s = data[id];
-        document.getElementById("result").innerHTML = `
-          <strong>Status:</strong> ${s.status}<br>
-          <strong>Location:</strong> ${s.location}<br>
-          <strong>Outstanding Fee:</strong> ${s.fee}
-        `;
-      } else {
-        document.getElementById("result").innerHTML =
-          '<span style="color:red;">Tracking ID not found.</span>';
-      }
-    }
-  </script>
+  `;
+}
+</script>
 
 </body>
 </html>
