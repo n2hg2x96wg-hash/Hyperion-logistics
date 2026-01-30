@@ -12,56 +12,62 @@
     }
   </script>
 </head>
+
 <body>
 
-<div class="container">
-  <h1>Admin Dashboard</h1>
+  <div class="container">
+    <h1>Admin Dashboard</h1>
 
-  <div class="card">
-    <input id="id" placeholder="Tracking ID">
-    <input id="status" placeholder="Status">
-    <input id="location" placeholder="Current Location">
-    <input id="fee" placeholder="Outstanding Fee">
-    <button onclick="save()">Save Shipment</button>
-    <button onclick="logout()">Logout</button>
+    <div class="card">
+      <input id="id" placeholder="Tracking ID">
+      <input id="status" placeholder="Status">
+      <input id="location" placeholder="Current Location">
+      <input id="fee" placeholder="Outstanding Fee">
+
+      <button onclick="save()">Save Shipment</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="msg" class="result"></div>
   </div>
 
-  <div id="msg" class="result"></div>
-</div>
+  <script>
+    function save() {
+      const id = document.getElementById("id").value.trim();
+      const status = document.getElementById("status").value.trim();
+      const location = document.getElementById("location").value.trim();
+      const fee = document.getElementById("fee").value.trim();
 
-<script>
-function save() {
-  const id = document.getElementById("id").value.trim();
-  const status = document.getElementById("status").value.trim();
-  const location = document.getElementById("location").value.trim();
-  const fee = document.getElementById("fee").value.trim();
+      if (!id || !status || !location || !fee) {
+        document.getElementById("msg").innerHTML =
+          "<span style='color:red;'>Fill all fields.</span>";
+        return;
+      }
 
-  if (!id || !status || !location || !fee) {
-    document.getElementById("msg").innerHTML =
-      "<span style='color:red'>Fill all fields.</span>";
-    return;
-  }
+      let shipments = JSON.parse(localStorage.getItem("shipments")) || {};
 
-  const shipments = JSON.parse(localStorage.getItem("shipments") || "{}");
+      shipments[id] = {
+        status,
+        location,
+        fee
+      };
 
-  shipments[id] = { status, location, fee };
+      localStorage.setItem("shipments", JSON.stringify(shipments));
 
-  localStorage.setItem("shipments", JSON.stringify(shipments));
+      document.getElementById("msg").innerHTML =
+        "<span style='color:green;'>Shipment saved successfully ✅</span>";
 
-  document.getElementById("msg").innerHTML =
-    "<span style='color:green'>Shipment saved successfully ✅</span>";
+      document.getElementById("id").value = "";
+      document.getElementById("status").value = "";
+      document.getElementById("location").value = "";
+      document.getElementById("fee").value = "";
+    }
 
-  document.getElementById("id").value = "";
-  document.getElementById("status").value = "";
-  document.getElementById("location").value = "";
-  document.getElementById("fee").value = "";
-}
-
-function logout() {
-  sessionStorage.removeItem("admin");
-  window.location.href = "login.html";
-}
-</script>
+    function logout() {
+      sessionStorage.removeItem("admin");
+      window.location.href = "login.html";
+    }
+  </script>
 
 </body>
 </html>
