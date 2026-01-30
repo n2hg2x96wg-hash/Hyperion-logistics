@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Login — Hyperion Logistics</title>
-  <link rel="stylesheet" href="style.css"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login – Hyperion Logistics</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -13,7 +13,7 @@
     <p>Authorized personnel only</p>
 
     <div class="card">
-      <input id="password" type="password" placeholder="Enter admin password"/>
+      <input id="password" type="password" placeholder="Enter admin password">
       <button onclick="login()">Login</button>
     </div>
 
@@ -21,11 +21,13 @@
   </div>
 
   <script>
+    const ADMIN_PASSWORD = "hyperion@2026";
+
     function login() {
       const pass = document.getElementById("password").value;
 
-      if (pass === "Hyperion@2026") {
-        localStorage.setItem("admin", "true");
+      if (pass === ADMIN_PASSWORD) {
+        sessionStorage.setItem("admin", "true");
         window.location.href = "admin.html";
       } else {
         document.getElementById("msg").innerHTML = "❌ Wrong password";
