@@ -1,37 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Hyperion Admin Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperion Admin</title>
+
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#0b0f14; color:#fff; padding:20px; }
-    h2 { text-align:center; margin-bottom:20px; }
-    .box { max-width:420px; margin:auto; background:#121821; padding:20px; border-radius:12px; box-shadow:0 0 25px rgba(0,255,180,.15); }
-    input, button {
-      width:100%; padding:12px; margin:8px 0;
-      border-radius:8px; border:none; font-size:16px;
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      padding: 20px;
+      text-align: center;
     }
-    input { background:#0f1722; color:#fff; border:1px solid #1f2b3d; }
-    button { background:#00ffb3; color:#000; font-weight:700; cursor:pointer; }
-    button:hover { background:#00e6a0; }
-    .msg { text-align:center; margin-top:10px; font-weight:600; }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 12px;
+      margin: 8px;
+      width: 90%;
+      max-width: 350px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      font-size: 16px;
+    }
+
+    input {
+      background: #1e293b;
+      color: #fff;
+    }
+
+    button {
+      background: #22c55e;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    .box {
+      background: #020617;
+      padding: 25px;
+      border-radius: 10px;
+      max-width: 420px;
+      margin: auto;
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="box">
-    <h2>Hyperion Admin Panel</h2>
+<!-- 🔐 PASSWORD PROTECTION -->
+<script>
+  const PASSWORD = "Hyperion@2026!";   // 🔥 CHANGE THIS PASSWORD
 
-    <input id="trackId" placeholder="Tracking ID">
-    <input id="status" placeholder="Status (e.g In transit)">
-    <input id="location" placeholder="Current Location">
-    <input id="fee" placeholder="Fee (e.g 2000rs)">
+  const input = prompt("Enter admin password:");
 
-    <button onclick="save()">Save / Update Shipment</button>
+  if (input !== PASSWORD) {
+    alert("Access denied!");
+    window.location.href = "index.html";
+  }
+</script>
 
-    <div class="msg" id="msg"></div>
-  </div>
+<div class="box">
+  <h2>Shipment Admin Panel</h2>
+
+  <input id="id" placeholder="Tracking ID">
+  <input id="status" placeholder="Status">
+  <input id="location" placeholder="Location">
+  <input id="fee" placeholder="Fee">
+
+  <button onclick="saveData()">Save Shipment</button>
+</div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -49,33 +96,25 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  window.save = async function () {
-    const id = document.getElementById("trackId").value.trim();
+  window.saveData = async function () {
+    const id = document.getElementById("id").value.trim();
     const status = document.getElementById("status").value.trim();
     const location = document.getElementById("location").value.trim();
     const fee = document.getElementById("fee").value.trim();
 
-    if(!id || !status || !location || !fee){
-      document.getElementById("msg").innerText = "⚠ Fill all fields";
+    if (!id || !status || !location || !fee) {
+      alert("Fill all fields");
       return;
     }
 
-    try {
-      await setDoc(doc(db, "shipments", id), {
-        id, status, location, fee
-      });
+    await setDoc(doc(db, "shipments", id), {
+      id,
+      status,
+      location,
+      fee
+    });
 
-      document.getElementById("msg").innerText = "✅ Shipment saved successfully";
-
-      document.getElementById("trackId").value="";
-      document.getElementById("status").value="";
-      document.getElementById("location").value="";
-      document.getElementById("fee").value="";
-
-    } catch (e) {
-      document.getElementById("msg").innerText = "❌ Error saving shipment";
-      console.error(e);
-    }
+    alert("Shipment saved successfully!");
   }
 </script>
 
