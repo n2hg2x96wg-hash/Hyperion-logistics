@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperion Logistics – Admin Dashboard</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+body{
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background:#0d1117;
+    color:white;
+    margin:0;
+    padding:20px;
+}
+.container{
+    max-width:600px;
+    margin:auto;
+}
+input,button{
+    width:100%;
+    padding:12px;
+    margin:8px 0;
+    border-radius:8px;
+    border:none;
+    font-size:16px;
+}
+button{
+    background:#1f6feb;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+}
+.card{
+    background:#161b22;
+    padding:20px;
+    border-radius:12px;
+    margin-top:15px;
+}
+.hidden{display:none;}
+h2{text-align:center;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div id="loginBox" class="card">
+<h2>Admin Login</h2>
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="dashboard" class="hidden">
+<h2>Admin Dashboard</h2>
+
+<div class="card">
+<h3>Add / Update Shipment</h3>
+<input id="track" placeholder="Tracking ID">
+<input id="status" placeholder="Status">
+<input id="location" placeholder="Location">
+<input id="fee" placeholder="Fee">
+<button onclick="saveShipment()">Save Shipment</button>
+</div>
+
+<div class="card">
+<h3>Delete Shipment</h3>
+<input id="deleteId" placeholder="Tracking ID">
+<button style="background:#d73a49" onclick="deleteShipment()">Delete Shipment</button>
+</div>
+
+</div>
+
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+  authDomain: "hyperion-logistics.firebaseapp.com",
+  projectId: "hyperion-logistics",
+  storageBucket: "hyperion-logistics.firebasestorage.app",
+  messagingSenderId: "481927084665",
+  appId: "1:481927084665:web:6c067752a922890e44f2a8"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function login(){
+    const u = document.getElementById("user").value;
+    const p = document.getElementById("pass").value;
+
+    if(u === "admin" && p === "hyperion@2026"){
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("dashboard").classList.remove("hidden");
+    } else {
+        alert("Wrong login details");
+    }
+}
+
+async function saveShipment(){
+    const id = document.getElementById("track").value.trim();
+    if(!id) return alert("Enter tracking ID");
+
+    await db.collection("shipments").doc(id).set({
+        id: id,
+        status: document.getElementById("status").value,
+        location: document.getElementById("location").value,
+        fee: document.getElementById("fee").value
+    });
+
+    alert("Shipment saved successfully!");
+}
+
+async function deleteShipment(){
+    const id = document.getElementById("deleteId").value.trim();
+    if(!id) return alert("Enter tracking ID");
+
+    await db.collection("shipments").doc(id).delete();
+    alert("Shipment deleted successfully!");
+}
+</script>
+
+</body>
+</html>
