@@ -25,6 +25,7 @@ function save() {
   document.getElementById("fee").value = "";
 }
 
+
 function track() {
   const id = document.getElementById("tracking").value.trim();
   const result = document.getElementById("result");
@@ -45,9 +46,9 @@ function track() {
 
   result.innerHTML = `
     <div class="result-box">
-      <p><b>Status:</b> ${shipment.status}</p>
-      <p><b>Location:</b> ${shipment.location}</p>
-      <p><b>Outstanding Fee:</b> $${shipment.fee}</p>
+      <p><strong>Status:</strong> ${shipment.status}</p>
+      <p><strong>Location:</strong> ${shipment.location}</p>
+      <p><strong>Outstanding Fee:</strong> $${shipment.fee}</p>
     </div>
   `;
 }
