@@ -1,57 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Hyperion Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperion Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: system-ui; background:#0f172a; color:white; padding:40px; }
-    input, button { padding:12px; width:100%; margin:6px 0; font-size:16px; }
-    button { cursor:pointer; background:#22c55e; border:none; }
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#0b0f14; color:#fff; padding:20px; }
+    h2 { text-align:center; margin-bottom:20px; }
+    .box { max-width:420px; margin:auto; background:#121821; padding:20px; border-radius:12px; box-shadow:0 0 25px rgba(0,255,180,.15); }
+    input, button {
+      width:100%; padding:12px; margin:8px 0;
+      border-radius:8px; border:none; font-size:16px;
+    }
+    input { background:#0f1722; color:#fff; border:1px solid #1f2b3d; }
+    button { background:#00ffb3; color:#000; font-weight:700; cursor:pointer; }
+    button:hover { background:#00e6a0; }
+    .msg { text-align:center; margin-top:10px; font-weight:600; }
   </style>
 </head>
+
 <body>
 
-<h2>Shipment Admin Panel</h2>
+  <div class="box">
+    <h2>Hyperion Admin Panel</h2>
 
-<input id="id" placeholder="Tracking ID">
-<input id="status" placeholder="Status">
-<input id="location" placeholder="Location">
-<input id="fee" placeholder="Fee">
+    <input id="trackId" placeholder="Tracking ID">
+    <input id="status" placeholder="Status (e.g In transit)">
+    <input id="location" placeholder="Current Location">
+    <input id="fee" placeholder="Fee (e.g 2000rs)">
 
-<button onclick="save()">Save Shipment</button>
+    <button onclick="save()">Save / Update Shipment</button>
 
-<p id="msg"></p>
+    <div class="msg" id="msg"></div>
+  </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-  authDomain: "hyperion-logistics.firebaseapp.com",
-  projectId: "hyperion-logistics",
-  storageBucket: "hyperion-logistics.firebasestorage.app",
-  messagingSenderId: "481927084665",
-  appId: "1:481927084665:web:6c067752a922890e44f2a8",
-  measurementId: "G-JWBT2EH4WY"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+    authDomain: "hyperion-logistics.firebaseapp.com",
+    projectId: "hyperion-logistics",
+    storageBucket: "hyperion-logistics.firebasestorage.app",
+    messagingSenderId: "481927084665",
+    appId: "1:481927084665:web:6c067752a922890e44f2a8"
+  };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-window.save = async () => {
-  const id = document.getElementById("id").value.trim();
-  if (!id) return;
+  window.save = async function () {
+    const id = document.getElementById("trackId").value.trim();
+    const status = document.getElementById("status").value.trim();
+    const location = document.getElementById("location").value.trim();
+    const fee = document.getElementById("fee").value.trim();
 
-  await setDoc(doc(db, "shipments", id), {
-    id,
-    status: document.getElementById("status").value,
-    location: document.getElementById("location").value,
-    fee: document.getElementById("fee").value
-  });
+    if(!id || !status || !location || !fee){
+      document.getElementById("msg").innerText = "⚠ Fill all fields";
+      return;
+    }
 
-  document.getElementById("msg").innerText = "Shipment saved successfully.";
-};
+    try {
+      await setDoc(doc(db, "shipments", id), {
+        id, status, location, fee
+      });
+
+      document.getElementById("msg").innerText = "✅ Shipment saved successfully";
+
+      document.getElementById("trackId").value="";
+      document.getElementById("status").value="";
+      document.getElementById("location").value="";
+      document.getElementById("fee").value="";
+
+    } catch (e) {
+      document.getElementById("msg").innerText = "❌ Error saving shipment";
+      console.error(e);
+    }
+  }
 </script>
 
 </body>
