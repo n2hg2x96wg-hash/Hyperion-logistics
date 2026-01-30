@@ -1,28 +1,51 @@
+function track() {
+  const id = document.getElementById("tracking").value.trim();
+  const result = document.getElementById("result");
 
-function track(){
-  const id = document.getElementById("tracking").value;
   const data = JSON.parse(localStorage.getItem(id));
 
-  if(!data){
-    document.getElementById("result").innerHTML = "Tracking ID not found.";
+  if (!id) {
+    result.innerHTML = `<div class="status error">Please enter a tracking ID.</div>`;
     return;
   }
 
-  document.getElementById("result").innerHTML = `
-    <div class='card'>
-      <b>Status:</b> ${data.status}<br/>
-      <b>Location:</b> ${data.location}<br/>
-      <b>Outstanding Fee:</b> $${data.fee}
+  if (!data) {
+    result.innerHTML = `<div class="status error">Tracking ID not found.</div>`;
+    return;
+  }
+
+  const statusColor = getStatusColor(data.status);
+
+  result.innerHTML = `
+    <div class="result-card">
+      <div class="row">
+        <span>📦 Status</span>
+        <span class="badge ${statusColor}">${data.status}</span>
+      </div>
+
+      <div class="row">
+        <span>📍 Location</span>
+        <a href="${data.location}" target="_blank">View Map</a>
+      </div>
+
+      <div class="row">
+        <span>💳 Outstanding Fee</span>
+        <strong>$${data.fee}</strong>
+      </div>
     </div>
   `;
 }
 
-function save(){
-  const id = document.getElementById("id").value;
-  const status = document.getElementById("status").value;
-  const location = document.getElementById("location").value;
-  const fee = document.getElementById("fee").value;
+function getStatusColor(status) {
+  const map = {
+    "Processing": "blue",
+    "Shipped": "purple",
+    "In transit": "cyan",
+    "Out for delivery": "orange",
+    "Delivered": "green",
+    "On hold": "red",
+    "Payment pending": "yellow"
+  };
 
-  localStorage.setItem(id, JSON.stringify({status, location, fee}));
-  alert("Shipment saved successfully");
+  return map[status] || "cyan";
 }
