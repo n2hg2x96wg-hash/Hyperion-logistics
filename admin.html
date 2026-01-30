@@ -1,39 +1,44 @@
-
 <!DOCTYPE html>
 <html lang="en">
-<head><script>
-  if (sessionStorage.getItem("admin") !== "true") {
-    window.location.href = "login.html";
-  }
-</script>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
+
+  <script>
+    if (sessionStorage.getItem("admin") !== "true") {
+      window.location.href = "login.html";
+    }
+  </script>
 </head>
+
 <body>
-  <<script>
-  if (sessionStorage.getItem("admin") !== "true") {
-    window.location.href = "login.html";
-  }
-</script>
-  }
-</script>
+
   <div class="container">
     <h1>Admin Dashboard</h1>
 
     <div class="card">
-      <input id="id" placeholder="Tracking ID"/>
-      <input id="status" placeholder="Status"/>
-      <input id="location" placeholder="Current Location"/>
-      <input id="fee" placeholder="Outstanding Fee ($)"/>
+      <input id="id" placeholder="Tracking ID">
+      <input id="status" placeholder="Status">
+      <input id="location" placeholder="Current Location">
+      <input id="fee" placeholder="Outstanding Fee">
+
       <button onclick="save()">Save Shipment</button>
+      <button onclick="logout()">Logout</button>
     </div>
 
     <p class="note">This demo uses browser storage (local).</p>
-    <a href="index.html" class="admin-link">Back to Tracking</a>
   </div>
 
-<script src="script.js"></script>
+  <script src="script.js"></script>
+
+  <script>
+    function logout() {
+      sessionStorage.removeItem("admin");
+      window.location.href = "login.html";
+    }
+  </script>
+
 </body>
 </html>
