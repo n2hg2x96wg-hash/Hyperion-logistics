@@ -3,37 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login – Hyperion Logistics</title>
+  <title>Admin Login</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="container">
-    <h1>Admin Access</h1>
-    <p>Authorized personnel only</p>
+<div class="container">
+  <h1>Admin Access</h1>
+  <p>Authorized personnel only</p>
 
-    <div class="card">
-      <input id="password" type="password" placeholder="Enter admin password">
-      <button onclick="login()">Login</button>
-    </div>
-
-    <div id="msg" class="result"></div>
+  <div class="card">
+    <input id="password" type="password" placeholder="Enter admin password">
+    <button onclick="login()">Login</button>
   </div>
 
-  <script>
-    const ADMIN_PASSWORD = "hyperion@2026";
+  <div id="msg" class="result"></div>
+</div>
 
-    function login() {
-      const pass = document.getElementById("password").value;
+<script>
+const ADMIN_PASSWORD = "hyperion2026";
 
-      if (pass === ADMIN_PASSWORD) {
-        sessionStorage.setItem("admin", "true");
-        window.location.href = "admin.html";
-      } else {
-        document.getElementById("msg").innerHTML = "❌ Wrong password";
-      }
-    }
-  </script>
+function login() {
+  const pass = document.getElementById("password").value;
+
+  if (pass === ADMIN_PASSWORD) {
+    sessionStorage.setItem("admin", "true");
+    window.location.href = "admin.html";
+  } else {
+    document.getElementById("msg").innerHTML =
+      "<span style='color:red'>Incorrect password.</span>";
+  }
+}
+</script>
 
 </body>
 </html>
