@@ -499,6 +499,177 @@
       font-size: 15px;
     }
 
+    /* Courier Partners Section */
+    .partners-section {
+      padding: 80px 24px;
+      background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+      position: relative;
+      z-index: 1;
+    }
+
+    .partners-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .partners-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .partners-title {
+      font-size: 40px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .partners-subtitle {
+      color: #cbd5e1;
+      font-size: 18px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .partners-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .partner-card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      padding: 40px 24px;
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 200px;
+      animation: scaleIn 0.5s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .partner-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .partner-card:nth-child(2) { animation-delay: 0.1s; }
+    .partner-card:nth-child(3) { animation-delay: 0.2s; }
+    .partner-card:nth-child(4) { animation-delay: 0.3s; }
+    .partner-card:nth-child(5) { animation-delay: 0.4s; }
+    .partner-card:nth-child(6) { animation-delay: 0.5s; }
+    .partner-card:nth-child(7) { animation-delay: 0.6s; }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .partner-card:hover {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: translateY(-8px) scale(1.05);
+      box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+    }
+
+    .partner-card:hover::before {
+      opacity: 1;
+    }
+
+    .partner-logo {
+      font-size: 48px;
+      margin-bottom: 16px;
+      transition: transform 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .partner-card:hover .partner-logo {
+      transform: scale(1.2) rotate(5deg);
+    }
+
+    .partner-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .partner-coverage {
+      font-size: 12px;
+      color: #cbd5e1;
+      opacity: 0.8;
+      position: relative;
+      z-index: 1;
+    }
+
+    .partner-badge {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 4px 12px;
+      background: rgba(59, 130, 246, 0.3);
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      color: #60a5fa;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .partner-card.featured {
+      border: 2px solid rgba(255, 193, 7, 0.5);
+      background: rgba(255, 193, 7, 0.05);
+    }
+
+    .partner-card.featured:hover {
+      border-color: rgba(255, 193, 7, 0.8);
+      background: rgba(255, 193, 7, 0.1);
+      box-shadow: 0 20px 40px rgba(255, 193, 7, 0.2);
+    }
+
+    .featured-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 193, 7, 0.9);
+      color: #000;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
     /* Features Grid */
     .features-section {
       padding: 80px 24px;
@@ -802,6 +973,23 @@
       .active-shipments {
         grid-template-columns: 1fr;
       }
+
+      .partners-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      }
+
+      .partner-card {
+        min-height: 180px;
+        padding: 24px 16px;
+      }
+
+      .partner-logo {
+        font-size: 36px;
+      }
+
+      .partner-name {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
@@ -823,6 +1011,7 @@
       </div>
       <ul class="nav-links">
         <li><a href="#activity">Live Activity</a></li>
+        <li><a href="#partners">Partners</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#how">How It Works</a></li>
         <li><a href="#track">Track Now</a></li>
@@ -948,6 +1137,68 @@
         <div class="result-row">
           <span class="result-label">💵 Shipping Fee</span>
           <span class="result-value" id="feeValue"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Courier Partners Section -->
+  <section class="partners-section" id="partners">
+    <div class="partners-container">
+      <div class="partners-header">
+        <h2 class="partners-title">Our Global Courier Partners</h2>
+        <p class="partners-subtitle">Integrated with the world's leading logistics companies</p>
+      </div>
+
+      <div class="partners-grid">
+        <div class="partner-card">
+          <div class="partner-logo">📦</div>
+          <div class="partner-name">FedEx</div>
+          <div class="partner-coverage">Global Express</div>
+          <div class="partner-badge">220+ Countries</div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo">🚚</div>
+          <div class="partner-name">DHL</div>
+          <div class="partner-coverage">International Delivery</div>
+          <div class="partner-badge">180+ Countries</div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo">🌏</div>
+          <div class="partner-name">2GO Express</div>
+          <div class="partner-coverage">Asia-Pacific Leader</div>
+          <div class="partner-badge">15+ Countries</div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo">✈️</div>
+          <div class="partner-name">UPS</div>
+          <div class="partner-coverage">Worldwide Shipping</div>
+          <div class="partner-badge">170+ Countries</div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo">🚢</div>
+          <div class="partner-name">TNT Express</div>
+          <div class="partner-coverage">European Specialist</div>
+          <div class="partner-badge">200+ Countries</div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo">📮</div>
+          <div class="partner-name">J&T Express</div>
+          <div class="partner-coverage">Southeast Asia Fast Track</div>
+          <div class="partner-badge">10+ Countries</div>
+        </div>
+
+        <div class="partner-card featured">
+          <div class="featured-badge">🌟 FEATURED</div>
+          <div class="partner-logo">🔥</div>
+          <div class="partner-name">The Boring Company</div>
+          <div class="partner-coverage">Underground Logistics</div>
+          <div class="partner-badge">Hyperloop Ready</div>
         </div>
       </div>
     </div>
