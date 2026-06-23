@@ -528,8 +528,8 @@
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-    import { getCourierById, buildDefaultCourierUpdates } from "./courier-config.js";
+    import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { loadCouriers, getCourierById, buildDefaultCourierUpdates } from "./courier-config.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -588,7 +588,7 @@
       return etaDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
-    function buildTimeline(data) {
+    async function buildTimeline(data, courier) {
       const timeline = (data.courierUpdates && data.courierUpdates.length)
         ? data.courierUpdates.map((update, index) => ({
             icon: index === data.courierUpdates.length - 1 ? "📍" : "🚚",
@@ -598,7 +598,7 @@
             timeLabel: update.timestamp ? new Date(update.timestamp).toLocaleString() : "Update received"
           }))
         : buildDefaultCourierUpdates({
-            courierName: getCourierById(data.courier).name,
+            courierName: courier.name,
             courierStatus: data.courierStatus,
             origin: data.origin,
             destination: data.destination,
@@ -669,7 +669,7 @@
 
         // Update UI
         document.getElementById("trackingID").innerText = id;
-        const courier = getCourierById(data.courier);
+        const courier = await getCourierById(data.courier);
         document.getElementById("courierName").innerText = courier.name;
         document.getElementById("courierTrackingNumber").innerText = data.courierTrackingNumber || "--";
         document.getElementById("currentLocation").innerText = data.location;
@@ -695,7 +695,7 @@
         initMap(lat, lng);
 
         // Build timeline
-        buildTimeline(data);
+        await buildTimeline(data, courier);
 
         resultsSection.classList.add("show");
         errorEl.classList.remove("show");
@@ -709,6 +709,10 @@
         btnEl.innerHTML = 'Track';
       }
     };
+
+    loadCouriers({ db, collection, getDocs }).catch((error) => {
+      console.error("Unable to load couriers from Firestore. Using fallback.", error);
+    });
 
     document.getElementById("trackingInput").addEventListener("keypress", (e) => {
       if (e.key === "Enter") handleTrack();
