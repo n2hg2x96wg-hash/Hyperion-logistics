@@ -2,72 +2,522 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hyperion Logistics - Track Shipment</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperion Logistics - Premium Shipment Tracking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; text-align:center; padding:40px; background:#f8fafc;}
-    h1 { font-size:40px; }
-    input, button { padding:12px; font-size:18px; }
-    button { cursor:pointer; }
-    .error { color:red; margin-top:10px; }
-    .card { background:#fff; padding:20px; margin-top:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,.08); }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* Header Section */
+    .header {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    .logo-icon {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+    }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+
+    .tagline {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 400;
+    }
+
+    /* Main Card */
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 40px 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 30px;
+      animation: slideIn 0.6s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 10px;
+      color: #334155;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+      color: #1e293b;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    input::placeholder {
+      color: #cbd5e1;
+    }
+
+    .button-container {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    button {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      color: white;
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #1e293b;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+
+    /* Error Message */
+    .error-message {
+      display: none;
+      padding: 14px 16px;
+      background: #fee2e2;
+      border-left: 4px solid #ef4444;
+      border-radius: 8px;
+      color: #991b1b;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      animation: shake 0.4s ease;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    /* Result Card */
+    .result-section {
+      margin-top: 30px;
+    }
+
+    .result-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid #f1f5f9;
+      animation: slideIn 0.4s ease-out;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+
+    .result-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .status-shipped {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-pending {
+      background: #fef08a;
+      color: #713f12;
+    }
+
+    .status-delivered {
+      background: #dbeafe;
+      color: #0c4a6e;
+    }
+
+    .status-processing {
+      background: #fce7f3;
+      color: #831843;
+    }
+
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .result-row:last-child {
+      border-bottom: none;
+    }
+
+    .result-label {
+      color: #64748b;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .result-value {
+      color: #1e293b;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .location-icon {
+      display: inline-block;
+      margin-right: 8px;
+      color: #3b82f6;
+    }
+
+    /* Features Section */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .feature-item {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      color: #e2e8f0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .feature-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    /* Loading State */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(59, 130, 246, 0.3);
+      border-radius: 50%;
+      border-top-color: #3b82f6;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 32px;
+      }
+
+      .card {
+        padding: 28px 20px;
+      }
+
+      .button-container {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .result-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
   </style>
 </head>
 <body>
-
-<h1>Hyperion Logistics</h1>
-<p>Premium logistics & reward tracking system</p>
-
-<input id="trackingInput" placeholder="Enter Tracking ID">
-<button onclick="track()">Track Shipment</button>
-
-<p class="error" id="error"></p>
-
-<div id="result"></div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-  authDomain: "hyperion-logistics.firebaseapp.com",
-  projectId: "hyperion-logistics",
-  storageBucket: "hyperion-logistics.firebasestorage.app",
-  messagingSenderId: "481927084665",
-  appId: "1:481927084665:web:6c067752a922890e44f2a8",
-  measurementId: "G-JWBT2EH4WY"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-window.track = async () => {
-  const id = document.getElementById("trackingInput").value.trim();
-  document.getElementById("error").innerText = "";
-  document.getElementById("result").innerHTML = "";
-
-  if (!id) return;
-
-  const ref = doc(db, "shipments", id);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    document.getElementById("error").innerText = "Tracking ID not found.";
-    return;
-  }
-
-  const d = snap.data();
-
-  document.getElementById("result").innerHTML = `
-    <div class="card">
-      <h3>Status: ${d.status}</h3>
-      <p><b>Location:</b> ${d.location}</p>
-      <p><b>Fee:</b> ${d.fee}</p>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-icon">📦</div>
+      <h1>Hyperion Logistics</h1>
+      <p class="subtitle">Premium Shipment Tracking</p>
+      <p class="tagline">Track your packages in real-time with enterprise-grade precision</p>
     </div>
-  `;
-}
-</script>
 
+    <!-- Main Card -->
+    <div class="card">
+      <div class="form-group">
+        <label for="trackingInput">Tracking ID</label>
+        <input 
+          id="trackingInput" 
+          type="text"
+          placeholder="Enter your tracking number"
+          spellcheck="false"
+        >
+      </div>
+
+      <div class="error-message" id="error"></div>
+
+      <div class="button-container">
+        <button class="btn-primary" onclick="track()">
+          <span id="btn-text">Track Shipment</span>
+        </button>
+        <button class="btn-secondary" onclick="clearForm()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div class="result-section" id="resultContainer" style="display: none;">
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-title">Shipment Details</span>
+          <span class="status-badge" id="statusBadge"></span>
+        </div>
+        
+        <div class="result-row">
+          <span class="result-label">📍 Location</span>
+          <span class="result-value" id="locationValue"></span>
+        </div>
+        
+        <div class="result-row">
+          <span class="result-label">✓ Status</span>
+          <span class="result-value" id="statusValue"></span>
+        </div>
+        
+        <div class="result-row">
+          <span class="result-label">💵 Shipping Fee</span>
+          <span class="result-value" id="feeValue"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature-item">
+        <div class="feature-icon">⚡</div>
+        <div>Real-time Updates</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🔒</div>
+        <div>Secure & Encrypted</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🌍</div>
+        <div>Global Coverage</div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">24/7</div>
+        <div>24/7 Support</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+      authDomain: "hyperion-logistics.firebaseapp.com",
+      projectId: "hyperion-logistics",
+      storageBucket: "hyperion-logistics.firebasestorage.app",
+      messagingSenderId: "481927084665",
+      appId: "1:481927084665:web:6c067752a922890e44f2a8",
+      measurementId: "G-JWBT2EH4WY"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.track = async () => {
+      const id = document.getElementById("trackingInput").value.trim();
+      const errorEl = document.getElementById("error");
+      const resultContainer = document.getElementById("resultContainer");
+      const btnEl = document.querySelector(".btn-primary");
+
+      errorEl.classList.remove("show");
+      errorEl.innerText = "";
+
+      if (!id) {
+        errorEl.innerText = "Please enter a tracking ID";
+        errorEl.classList.add("show");
+        return;
+      }
+
+      // Show loading state
+      btnEl.disabled = true;
+      btnEl.innerHTML = '<span class="spinner"></span>Tracking...';
+
+      try {
+        const ref = doc(db, "shipments", id);
+        const snap = await getDoc(ref);
+
+        if (!snap.exists()) {
+          errorEl.innerText = "❌ Tracking ID not found. Please check and try again.";
+          errorEl.classList.add("show");
+          resultContainer.style.display = "none";
+          return;
+        }
+
+        const d = snap.data();
+
+        // Display results
+        const statusClass = `status-${d.status.toLowerCase()}`;
+        document.getElementById("statusBadge").className = `status-badge ${statusClass}`;
+        document.getElementById("statusBadge").innerText = d.status;
+        document.getElementById("locationValue").innerText = d.location;
+        document.getElementById("statusValue").innerText = d.status;
+        document.getElementById("feeValue").innerText = d.fee;
+
+        resultContainer.style.display = "block";
+        errorEl.classList.remove("show");
+      } catch (error) {
+        errorEl.innerText = "⚠️ An error occurred. Please try again.";
+        errorEl.classList.add("show");
+        console.error(error);
+      } finally {
+        // Reset button
+        btnEl.disabled = false;
+        btnEl.innerHTML = 'Track Shipment';
+      }
+    };
+
+    window.clearForm = () => {
+      document.getElementById("trackingInput").value = "";
+      document.getElementById("resultContainer").style.display = "none";
+      document.getElementById("error").classList.remove("show");
+      document.getElementById("trackingInput").focus();
+    };
+
+    // Allow Enter key to trigger search
+    document.getElementById("trackingInput").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") track();
+    });
+  </script>
 </body>
 </html>
