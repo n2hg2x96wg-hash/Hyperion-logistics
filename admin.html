@@ -59,7 +59,7 @@
 
 <!-- 🔐 PASSWORD PROTECTION -->
 <script>
-  const PASSWORD = "Hyperion@2026!";   // 🔥 CHANGE THIS PASSWORD
+  const PASSWORD = "Hyperion@2026!";
 
   const input = prompt("Enter admin password:");
 
@@ -107,14 +107,25 @@
       return;
     }
 
-    await setDoc(doc(db, "shipments", id), {
-      id,
-      status,
-      location,
-      fee
-    });
+    try {
+      await setDoc(doc(db, "shipments", id), {
+        id,
+        status,
+        location,
+        fee
+      });
 
-    alert("Shipment saved successfully!");
+      alert("Shipment saved successfully! ✅");
+      
+      // Clear form
+      document.getElementById("id").value = "";
+      document.getElementById("status").value = "";
+      document.getElementById("location").value = "";
+      document.getElementById("fee").value = "";
+    } catch (error) {
+      alert("Error: " + error.message);
+      console.error(error);
+    }
   }
 </script>
 
