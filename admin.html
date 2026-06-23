@@ -3,131 +3,642 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperion Admin</title>
-
+  <title>Hyperion Admin - Shipment Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: #fff;
-      padding: 20px;
-      text-align: center;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    h2 {
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 40px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .logo-text h2 {
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+
+    .logo-text p {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .btn-logout {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .btn-logout:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .breadcrumb {
+      color: #64748b;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .breadcrumb span {
+      color: #94a3b8;
+      margin: 0 8px;
+    }
+
+    /* Main Content */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      align-items: start;
+    }
+
+    /* Form Card */
+    .form-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+
+    .card-header h3 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+
+    .card-header p {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .form-group {
       margin-bottom: 20px;
     }
 
-    input, button {
-      padding: 12px;
-      margin: 8px;
-      width: 90%;
-      max-width: 350px;
-      border-radius: 6px;
-      border: none;
-      outline: none;
-      font-size: 16px;
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #334155;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
 
     input {
-      background: #1e293b;
-      color: #fff;
-    }
-
-    button {
-      background: #22c55e;
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #16a34a;
-    }
-
-    .box {
-      background: #020617;
-      padding: 25px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid #e2e8f0;
       border-radius: 10px;
-      max-width: 420px;
-      margin: auto;
+      font-size: 14px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #1e293b;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      transform: translateY(-1px);
+    }
+
+    input::placeholder {
+      color: #cbd5e1;
+    }
+
+    .form-footer {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-save {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+    }
+
+    .btn-save:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(34, 197, 94, 0.4);
+    }
+
+    .btn-save:active {
+      transform: translateY(0);
+    }
+
+    .btn-save:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-reset {
+      background: #f1f5f9;
+      color: #334155;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-reset:hover {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+    }
+
+    /* Stats Card */
+    .stats-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stats-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+
+    .stats-header h3 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #1e293b;
+      margin-bottom: 4px;
+    }
+
+    .stats-header p {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .stat-item {
+      padding: 20px;
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1e293b;
+    }
+
+    .stat-icon {
+      font-size: 28px;
+      display: inline-block;
+      margin-right: 12px;
+    }
+
+    .quick-actions {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 2px solid #f1f5f9;
+    }
+
+    .quick-actions h4 {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .action-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-action {
+      padding: 10px 14px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      color: #1e293b;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .btn-action:hover {
+      border-color: #3b82f6;
+      color: #3b82f6;
+      background: #f0f4ff;
+    }
+
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      z-index: 1000;
+      animation: slideUp 0.4s ease-out;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .form-card,
+      .stats-card {
+        padding: 24px;
+      }
+
+      .form-footer {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .toast {
+        left: 20px;
+        right: 20px;
+      }
     }
   </style>
 </head>
-
 <body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <div>
+          <div class="logo">
+            <div class="logo-icon">⚙️</div>
+            <div class="logo-text">
+              <h2>Admin Panel</h2>
+              <p>Hyperion Logistics Management</p>
+            </div>
+          </div>
+          <div class="breadcrumb">Dashboard > <span>Shipments</span></div>
+        </div>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </div>
 
-<!-- 🔐 PASSWORD PROTECTION -->
-<script>
-  const PASSWORD = "Hyperion@2026!";
+    <!-- Main Content -->
+    <div class="content">
+      <!-- Form Section -->
+      <div class="form-card">
+        <div class="card-header">
+          <h3>Create Shipment</h3>
+          <p>Add or update shipment information</p>
+        </div>
 
-  const input = prompt("Enter admin password:");
+        <form onsubmit="saveData(event)">
+          <div class="form-group">
+            <label for="id">Tracking ID *</label>
+            <input 
+              id="id" 
+              type="text"
+              placeholder="e.g., 827272279"
+              required
+              spellcheck="false"
+            >
+          </div>
 
-  if (input !== PASSWORD) {
-    alert("Access denied!");
-    window.location.href = "index.html";
-  }
-</script>
+          <div class="form-group">
+            <label for="status">Status *</label>
+            <input 
+              id="status" 
+              type="text"
+              placeholder="e.g., Shipped, Delivered, Processing"
+              required
+            >
+          </div>
 
-<div class="box">
-  <h2>Shipment Admin Panel</h2>
+          <div class="form-group">
+            <label for="location">Location *</label>
+            <input 
+              id="location" 
+              type="text"
+              placeholder="e.g., United States, Alabama"
+              required
+            >
+          </div>
 
-  <input id="id" placeholder="Tracking ID">
-  <input id="status" placeholder="Status">
-  <input id="location" placeholder="Location">
-  <input id="fee" placeholder="Fee">
+          <div class="form-group">
+            <label for="fee">Shipping Fee *</label>
+            <input 
+              id="fee" 
+              type="text"
+              placeholder="e.g., $1,062"
+              required
+            >
+          </div>
 
-  <button onclick="saveData()">Save Shipment</button>
-</div>
+          <div class="form-footer">
+            <button type="submit" class="btn btn-save">
+              <span id="save-btn-text">Save Shipment</span>
+            </button>
+            <button type="reset" class="btn btn-reset">Clear</button>
+          </div>
+        </form>
+      </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      <!-- Stats Section -->
+      <div class="stats-card">
+        <div class="stats-header">
+          <h3>Quick Stats</h3>
+          <p>System overview</p>
+        </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-    authDomain: "hyperion-logistics.firebaseapp.com",
-    projectId: "hyperion-logistics",
-    storageBucket: "hyperion-logistics.firebasestorage.app",
-    messagingSenderId: "481927084665",
-    appId: "1:481927084665:web:6c067752a922890e44f2a8"
-  };
+        <div class="stat-item">
+          <div class="stat-label">📦 Total Shipments</div>
+          <div class="stat-value" id="totalShipments">--</div>
+        </div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+        <div class="stat-item">
+          <div class="stat-label">✓ Last Updated</div>
+          <div class="stat-value" id="lastUpdated" style="font-size: 16px;">--</div>
+        </div>
 
-  window.saveData = async function () {
-    const id = document.getElementById("id").value.trim();
-    const status = document.getElementById("status").value.trim();
-    const location = document.getElementById("location").value.trim();
-    const fee = document.getElementById("fee").value.trim();
+        <div class="stat-item">
+          <div class="stat-label">🔄 System Status</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+            <span style="font-weight: 600; color: #22c55e;">Operational</span>
+          </div>
+        </div>
 
-    if (!id || !status || !location || !fee) {
-      alert("Fill all fields");
-      return;
+        <div class="quick-actions">
+          <h4>Quick Actions</h4>
+          <div class="action-buttons">
+            <button class="btn-action" onclick="viewShipments()">📋 View All Shipments</button>
+            <button class="btn-action" onclick="exportData()">💾 Export Data</button>
+            <button class="btn-action" onclick="goHome()">🏠 Back to Home</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+      authDomain: "hyperion-logistics.firebaseapp.com",
+      projectId: "hyperion-logistics",
+      storageBucket: "hyperion-logistics.firebasestorage.app",
+      messagingSenderId: "481927084665",
+      appId: "1:481927084665:web:6c067752a922890e44f2a8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const PASSWORD = "Hyperion@2026!";
+    const input = prompt("Enter admin password:");
+
+    if (input !== PASSWORD) {
+      alert("Access denied!");
+      window.location.href = "index.html";
     }
 
-    try {
-      await setDoc(doc(db, "shipments", id), {
-        id,
-        status,
-        location,
-        fee
-      });
-
-      alert("Shipment saved successfully! ✅");
-      
-      // Clear form
-      document.getElementById("id").value = "";
-      document.getElementById("status").value = "";
-      document.getElementById("location").value = "";
-      document.getElementById("fee").value = "";
-    } catch (error) {
-      alert("Error: " + error.message);
-      console.error(error);
+    // Load stats
+    async function loadStats() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "shipments"));
+        document.getElementById("totalShipments").innerText = querySnapshot.size;
+      } catch (error) {
+        console.error("Error loading stats:", error);
+      }
     }
-  }
-</script>
 
+    loadStats();
+
+    window.saveData = async function (e) {
+      e.preventDefault();
+
+      const id = document.getElementById("id").value.trim();
+      const status = document.getElementById("status").value.trim();
+      const location = document.getElementById("location").value.trim();
+      const fee = document.getElementById("fee").value.trim();
+      const btnEl = document.querySelector(".btn-save");
+
+      if (!id || !status || !location || !fee) {
+        showToast("Please fill all fields", "error");
+        return;
+      }
+
+      btnEl.disabled = true;
+      btnEl.innerHTML = '<span class="spinner"></span>Saving...';
+
+      try {
+        await setDoc(doc(db, "shipments", id), {
+          id,
+          status,
+          location,
+          fee
+        });
+
+        showToast("✅ Shipment saved successfully!", "success");
+        document.querySelector("form").reset();
+        loadStats();
+      } catch (error) {
+        showToast("❌ Error: " + error.message, "error");
+        console.error(error);
+      } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = 'Save Shipment';
+      }
+    };
+
+    window.logout = function () {
+      if (confirm("Are you sure you want to logout?")) {
+        window.location.href = "index.html";
+      }
+    };
+
+    window.goHome = function () {
+      window.location.href = "index.html";
+    };
+
+    window.viewShipments = function () {
+      showToast("📊 Shipments list feature coming soon!", "success");
+    };
+
+    window.exportData = function () {
+      showToast("💾 Export feature coming soon!", "success");
+    };
+
+    function showToast(message, type) {
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      toast.innerText = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 4000);
+    }
+
+    // Update last updated time
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    document.getElementById("lastUpdated").innerText = timeString;
+  </script>
+
+  <style>
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
 </body>
 </html>
