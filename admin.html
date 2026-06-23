@@ -191,7 +191,7 @@
       text-transform: uppercase;
     }
 
-    input, textarea {
+    input, textarea, select {
       width: 100%;
       padding: 12px 14px;
       border: 2px solid #e2e8f0;
@@ -202,7 +202,7 @@
       transition: all 0.3s ease;
     }
 
-    input:focus, textarea:focus {
+    input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -210,6 +210,10 @@
 
     input::placeholder, textarea::placeholder {
       color: #cbd5e1;
+    }
+
+    select {
+      background: white;
     }
 
     .section-label {
@@ -435,10 +439,55 @@
       margin-bottom: 8px;
     }
 
+    .courier-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .courier-stat {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .shipment-tools {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .courier-prefix-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .courier-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e2e8f0;
+    }
+
     @media (max-width: 768px) {
       .form-footer { flex-direction: column; }
       .btn { width: 100%; }
       .toast { left: 20px; right: 20px; }
+      .shipment-tools { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -492,6 +541,13 @@
           </div>
         </div>
 
+        <div class="stat-item">
+          <div class="stat-label">🚚 Shipments by Courier</div>
+          <div class="courier-stats-grid" id="courierStats">
+            <div class="courier-stat"><span>Loading...</span><strong>--</strong></div>
+          </div>
+        </div>
+
         <div class="quick-actions">
           <h4>Quick Actions</h4>
           <div class="action-buttons">
@@ -515,7 +571,8 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="id">Tracking ID *</label>
-              <input id="id" type="text" placeholder="e.g., TH169YRJOQ11" required spellcheck="false">
+              <input id="id" type="text" placeholder="Auto-generated when courier is selected" spellcheck="false">
+              <div class="courier-prefix-hint" id="courierPrefixHint">Tracking prefix: --</div>
             </div>
             <div class="form-group">
               <label for="status">Status *</label>
@@ -529,6 +586,18 @@
                 <option value="Processing">
                 <option value="Pending">
               </datalist>
+            </div>
+          </div>
+
+          <div class="section-label">🚚 Courier Information</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="courier">Courier *</label>
+              <select id="courier" required></select>
+            </div>
+            <div class="form-group">
+              <label for="courierTrackingNumber">Courier Tracking Number</label>
+              <input id="courierTrackingNumber" type="text" placeholder="Carrier-provided tracking number">
             </div>
           </div>
 
@@ -590,6 +659,10 @@
           <h3>All Shipments</h3>
           <p>Manage and monitor shipments</p>
         </div>
+        <div class="shipment-tools">
+          <input id="shipmentSearch" type="text" placeholder="Search by tracking code or courier">
+          <select id="courierFilter"></select>
+        </div>
         <div id="shipmentsContainer">
           <div class="empty-state">
             <div class="empty-icon">📦</div>
@@ -603,7 +676,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { COURIERS, getCourierById, generateTrackingCode, mapGenericStatusToCourier, buildDefaultCourierUpdates } from "./courier-config.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -616,6 +690,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    let allShipments = [];
 
     const PASSWORD = "Hyperion@2026!";
     const input = prompt("Enter admin password:");
@@ -623,6 +698,32 @@
     if (input !== PASSWORD) {
       alert("Access denied!");
       window.location.href = "index.html";
+    }
+
+    function populateCourierOptions() {
+      const courierSelect = document.getElementById("courier");
+      const courierFilter = document.getElementById("courierFilter");
+
+      courierSelect.innerHTML = COURIERS.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
+      courierFilter.innerHTML = `<option value="">All Couriers</option>${COURIERS.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("")}`;
+      updateCourierPrefixHint();
+    }
+
+    function updateCourierPrefixHint() {
+      const courierId = document.getElementById("courier").value;
+      const courier = getCourierById(courierId);
+      document.getElementById("courierPrefixHint").innerText = `Tracking prefix: ${courier.prefix}-XXXXX`;
+    }
+
+    async function createUniqueTrackingCode(courierId) {
+      let attempts = 0;
+      while (attempts < 6) {
+        const candidate = generateTrackingCode(courierId);
+        const shipmentDoc = await getDoc(doc(db, "shipments", candidate));
+        if (!shipmentDoc.exists()) return candidate;
+        attempts += 1;
+      }
+      throw new Error("Could not generate unique tracking ID. Please try again.");
     }
 
     window.switchView = function(view) {
@@ -655,6 +756,19 @@
       try {
         const querySnapshot = await getDocs(collection(db, "shipments"));
         document.getElementById("totalShipments").innerText = querySnapshot.size;
+        const courierCounter = {};
+
+        querySnapshot.forEach((shipmentDoc) => {
+          const data = shipmentDoc.data();
+          const courier = getCourierById(data.courier);
+          courierCounter[courier.name] = (courierCounter[courier.name] || 0) + 1;
+        });
+
+        const statsHtml = Object.keys(courierCounter).length
+          ? Object.entries(courierCounter).map(([name, count]) => `<div class="courier-stat"><span>${name}</span><strong>${count}</strong></div>`).join("")
+          : `<div class="courier-stat"><span>No courier data</span><strong>0</strong></div>`;
+
+        document.getElementById("courierStats").innerHTML = statsHtml;
       } catch (error) {
         console.error("Error loading stats:", error);
       }
@@ -663,38 +777,57 @@
     window.loadShipments = async function() {
       try {
         const querySnapshot = await getDocs(collection(db, "shipments"));
-        const container = document.getElementById('shipmentsContainer');
-        
-        if (querySnapshot.empty) {
-          container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><h3>No Shipments</h3></div>';
-          return;
-        }
-
-        let html = `<table class="shipments-table"><thead><tr><th>ID</th><th>Status</th><th>From</th><th>Current</th><th>To</th><th>Fee</th><th>Action</th></tr></thead><tbody>`;
-
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const statusClass = `status-${data.status.toLowerCase().replace(/\s+/g, '-')}`;
-          html += `
-            <tr>
-              <td><strong>${data.id}</strong></td>
-              <td><span class="status-badge ${statusClass}">${data.status}</span></td>
-              <td>${data.origin || '--'}</td>
-              <td>${data.location}</td>
-              <td>${data.destination || '--'}</td>
-              <td>${data.fee}</td>
-              <td><button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="deleteShipment('${data.id}')">Delete</button></td>
-            </tr>
-          `;
+        allShipments = [];
+        querySnapshot.forEach((shipmentDoc) => {
+          allShipments.push(shipmentDoc.data());
         });
 
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        renderShipmentsTable();
       } catch (error) {
         console.error("Error loading shipments:", error);
         showToast("Error loading shipments", "error");
       }
     };
+
+    function renderShipmentsTable() {
+      const container = document.getElementById('shipmentsContainer');
+      const courierFilterValue = document.getElementById("courierFilter").value;
+      const searchValue = document.getElementById("shipmentSearch").value.trim().toLowerCase();
+      const filtered = allShipments.filter((shipment) => {
+        const shipmentCourier = shipment.courier || "";
+        const courierMatch = !courierFilterValue || shipmentCourier === courierFilterValue;
+        const searchable = `${shipment.id || ""} ${getCourierById(shipmentCourier).name}`.toLowerCase();
+        const searchMatch = !searchValue || searchable.includes(searchValue);
+        return courierMatch && searchMatch;
+      });
+
+      if (!filtered.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><h3>No matching shipments</h3></div>';
+        return;
+      }
+
+      let html = `<table class="shipments-table"><thead><tr><th>ID</th><th>Courier</th><th>Status</th><th>From</th><th>Current</th><th>To</th><th>Fee</th><th>Action</th></tr></thead><tbody>`;
+
+      filtered.forEach((data) => {
+        const statusClass = `status-${(data.status || "").toLowerCase().replace(/\s+/g, '-')}`;
+        const courier = getCourierById(data.courier);
+        html += `
+          <tr>
+            <td><strong>${data.id}</strong></td>
+            <td><span class="courier-chip" style="background:${courier.brandColor}22;color:${courier.brandColor};">${courier.logo} ${courier.name}</span></td>
+            <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+            <td>${data.origin || '--'}</td>
+            <td>${data.location || '--'}</td>
+            <td>${data.destination || '--'}</td>
+            <td>${data.fee || '--'}</td>
+            <td><button class="btn-action" style="padding:4px 8px;font-size:11px;" onclick="deleteShipment('${data.id}')">Delete</button></td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
 
     window.deleteShipment = async function(id) {
       if (!confirm(`Delete shipment ${id}?`)) return;
@@ -712,8 +845,11 @@
     window.saveData = async function (e) {
       e.preventDefault();
 
-      const id = document.getElementById("id").value.trim();
+      let id = document.getElementById("id").value.trim();
       const status = document.getElementById("status").value.trim();
+      const courierId = document.getElementById("courier").value;
+      const courier = getCourierById(courierId);
+      const courierTrackingNumber = document.getElementById("courierTrackingNumber").value.trim();
       const origin = document.getElementById("origin").value.trim();
       const destination = document.getElementById("destination").value.trim();
       const location = document.getElementById("location").value.trim();
@@ -723,7 +859,7 @@
       const fee = document.getElementById("fee").value.trim();
       const btnEl = document.querySelector(".btn-save");
 
-      if (!id || !status || !origin || !destination || !location || !fee || !latitude || !longitude) {
+      if (!status || !origin || !destination || !location || !fee || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         showToast("Please fill all required fields", "error");
         return;
       }
@@ -732,8 +868,23 @@
       btnEl.innerHTML = '<span class="spinner"></span>Saving...';
 
       try {
+        if (!id) {
+          id = await createUniqueTrackingCode(courierId);
+          document.getElementById("id").value = id;
+        }
+        const courierStatus = mapGenericStatusToCourier(status, courierId);
         await setDoc(doc(db, "shipments", id), {
           id,
+          courier: courierId,
+          courierTrackingNumber: courierTrackingNumber || `${courier.prefix}-${id.split("-").pop()}`,
+          courierStatus,
+          courierUpdates: buildDefaultCourierUpdates({
+            courierName: courier.name,
+            courierStatus,
+            origin,
+            destination,
+            location
+          }),
           status,
           origin,
           destination,
@@ -746,6 +897,8 @@
 
         showToast("✅ Shipment saved successfully!", "success");
         document.querySelector("form").reset();
+        document.getElementById("id").value = await createUniqueTrackingCode(document.getElementById("courier").value);
+        updateCourierPrefixHint();
         loadStats();
       } catch (error) {
         showToast("❌ Error: " + error.message, "error");
@@ -770,8 +923,8 @@
           return;
         }
 
-        const csv = "Tracking ID,Status,Origin,Destination,Current Location,Distance,Fee\n" + 
-          shipments.map(s => `${s.id},${s.status},${s.origin},${s.destination},${s.location},${s.distance},${s.fee}`).join("\n");
+        const csv = "Tracking ID,Courier,Courier Tracking Number,Courier Status,Status,Origin,Destination,Current Location,Distance,Fee\n" + 
+          shipments.map(s => `${s.id},${getCourierById(s.courier).name},${s.courierTrackingNumber || ""},${s.courierStatus || ""},${s.status},${s.origin},${s.destination},${s.location},${s.distance},${s.fee}`).join("\n");
 
         const blob = new Blob([csv], { type: "text/csv" });
         const url = window.URL.createObjectURL(blob);
@@ -806,6 +959,20 @@
     }
 
     loadStats();
+    populateCourierOptions();
+    createUniqueTrackingCode(document.getElementById("courier").value).then((trackingId) => {
+      document.getElementById("id").value = trackingId;
+    }).catch((error) => console.error(error));
+    document.getElementById("courier").addEventListener("change", async () => {
+      try {
+        updateCourierPrefixHint();
+        document.getElementById("id").value = await createUniqueTrackingCode(document.getElementById("courier").value);
+      } catch (error) {
+        showToast("Unable to generate tracking ID", "error");
+      }
+    });
+    document.getElementById("shipmentSearch").addEventListener("input", renderShipmentsTable);
+    document.getElementById("courierFilter").addEventListener("change", renderShipmentsTable);
     const now = new Date();
     document.getElementById("lastUpdated").innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   </script>

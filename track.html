@@ -283,6 +283,40 @@
       margin-top: 8px;
     }
 
+    .courier-brand-box {
+      margin-top: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      background: #fff;
+    }
+
+    .courier-brand-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .courier-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: white;
+      font-weight: 700;
+    }
+
+    .courier-contact {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
     .timeline-section {
       margin-top: 40px;
     }
@@ -433,6 +467,16 @@
         </div>
 
         <div class="info-row">
+          <span class="info-label">🚚 Courier</span>
+          <span class="info-value" id="courierName"></span>
+        </div>
+
+        <div class="info-row">
+          <span class="info-label">🔢 Courier Tracking #</span>
+          <span class="info-value" id="courierTrackingNumber"></span>
+        </div>
+
+        <div class="info-row">
           <span class="info-label">📍 Current Location</span>
           <span class="info-value" id="currentLocation"></span>
         </div>
@@ -456,6 +500,17 @@
           <div class="eta-label">Estimated Delivery</div>
           <div class="eta-time" id="etaTime">--</div>
         </div>
+
+        <div class="courier-brand-box">
+          <div class="courier-brand-top">
+            <div class="courier-logo" id="courierLogo"></div>
+            <div>
+              <div style="font-weight: 800; color: #1e293b;" id="courierBrandName">--</div>
+              <div style="font-size: 12px; color: #64748b;">Courier Support</div>
+            </div>
+          </div>
+          <div class="courier-contact" id="courierContact"></div>
+        </div>
       </div>
     </div>
 
@@ -474,6 +529,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+    import { getCourierById, buildDefaultCourierUpdates } from "./courier-config.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -533,32 +589,27 @@
     }
 
     function buildTimeline(data) {
-      const timeline = [
-        {
-          icon: '📦',
-          label: 'Picked Up',
-          info: `From ${data.origin}`,
-          completed: true
-        },
-        {
-          icon: '🚚',
-          label: 'In Transit',
-          info: `Currently at ${data.location}`,
-          completed: data.status !== 'Pending'
-        },
-        {
-          icon: '🚪',
-          label: 'Out for Delivery',
-          info: 'Package in delivery truck',
-          completed: false
-        },
-        {
-          icon: '✅',
-          label: 'Delivered',
-          info: `To ${data.destination}`,
-          completed: data.status === 'Delivered'
-        }
-      ];
+      const timeline = (data.courierUpdates && data.courierUpdates.length)
+        ? data.courierUpdates.map((update, index) => ({
+            icon: index === data.courierUpdates.length - 1 ? "📍" : "🚚",
+            label: update.title || "Courier Update",
+            info: `${update.description || ""}${update.location ? ` • ${update.location}` : ""}`,
+            completed: true,
+            timeLabel: update.timestamp ? new Date(update.timestamp).toLocaleString() : "Update received"
+          }))
+        : buildDefaultCourierUpdates({
+            courierName: getCourierById(data.courier).name,
+            courierStatus: data.courierStatus,
+            origin: data.origin,
+            destination: data.destination,
+            location: data.location
+          }).map((update, index) => ({
+            icon: index === 0 ? "📦" : "🚚",
+            label: update.title,
+            info: `${update.description} • ${update.location}`,
+            completed: true,
+            timeLabel: new Date(update.timestamp).toLocaleString()
+          }));
 
       const timelineHTML = timeline.map((item, idx) => `
         <div class="timeline-item">
@@ -566,7 +617,7 @@
           <div class="timeline-content">
             <div class="timeline-label">${item.label}</div>
             <div class="timeline-info">${item.info}</div>
-            <div class="timeline-time">${item.completed ? '✓ Completed' : 'Pending'}</div>
+            <div class="timeline-time">${item.timeLabel || (item.completed ? '✓ Completed' : 'Pending')}</div>
           </div>
         </div>
       `).join('');
@@ -618,13 +669,24 @@
 
         // Update UI
         document.getElementById("trackingID").innerText = id;
+        const courier = getCourierById(data.courier);
+        document.getElementById("courierName").innerText = courier.name;
+        document.getElementById("courierTrackingNumber").innerText = data.courierTrackingNumber || "--";
         document.getElementById("currentLocation").innerText = data.location;
         document.getElementById("origin").innerText = data.origin;
         document.getElementById("destination").innerText = data.destination;
         document.getElementById("fee").innerText = data.fee;
         document.getElementById("etaTime").innerText = calculateETA(60);
+        document.getElementById("courierBrandName").innerText = courier.name;
+        document.getElementById("courierLogo").innerText = courier.logo;
+        document.getElementById("courierLogo").style.background = courier.brandColor;
+        document.getElementById("courierContact").innerHTML = `
+          Phone: ${courier.contact.phone}<br>
+          Email: ${courier.contact.email}<br>
+          Website: ${courier.contact.website}
+        `;
 
-        const statusClass = `status-${data.status.toLowerCase().replace(' ', '-')}`;
+        const statusClass = `status-${data.status.toLowerCase().replace(/\s+/g, '-')}`;
         document.getElementById("statusBadge").className = `status-badge ${statusClass}`;
         document.getElementById("statusBadge").innerText = data.status;
 
