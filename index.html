@@ -1309,6 +1309,18 @@
     <p>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</p>
   </footer>
 
+  <!-- Smartsupp Live Chat Integration -->
+  <script type="text/javascript">
+    var _smartsupp = _smartsupp || {};
+    _smartsupp.key = '8d189e08256876f6e213e16802a6f5b15da26d5c';
+    window.smartsupp||(function(d) {
+      var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+      s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+      c.type='text/javascript';c.charset='utf-8';c.async=true;
+      c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+    })(document);
+  </script>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -1325,6 +1337,17 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // Welcome message when page loads
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        if (window.smartsupp) {
+          window.smartsupp('chat:open:popup', {
+            message: '👋 Welcome to Hyperion Logistics!\n\nNeed help tracking your shipment? Simply enter your tracking code or start a conversation with our team. We\'re here 24/7 to assist you! 📦'
+          });
+        }
+      }, 2000);
+    });
 
     window.track = async () => {
       const id = document.getElementById("trackingInput").value.trim();
@@ -1353,6 +1376,13 @@
           errorEl.innerText = "❌ Tracking code not found. Please check and try again.";
           errorEl.classList.add("show");
           resultContainer.style.display = "none";
+          
+          // Send tracking info to Smartsupp
+          if (window.smartsupp) {
+            window.smartsupp('chat:add-item', {
+              text: `User searched for tracking code: ${id} - NOT FOUND. They may need assistance. 🔍`
+            });
+          }
           return;
         }
 
@@ -1368,10 +1398,24 @@
 
         resultContainer.style.display = "block";
         errorEl.classList.remove("show");
+
+        // Send tracking info to Smartsupp for customer service reference
+        if (window.smartsupp) {
+          window.smartsupp('chat:add-item', {
+            text: `✅ Tracking found!\n\nCode: ${id}\nLocation: ${d.location}\nStatus: ${d.status}\nFee: ${d.fee}\n\nIf you have any questions about this shipment, I'm here to help! 🚚`
+          });
+        }
       } catch (error) {
         errorEl.innerText = "⚠️ An error occurred. Please try again.";
         errorEl.classList.add("show");
         console.error(error);
+        
+        // Notify support team
+        if (window.smartsupp) {
+          window.smartsupp('chat:add-item', {
+            text: `⚠️ Error occurred during tracking lookup for code: ${id}. Support team may want to reach out.`
+          });
+        }
       } finally {
         // Reset button
         btnEl.disabled = false;
