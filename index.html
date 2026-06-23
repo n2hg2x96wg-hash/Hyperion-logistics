@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
   <style>
     * {
       margin: 0;
@@ -531,6 +532,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <!-- Navigation -->
@@ -545,6 +547,7 @@
         <li><a href="#how">How It Works</a></li>
         <li><a href="#track">Track Now</a></li>
       </ul>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle theme">🌙</button>
     </div>
   </nav>
 
@@ -576,25 +579,59 @@
 
     <!-- Result Section -->
     <div class="result-section" id="resultContainer">
+      <div class="tracking-skeleton" id="loadingSkeleton">
+        <div class="skeleton-block"></div>
+        <div class="skeleton-block"></div>
+        <div class="skeleton-block"></div>
+      </div>
+
       <div class="result-card">
         <div class="result-header">
           <span class="result-title">Shipment Details</span>
-          <span class="status-badge" id="statusBadge"></span>
+          <div class="live-cluster">
+            <span class="live-indicator">● Live</span>
+            <span class="status-badge" id="statusBadge"></span>
+          </div>
         </div>
-        
+
         <div class="result-row">
           <span class="result-label">📍 Current Location</span>
           <span class="result-value" id="locationValue"></span>
         </div>
-        
+
+        <div class="result-row">
+          <span class="result-label">🧭 Route</span>
+          <span class="result-value" id="routeValue"></span>
+        </div>
+
         <div class="result-row">
           <span class="result-label">✓ Status</span>
           <span class="result-value" id="statusValue"></span>
         </div>
-        
+
+        <div class="result-row">
+          <span class="result-label">🛣️ Distance</span>
+          <span class="result-value" id="distanceValue"></span>
+        </div>
+
         <div class="result-row">
           <span class="result-label">💵 Shipping Fee</span>
           <span class="result-value" id="feeValue"></span>
+        </div>
+
+        <div class="result-row eta-highlight">
+          <span class="result-label">⏱ ETA</span>
+          <span class="result-value" id="etaValue"></span>
+        </div>
+
+        <div class="countdown" id="countdownValue">Calculating arrival...</div>
+        <div class="status-notification" id="statusNotification" role="status" aria-live="polite"></div>
+
+        <div id="map" class="tracking-map" aria-label="Live shipment map"></div>
+
+        <div class="timeline-section">
+          <h3>Shipment History</h3>
+          <div id="timelineContainer" class="timeline-container"></div>
         </div>
       </div>
     </div>
@@ -705,91 +742,7 @@
     <p>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</p>
   </footer>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-      authDomain: "hyperion-logistics.firebaseapp.com",
-      projectId: "hyperion-logistics",
-      storageBucket: "hyperion-logistics.firebasestorage.app",
-      messagingSenderId: "481927084665",
-      appId: "1:481927084665:web:6c067752a922890e44f2a8",
-      measurementId: "G-JWBT2EH4WY"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    window.track = async () => {
-      const id = document.getElementById("trackingInput").value.trim();
-      const errorEl = document.getElementById("error");
-      const resultContainer = document.getElementById("resultContainer");
-      const btnEl = document.querySelector(".btn-track");
-
-      errorEl.classList.remove("show");
-      errorEl.innerText = "";
-
-      if (!id) {
-        errorEl.innerText = "❌ Please enter a tracking code";
-        errorEl.classList.add("show");
-        return;
-      }
-
-      // Show loading state
-      btnEl.disabled = true;
-      btnEl.innerHTML = '<span class="spinner"></span>Tracking...';
-
-      try {
-        const ref = doc(db, "shipments", id);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          errorEl.innerText = "❌ Tracking code not found. Please check and try again.";
-          errorEl.classList.add("show");
-          resultContainer.style.display = "none";
-          return;
-        }
-
-        const d = snap.data();
-
-        // Display results
-        const statusClass = `status-${d.status.toLowerCase()}`;
-        document.getElementById("statusBadge").className = `status-badge ${statusClass}`;
-        document.getElementById("statusBadge").innerText = d.status;
-        document.getElementById("locationValue").innerText = d.location;
-        document.getElementById("statusValue").innerText = d.status;
-        document.getElementById("feeValue").innerText = d.fee;
-
-        resultContainer.style.display = "block";
-        errorEl.classList.remove("show");
-      } catch (error) {
-        errorEl.innerText = "⚠️ An error occurred. Please try again.";
-        errorEl.classList.add("show");
-        console.error(error);
-      } finally {
-        // Reset button
-        btnEl.disabled = false;
-        btnEl.innerHTML = 'Track';
-      }
-    };
-
-    // Allow Enter key to trigger search
-    document.getElementById("trackingInput").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") track();
-    });
-
-    // Smooth scroll for nav links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
-    });
-  </script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script type="module" src="./script.js"></script>
 </body>
 </html>

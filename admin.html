@@ -829,11 +829,34 @@
       btnEl.innerHTML = '<span class="spinner"></span>Saving...';
 
       try {
+        const now = new Date();
+        const estimatedDelivery = new Date(now.getTime() + (48 * 60 * 60 * 1000)).toISOString();
+
         await setDoc(doc(db, "shipments", id), {
           id,
           status,
           location,
-          fee
+          fee,
+          origin: "London Distribution Hub",
+          destination: "Paris Delivery Center",
+          distance: 620,
+          currentDistance: 220,
+          estimatedDelivery,
+          coordinates: { lat: 50.6292, lng: 0.8079 },
+          originCoordinates: { lat: 51.5072, lng: -0.1276 },
+          destinationCoordinates: { lat: 48.8566, lng: 2.3522 },
+          history: [
+            {
+              status: "Picked Up",
+              location: "London Distribution Hub",
+              timestamp: new Date(now.getTime() - (36 * 60 * 60 * 1000)).toISOString()
+            },
+            {
+              status: "In Transit",
+              location,
+              timestamp: new Date(now.getTime() - (12 * 60 * 60 * 1000)).toISOString()
+            }
+          ]
         });
 
         showToast("✅ Shipment saved successfully!", "success");
