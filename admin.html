@@ -102,6 +102,32 @@
       margin: 0 8px;
     }
 
+    /* View Toggle */
+    .view-toggle {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .toggle-btn {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      color: #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    .toggle-btn.active {
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      border-color: #3b82f6;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+
     /* Main Content */
     .content {
       display: grid;
@@ -110,13 +136,38 @@
       align-items: start;
     }
 
+    .content.full {
+      grid-template-columns: 1fr;
+    }
+
     /* Form Card */
-    .form-card {
+    .form-card,
+    .stats-card,
+    .shipments-card {
       background: rgba(255, 255, 255, 0.95);
       border-radius: 20px;
       padding: 32px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+    }
+
+    .form-card.active,
+    .stats-card.active,
+    .shipments-card.active {
+      display: block;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .card-header {
@@ -225,32 +276,6 @@
     }
 
     /* Stats Card */
-    .stats-card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
-      padding: 32px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .stats-header {
-      margin-bottom: 28px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #f1f5f9;
-    }
-
-    .stats-header h3 {
-      font-size: 20px;
-      font-weight: 800;
-      color: #1e293b;
-      margin-bottom: 4px;
-    }
-
-    .stats-header p {
-      font-size: 13px;
-      color: #64748b;
-    }
-
     .stat-item {
       padding: 20px;
       background: linear-gradient(135deg, #f8fafc, #f1f5f9);
@@ -324,6 +349,91 @@
       background: #f0f4ff;
     }
 
+    /* Shipments Table */
+    .shipments-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .shipments-table thead {
+      background: #f8fafc;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .shipments-table th {
+      padding: 14px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .shipments-table td {
+      padding: 14px;
+      border-bottom: 1px solid #f1f5f9;
+      color: #1e293b;
+      font-size: 14px;
+    }
+
+    .shipments-table tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .shipments-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .status-shipped {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-delivered {
+      background: #dbeafe;
+      color: #0c4a6e;
+    }
+
+    .status-processing {
+      background: #fce7f3;
+      color: #831843;
+    }
+
+    .status-pending {
+      background: #fef08a;
+      color: #713f12;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 18px;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
     /* Toast Notifications */
     .toast {
       position: fixed;
@@ -387,7 +497,8 @@
       }
 
       .form-card,
-      .stats-card {
+      .stats-card,
+      .shipments-card {
         padding: 24px;
       }
 
@@ -402,6 +513,15 @@
       .toast {
         left: 20px;
         right: 20px;
+      }
+
+      .shipments-table {
+        font-size: 12px;
+      }
+
+      .shipments-table th,
+      .shipments-table td {
+        padding: 10px;
       }
     }
   </style>
@@ -419,16 +539,58 @@
               <p>Hyperion Logistics Management</p>
             </div>
           </div>
-          <div class="breadcrumb">Dashboard > <span>Shipments</span></div>
+          <div class="breadcrumb">Dashboard > <span id="breadcrumb-view">Shipments</span></div>
         </div>
         <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+
+      <!-- View Toggle -->
+      <div class="view-toggle">
+        <button class="toggle-btn active" id="btn-dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+        <button class="toggle-btn" id="btn-create" onclick="switchView('create')">➕ Create Shipment</button>
+        <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">📋 View Shipments</button>
       </div>
     </div>
 
     <!-- Main Content -->
-    <div class="content">
-      <!-- Form Section -->
-      <div class="form-card">
+    <div class="content" id="content">
+      <!-- Dashboard View -->
+      <div class="stats-card active" id="view-dashboard">
+        <div class="card-header">
+          <h3>Quick Stats</h3>
+          <p>System overview</p>
+        </div>
+
+        <div class="stat-item">
+          <div class="stat-label">📦 Total Shipments</div>
+          <div class="stat-value" id="totalShipments">--</div>
+        </div>
+
+        <div class="stat-item">
+          <div class="stat-label">✓ Last Updated</div>
+          <div class="stat-value" id="lastUpdated" style="font-size: 16px;">--</div>
+        </div>
+
+        <div class="stat-item">
+          <div class="stat-label">🔄 System Status</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
+            <span style="font-weight: 600; color: #22c55e;">Operational</span>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <h4>Quick Actions</h4>
+          <div class="action-buttons">
+            <button class="btn-action" onclick="switchView('shipments')">📋 View All Shipments</button>
+            <button class="btn-action" onclick="exportData()">💾 Export Data</button>
+            <button class="btn-action" onclick="goHome()">🏠 Back to Home</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create Shipment View -->
+      <div class="form-card" id="view-create">
         <div class="card-header">
           <h3>Create Shipment</h3>
           <p>Add or update shipment information</p>
@@ -453,7 +615,14 @@
               type="text"
               placeholder="e.g., Shipped, Delivered, Processing"
               required
+              list="status-list"
             >
+            <datalist id="status-list">
+              <option value="Shipped">
+              <option value="Delivered">
+              <option value="Processing">
+              <option value="Pending">
+            </datalist>
           </div>
 
           <div class="form-group">
@@ -485,37 +654,18 @@
         </form>
       </div>
 
-      <!-- Stats Section -->
-      <div class="stats-card">
-        <div class="stats-header">
-          <h3>Quick Stats</h3>
-          <p>System overview</p>
+      <!-- View Shipments View -->
+      <div class="shipments-card" id="view-shipments">
+        <div class="card-header">
+          <h3>All Shipments</h3>
+          <p>Manage your shipments</p>
         </div>
 
-        <div class="stat-item">
-          <div class="stat-label">📦 Total Shipments</div>
-          <div class="stat-value" id="totalShipments">--</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-label">✓ Last Updated</div>
-          <div class="stat-value" id="lastUpdated" style="font-size: 16px;">--</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-label">🔄 System Status</div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="display: inline-block; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
-            <span style="font-weight: 600; color: #22c55e;">Operational</span>
-          </div>
-        </div>
-
-        <div class="quick-actions">
-          <h4>Quick Actions</h4>
-          <div class="action-buttons">
-            <button class="btn-action" onclick="viewShipments()">📋 View All Shipments</button>
-            <button class="btn-action" onclick="exportData()">💾 Export Data</button>
-            <button class="btn-action" onclick="goHome()">🏠 Back to Home</button>
+        <div id="shipmentsContainer">
+          <div class="empty-state">
+            <div class="empty-icon">📦</div>
+            <h3>No Shipments Yet</h3>
+            <p>Start by creating your first shipment</p>
           </div>
         </div>
       </div>
@@ -524,7 +674,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -546,6 +696,36 @@
       window.location.href = "index.html";
     }
 
+    // View switching
+    window.switchView = function(view) {
+      // Hide all views
+      document.getElementById('view-dashboard').classList.remove('active');
+      document.getElementById('view-create').classList.remove('active');
+      document.getElementById('view-shipments').classList.remove('active');
+
+      // Remove active from buttons
+      document.getElementById('btn-dashboard').classList.remove('active');
+      document.getElementById('btn-create').classList.remove('active');
+      document.getElementById('btn-shipments').classList.remove('active');
+
+      // Show selected view
+      if (view === 'dashboard') {
+        document.getElementById('view-dashboard').classList.add('active');
+        document.getElementById('btn-dashboard').classList.add('active');
+        document.getElementById('breadcrumb-view').innerText = 'Dashboard';
+        loadStats();
+      } else if (view === 'create') {
+        document.getElementById('view-create').classList.add('active');
+        document.getElementById('btn-create').classList.add('active');
+        document.getElementById('breadcrumb-view').innerText = 'Create Shipment';
+      } else if (view === 'shipments') {
+        document.getElementById('view-shipments').classList.add('active');
+        document.getElementById('btn-shipments').classList.add('active');
+        document.getElementById('breadcrumb-view').innerText = 'View Shipments';
+        loadShipments();
+      }
+    };
+
     // Load stats
     async function loadStats() {
       try {
@@ -556,8 +736,81 @@
       }
     }
 
-    loadStats();
+    // Load all shipments
+    window.loadShipments = async function() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "shipments"));
+        const container = document.getElementById('shipmentsContainer');
+        
+        if (querySnapshot.empty) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-icon">📦</div>
+              <h3>No Shipments Yet</h3>
+              <p>Start by creating your first shipment</p>
+            </div>
+          `;
+          return;
+        }
 
+        let html = `
+          <table class="shipments-table">
+            <thead>
+              <tr>
+                <th>Tracking ID</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Fee</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const statusClass = `status-${data.status.toLowerCase()}`;
+          html += `
+            <tr>
+              <td><strong>${data.id}</strong></td>
+              <td>${data.location}</td>
+              <td><span class="status-badge ${statusClass}">${data.status}</span></td>
+              <td>${data.fee}</td>
+              <td>
+                <button class="btn-action" style="padding: 4px 8px; font-size: 11px;" onclick="deleteShipment('${data.id}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `
+            </tbody>
+          </table>
+        `;
+
+        container.innerHTML = html;
+      } catch (error) {
+        console.error("Error loading shipments:", error);
+        showToast("Error loading shipments", "error");
+      }
+    };
+
+    // Delete shipment
+    window.deleteShipment = async function(id) {
+      if (!confirm(`Delete shipment ${id}?`)) return;
+
+      try {
+        await deleteDoc(doc(db, "shipments", id));
+        showToast("✅ Shipment deleted!", "success");
+        loadShipments();
+        loadStats();
+      } catch (error) {
+        showToast("Error deleting shipment", "error");
+        console.error(error);
+      }
+    };
+
+    // Save data
     window.saveData = async function (e) {
       e.preventDefault();
 
@@ -595,6 +848,38 @@
       }
     };
 
+    // Export data
+    window.exportData = async function() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "shipments"));
+        const shipments = [];
+        
+        querySnapshot.forEach((doc) => {
+          shipments.push(doc.data());
+        });
+
+        if (shipments.length === 0) {
+          showToast("No data to export", "error");
+          return;
+        }
+
+        const csv = "Tracking ID,Status,Location,Fee\n" + 
+          shipments.map(s => `${s.id},${s.status},${s.location},${s.fee}`).join("\n");
+
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "shipments.csv";
+        a.click();
+
+        showToast("✅ Data exported successfully!", "success");
+      } catch (error) {
+        showToast("Error exporting data", "error");
+        console.error(error);
+      }
+    };
+
     window.logout = function () {
       if (confirm("Are you sure you want to logout?")) {
         window.location.href = "index.html";
@@ -603,14 +888,6 @@
 
     window.goHome = function () {
       window.location.href = "index.html";
-    };
-
-    window.viewShipments = function () {
-      showToast("📊 Shipments list feature coming soon!", "success");
-    };
-
-    window.exportData = function () {
-      showToast("💾 Export feature coming soon!", "success");
     };
 
     function showToast(message, type) {
@@ -624,7 +901,8 @@
       }, 4000);
     }
 
-    // Update last updated time
+    // Initialize
+    loadStats();
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
