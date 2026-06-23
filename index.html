@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperion Logistics - Premium Shipment Tracking</title>
+  <title>Hyperion Logistics - Real-Time Shipment Tracking</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,69 +19,112 @@
       background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
       color: #1e293b;
       min-height: 100vh;
+    }
+
+    /* Navigation */
+    nav {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      padding: 20px;
     }
 
-    .container {
-      width: 100%;
-      max-width: 600px;
-    }
-
-    /* Header Section */
-    .header {
-      text-align: center;
-      margin-bottom: 50px;
-    }
-
-    .logo-icon {
-      width: 60px;
-      height: 60px;
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
       background: linear-gradient(135deg, #3b82f6, #1e40af);
-      border-radius: 16px;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-      font-size: 32px;
-      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+      gap: 8px;
     }
 
-    h1 {
-      font-size: 42px;
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: #e2e8f0;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: #3b82f6;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 80px 24px 60px;
+      text-align: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 20px;
+      color: #60a5fa;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      letter-spacing: 0.5px;
+    }
+
+    .hero h1 {
+      font-size: 56px;
       font-weight: 800;
       background: linear-gradient(135deg, #fff, #e0e7ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 10px;
-      letter-spacing: -1px;
+      margin-bottom: 16px;
+      line-height: 1.2;
     }
 
-    .subtitle {
-      color: #94a3b8;
-      font-size: 16px;
-      font-weight: 500;
-      margin-bottom: 10px;
+    .hero p {
+      font-size: 20px;
+      color: #cbd5e1;
+      margin-bottom: 48px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
     }
 
-    .tagline {
-      font-size: 14px;
-      color: #64748b;
-      font-weight: 400;
-    }
-
-    /* Main Card */
-    .card {
+    /* Quick Tracking Section */
+    .quick-track {
       background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
-      padding: 40px 30px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      margin-bottom: 30px;
+      border-radius: 24px;
+      padding: 48px 40px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+      max-width: 700px;
+      margin: 0 auto 80px;
       animation: slideIn 0.6s ease-out;
     }
 
@@ -96,50 +139,50 @@
       }
     }
 
-    .form-group {
+    .quick-track h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 12px;
+    }
+
+    .quick-track-subtitle {
+      color: #64748b;
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+
+    .track-form {
+      display: flex;
+      gap: 12px;
       margin-bottom: 20px;
     }
 
-    label {
-      display: block;
-      margin-bottom: 10px;
-      color: #334155;
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: 0.5px;
-    }
-
-    input {
-      width: 100%;
+    .track-form input {
+      flex: 1;
       padding: 14px 16px;
       border: 2px solid #e2e8f0;
       border-radius: 12px;
       font-size: 16px;
       font-family: 'Plus Jakarta Sans', sans-serif;
       transition: all 0.3s ease;
-      color: #1e293b;
     }
 
-    input:focus {
+    .track-form input:focus {
       outline: none;
       border-color: #3b82f6;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
       transform: translateY(-2px);
     }
 
-    input::placeholder {
+    .track-form input::placeholder {
       color: #cbd5e1;
     }
 
-    .button-container {
-      display: flex;
-      gap: 12px;
-      margin-top: 30px;
-    }
-
-    button {
-      flex: 1;
-      padding: 14px 24px;
+    .btn-track {
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      color: white;
       border: none;
       border-radius: 12px;
       font-size: 15px;
@@ -147,36 +190,24 @@
       cursor: pointer;
       font-family: 'Plus Jakarta Sans', sans-serif;
       transition: all 0.3s ease;
-      letter-spacing: 0.5px;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      color: white;
       box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+      white-space: nowrap;
     }
 
-    .btn-primary:hover {
+    .btn-track:hover {
       transform: translateY(-2px);
       box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
     }
 
-    .btn-primary:active {
+    .btn-track:active {
       transform: translateY(0);
     }
 
-    .btn-secondary {
-      background: #f1f5f9;
-      color: #1e293b;
-      border: 2px solid #e2e8f0;
+    .btn-track:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
     }
 
-    .btn-secondary:hover {
-      background: #e2e8f0;
-      border-color: #cbd5e1;
-    }
-
-    /* Error Message */
     .error-message {
       display: none;
       padding: 14px 16px;
@@ -186,7 +217,6 @@
       color: #991b1b;
       font-size: 14px;
       font-weight: 500;
-      margin-bottom: 20px;
       animation: shake 0.4s ease;
     }
 
@@ -202,14 +232,14 @@
 
     /* Result Card */
     .result-section {
-      margin-top: 30px;
+      display: none;
+      margin-top: 20px;
     }
 
     .result-card {
-      background: white;
+      background: #f8fafc;
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       border: 1px solid #f1f5f9;
       animation: slideIn 0.4s ease-out;
     }
@@ -220,7 +250,7 @@
       align-items: center;
       margin-bottom: 20px;
       padding-bottom: 16px;
-      border-bottom: 2px solid #f1f5f9;
+      border-bottom: 2px solid #e2e8f0;
     }
 
     .result-title {
@@ -282,37 +312,174 @@
       font-size: 15px;
     }
 
-    .location-icon {
-      display: inline-block;
-      margin-right: 8px;
-      color: #3b82f6;
+    /* Features Grid */
+    .features-section {
+      padding: 80px 24px;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.5) 0%, rgba(26, 31, 58, 0.8) 100%);
     }
 
-    /* Features Section */
-    .features {
+    .features-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .section-title {
+      font-size: 40px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #e0e7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      color: #cbd5e1;
+      font-size: 18px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 12px;
-      margin-top: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 60px;
     }
 
-    .feature-item {
+    .feature-card {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 16px;
-      border-radius: 12px;
-      text-align: center;
-      color: #e2e8f0;
-      font-size: 13px;
-      font-weight: 600;
+      padding: 32px 24px;
+      border-radius: 16px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .feature-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(59, 130, 246, 0.3);
+      transform: translateY(-4px);
     }
 
     .feature-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+
+    .feature-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 12px;
+    }
+
+    .feature-desc {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* How It Works */
+    .how-it-works {
+      padding: 80px 24px;
+      background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
+    }
+
+    .works-container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+      margin-top: 40px;
+    }
+
+    .step {
+      text-align: center;
+    }
+
+    .step-number {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #3b82f6, #1e40af);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
       font-size: 24px;
+      margin: 0 auto 16px;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 12px;
+    }
+
+    .step-desc {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Stats Section */
+    .stats-section {
+      padding: 60px 24px;
+      background: rgba(255, 255, 255, 0.05);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .stat {
+      color: #f1f5f9;
+    }
+
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       margin-bottom: 8px;
     }
 
-    /* Loading State */
+    .stat-label {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 32px 24px;
+      background: rgba(15, 23, 42, 0.8);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+
     .spinner {
       display: inline-block;
       width: 16px;
@@ -328,71 +495,87 @@
       to { transform: rotate(360deg); }
     }
 
-    .btn-primary:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-
     /* Responsive */
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 32px;
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 36px;
       }
 
-      .card {
-        padding: 28px 20px;
+      .hero p {
+        font-size: 16px;
       }
 
-      .button-container {
+      .quick-track {
+        padding: 32px 24px;
+        margin-bottom: 60px;
+      }
+
+      .quick-track h2 {
+        font-size: 22px;
+      }
+
+      .track-form {
         flex-direction: column;
       }
 
-      button {
+      .btn-track {
         width: 100%;
       }
 
-      .result-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
+      .section-title {
+        font-size: 28px;
+      }
+
+      .steps-grid {
+        gap: 24px;
       }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <div class="header">
-      <div class="logo-icon">📦</div>
-      <h1>Hyperion Logistics</h1>
-      <p class="subtitle">Premium Shipment Tracking</p>
-      <p class="tagline">Track your packages in real-time with enterprise-grade precision</p>
+  <!-- Navigation -->
+  <nav>
+    <div class="nav-container">
+      <div class="logo">
+        <span>📦</span>
+        <span>Hyperion</span>
+      </div>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how">How It Works</a></li>
+        <li><a href="#track">Track Now</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-badge">🚀 Enterprise-Grade Logistics</div>
+    <h1>Real-Time Shipment Tracking at Your Fingertips</h1>
+    <p>Track your packages with precision, get instant updates, and never miss a delivery moment</p>
+  </section>
+
+  <!-- Quick Tracking Card -->
+  <section class="quick-track" id="track">
+    <h2>Track Your Shipment</h2>
+    <p class="quick-track-subtitle">Enter your tracking code below to get real-time updates</p>
+    
+    <div class="track-form">
+      <input 
+        id="trackingInput" 
+        type="text"
+        placeholder="Enter tracking code (e.g., HYP-2024-001)"
+        spellcheck="false"
+      >
+      <button class="btn-track" onclick="track()">
+        <span id="btn-text">Track</span>
+      </button>
     </div>
 
-    <!-- Main Card -->
-    <div class="card">
-      <div class="form-group">
-        <label for="trackingInput">Tracking ID</label>
-        <input 
-          id="trackingInput" 
-          type="text"
-          placeholder="Enter your tracking number"
-          spellcheck="false"
-        >
-      </div>
-
-      <div class="error-message" id="error"></div>
-
-      <div class="button-container">
-        <button class="btn-primary" onclick="track()">
-          <span id="btn-text">Track Shipment</span>
-        </button>
-        <button class="btn-secondary" onclick="clearForm()">Clear</button>
-      </div>
-    </div>
+    <div class="error-message" id="error"></div>
 
     <!-- Result Section -->
-    <div class="result-section" id="resultContainer" style="display: none;">
+    <div class="result-section" id="resultContainer">
       <div class="result-card">
         <div class="result-header">
           <span class="result-title">Shipment Details</span>
@@ -400,7 +583,7 @@
         </div>
         
         <div class="result-row">
-          <span class="result-label">📍 Location</span>
+          <span class="result-label">📍 Current Location</span>
           <span class="result-value" id="locationValue"></span>
         </div>
         
@@ -415,27 +598,112 @@
         </div>
       </div>
     </div>
+  </section>
 
-    <!-- Features -->
-    <div class="features">
-      <div class="feature-item">
-        <div class="feature-icon">⚡</div>
-        <div>Real-time Updates</div>
+  <!-- Features Section -->
+  <section class="features-section" id="features">
+    <div class="features-container">
+      <div class="section-header">
+        <h2 class="section-title">Why Choose Hyperion?</h2>
+        <p class="section-subtitle">Industry-leading logistics solutions with enterprise reliability</p>
       </div>
-      <div class="feature-item">
-        <div class="feature-icon">🔒</div>
-        <div>Secure & Encrypted</div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">🌍</div>
-        <div>Global Coverage</div>
-      </div>
-      <div class="feature-item">
-        <div class="feature-icon">24/7</div>
-        <div>24/7 Support</div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Real-Time Updates</div>
+          <div class="feature-desc">Get instant notifications about your shipment status every step of the way</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <div class="feature-title">Secure & Encrypted</div>
+          <div class="feature-desc">Enterprise-grade security with end-to-end encryption for all tracking data</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌍</div>
+          <div class="feature-title">Global Coverage</div>
+          <div class="feature-desc">Track shipments across 150+ countries with comprehensive network</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">24/7</div>
+          <div class="feature-title">24/7 Support</div>
+          <div class="feature-desc">Round-the-clock customer support to assist with any tracking inquiries</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <div class="feature-title">Analytics Dashboard</div>
+          <div class="feature-desc">Comprehensive insights and detailed reports for shipment management</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚙️</div>
+          <div class="feature-title">API Integration</div>
+          <div class="feature-desc">Seamless integration with your existing logistics systems</div>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- Stats Section -->
+  <section class="stats-section">
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-number">10M+</div>
+        <div class="stat-label">Packages Tracked</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">150+</div>
+        <div class="stat-label">Countries</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">99.9%</div>
+        <div class="stat-label">Uptime SLA</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number">&lt;1s</div>
+        <div class="stat-label">Response Time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works" id="how">
+    <div class="works-container">
+      <div class="section-header">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-subtitle">Simple, fast, and intuitive tracking process</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-title">Enter Tracking Code</div>
+          <div class="step-desc">Simply paste your tracking code in the search bar</div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-title">Get Instant Results</div>
+          <div class="step-desc">View detailed shipment information in seconds</div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-title">Receive Updates</div>
+          <div class="step-desc">Stay notified with real-time shipment status changes</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</p>
+  </footer>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
@@ -458,13 +726,13 @@
       const id = document.getElementById("trackingInput").value.trim();
       const errorEl = document.getElementById("error");
       const resultContainer = document.getElementById("resultContainer");
-      const btnEl = document.querySelector(".btn-primary");
+      const btnEl = document.querySelector(".btn-track");
 
       errorEl.classList.remove("show");
       errorEl.innerText = "";
 
       if (!id) {
-        errorEl.innerText = "Please enter a tracking ID";
+        errorEl.innerText = "❌ Please enter a tracking code";
         errorEl.classList.add("show");
         return;
       }
@@ -478,7 +746,7 @@
         const snap = await getDoc(ref);
 
         if (!snap.exists()) {
-          errorEl.innerText = "❌ Tracking ID not found. Please check and try again.";
+          errorEl.innerText = "❌ Tracking code not found. Please check and try again.";
           errorEl.classList.add("show");
           resultContainer.style.display = "none";
           return;
@@ -503,20 +771,24 @@
       } finally {
         // Reset button
         btnEl.disabled = false;
-        btnEl.innerHTML = 'Track Shipment';
+        btnEl.innerHTML = 'Track';
       }
-    };
-
-    window.clearForm = () => {
-      document.getElementById("trackingInput").value = "";
-      document.getElementById("resultContainer").style.display = "none";
-      document.getElementById("error").classList.remove("show");
-      document.getElementById("trackingInput").focus();
     };
 
     // Allow Enter key to trigger search
     document.getElementById("trackingInput").addEventListener("keypress", (e) => {
       if (e.key === "Enter") track();
+    });
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
     });
   </script>
 </body>
