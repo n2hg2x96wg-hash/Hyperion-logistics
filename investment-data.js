@@ -162,63 +162,32 @@ function generateFallbackHistory(days, basePrice, volatility = 0.03) {
 }
 
 async function loadXrpQuote() {
-  let data;
-  let source = 'CoinGecko';
-  try {
-    data = await getCachedOrFetch('xrp-quote', CACHE_TTL_MS, async () => {
-      const json = await fetchJson(XRP_QUOTE_URL);
-      if (!json?.ripple?.usd) {
-        throw new Error('Missing XRP quote');
-      }
-      return {
-        price: Number(json.ripple.usd),
-        changePct: Number(json.ripple.usd_24h_change || 0)
-      };
-    });
-  } catch {
-    data = getStaleCacheData('xrp-quote') || { price: 0.52, changePct: 0 };
-    source = 'Fallback';
-  }
+  const data = await fetchXrpQuoteData();
 
   dashboardState.xrpPrice = data.price;
   dashboardState.xrpChangePct = data.changePct;
+  const priceElement = document.getElementById('xrpPrice');
+  if (!priceElement) return data;
   document.getElementById('xrpPrice').textContent = formatCurrency(data.price, 4);
   setChangeText('xrpChange', (data.price * data.changePct) / 100, data.changePct);
-  document.getElementById('xrpUpdated').textContent = `Updated ${nowIso()} • Source: ${source}`;
+  document.getElementById('xrpUpdated').textContent = `Updated ${nowIso()} • Source: ${data.source}`;
   animatePrice('xrpPrice');
+  return data;
 }
 
 async function loadTslaQuote() {
-  let data;
-  let source = 'Stooq (TSLA proxy)';
-  try {
-    data = await getCachedOrFetch('tsla-quote', STOCK_REFRESH_MS - 5000, async () => {
-      const csv = await fetchText(TSLA_HISTORY_URL);
-      const rows = parseStooqCsvRows(csv);
-      if (!rows.length) {
-        throw new Error('Missing TSLA quote');
-      }
-
-      const latest = rows[rows.length - 1];
-      const previous = rows[rows.length - 2]?.close || (latest.close * 0.98);
-      return {
-        price: latest.close,
-        changeValue: latest.close - previous,
-        changePct: ((latest.close - previous) / previous) * 100
-      };
-    });
-  } catch {
-    data = getStaleCacheData('tsla-quote') || { price: 248, changeValue: 0, changePct: 0 };
-    source = 'Fallback';
-  }
+  const data = await fetchTslaQuoteData();
 
   dashboardState.tslaPrice = data.price;
   dashboardState.tslaChangePct = data.changePct;
   dashboardState.tslaChangeValue = data.changeValue;
+  const priceElement = document.getElementById('tslaPrice');
+  if (!priceElement) return data;
   document.getElementById('tslaPrice').textContent = formatCurrency(data.price);
   setChangeText('tslaChange', data.changeValue, data.changePct);
-  document.getElementById('tslaUpdated').textContent = `Updated ${nowIso()} • Source: ${source}`;
+  document.getElementById('tslaUpdated').textContent = `Updated ${nowIso()} • Source: ${data.source}`;
   animatePrice('tslaPrice');
+  return data;
 }
 
 async function loadXrpHistory(days) {
@@ -414,8 +383,68 @@ function setupRefresh() {
   }, STOCK_REFRESH_MS);
 }
 
+async function fetchXrpQuoteData() {
+  try {
+    const data = await getCachedOrFetch('xrp-quote', CACHE_TTL_MS, async () => {
+      const json = await fetchJson(XRP_QUOTE_URL);
+      if (!json?.ripple?.usd) {
+        throw new Error('Missing XRP quote');
+      }
+      return {
+        price: Number(json.ripple.usd),
+        changePct: Number(json.ripple.usd_24h_change || 0)
+      };
+    });
+    return { ...data, source: 'CoinGecko' };
+  } catch {
+    const stale = getStaleCacheData('xrp-quote') || { price: 0.52, changePct: 0 };
+    return { ...stale, source: 'Fallback' };
+  }
+}
+
+async function fetchTslaQuoteData() {
+  try {
+    const data = await getCachedOrFetch('tsla-quote', STOCK_REFRESH_MS - 5000, async () => {
+      const csv = await fetchText(TSLA_HISTORY_URL);
+      const rows = parseStooqCsvRows(csv);
+      if (!rows.length) {
+        throw new Error('Missing TSLA quote');
+      }
+
+      const latest = rows[rows.length - 1];
+      const previous = rows[rows.length - 2]?.close || (latest.close * 0.98);
+      return {
+        price: latest.close,
+        changeValue: latest.close - previous,
+        changePct: ((latest.close - previous) / previous) * 100
+      };
+    });
+    return { ...data, source: 'Stooq (TSLA proxy)' };
+  } catch {
+    const stale = getStaleCacheData('tsla-quote') || { price: 248, changeValue: 0, changePct: 0 };
+    return { ...stale, source: 'Fallback' };
+  }
+}
+
+async function getMarketSnapshot() {
+  const [tsla, xrp] = await Promise.all([fetchTslaQuoteData(), fetchXrpQuoteData()]);
+  return { tsla, xrp, updatedAt: new Date().toISOString() };
+}
+
+async function getMarketHistory(days = 7) {
+  const [tsla, xrp] = await Promise.all([loadTslaHistory(days), loadXrpHistory(days)]);
+  return { tsla, xrp, days };
+}
+
+window.HyperionInvestmentApi = {
+  getMarketSnapshot,
+  getMarketHistory
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
-  document.getElementById('portfolioButton').addEventListener('click', calculatePortfolio);
+  const portfolioButton = document.getElementById('portfolioButton');
+  if (!portfolioButton) return;
+  portfolioButton.addEventListener('click', calculatePortfolio);
   initPeriods();
   await refreshAllQuotes();
   setupRefresh();

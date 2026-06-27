@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hyperion Logistics - Client Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="investment-styles.css">
+</head>
+<body>
+  <nav>
+    <div class="nav-container">
+      <div class="logo"><span>📈</span><span>Client Investments</span></div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="investment.html">Markets</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main>
+    <section id="clientLoginSection" class="card client-auth-card">
+      <h1>Client Login</h1>
+      <p class="meta">Access your personal XRP and TSLA portfolio dashboard.</p>
+      <form id="clientLoginForm" class="portfolio-grid client-form-grid">
+        <input type="email" id="clientLoginEmail" placeholder="Email" required>
+        <input type="password" id="clientLoginPassword" placeholder="Password" required>
+        <button type="submit">Login</button>
+      </form>
+      <div id="clientAuthMessage" class="meta"></div>
+    </section>
+
+    <section id="clientDashboardSection" class="client-dashboard-shell" hidden>
+      <div class="grid">
+        <article class="card">
+          <h2>Account</h2>
+          <div class="meta">Client Name</div>
+          <div class="price" id="clientName">--</div>
+          <div class="change" id="clientStatus">--</div>
+          <button id="clientLogoutBtn" type="button" class="btn-inline">Logout</button>
+        </article>
+        <article class="card">
+          <h2>Market Snapshot</h2>
+          <div class="meta" id="clientMarketUpdated">Updating...</div>
+          <div class="portfolio-values">
+            <div>XRP: <strong id="clientXrpPrice">--</strong></div>
+            <div>TSLA: <strong id="clientTslaPrice">--</strong></div>
+          </div>
+        </article>
+      </div>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Your Holdings</h2>
+          <div class="portfolio-values">
+            <div>XRP Holdings: <strong id="clientXrpHoldings">--</strong></div>
+            <div>TSLA Holdings: <strong id="clientTslaHoldings">--</strong></div>
+          </div>
+        </article>
+        <article class="card">
+          <h2>Portfolio Value</h2>
+          <div class="meta">Total value based on real-time prices</div>
+          <div class="price" id="clientTotalValue">--</div>
+          <div class="stat-value" id="clientGainLoss">--</div>
+        </article>
+      </section>
+
+      <section class="card charts-section">
+        <div class="chart-header">
+          <h2>Portfolio Performance (7/30D)</h2>
+          <div class="period-controls">
+            <button id="clientPeriod7" type="button" data-days="7" class="active">7D</button>
+            <button id="clientPeriod30" type="button" data-days="30">30D</button>
+          </div>
+        </div>
+        <div class="canvas-wrap"><canvas id="clientPortfolioChart"></canvas></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="investment-data.js"></script>
+  <script type="module">
+    import { createClientAuth } from "./client-auth.js";
+    import { setupClientPortfolio } from "./client-portfolio.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+      authDomain: "hyperion-logistics.firebaseapp.com",
+      projectId: "hyperion-logistics",
+      storageBucket: "hyperion-logistics.firebasestorage.app",
+      messagingSenderId: "481927084665",
+      appId: "1:481927084665:web:6c067752a922890e44f2a8"
+    };
+
+    const authUi = {
+      loginSection: document.getElementById("clientLoginSection"),
+      dashboardSection: document.getElementById("clientDashboardSection"),
+      message: document.getElementById("clientAuthMessage")
+    };
+
+    const clientAuth = createClientAuth(firebaseConfig, { sessionTimeoutMs: 30 * 60 * 1000 });
+    let teardownPortfolio = null;
+
+    function showLogin(message = "") {
+      authUi.loginSection.hidden = false;
+      authUi.dashboardSection.hidden = true;
+      authUi.message.textContent = message;
+      if (teardownPortfolio) {
+        teardownPortfolio();
+        teardownPortfolio = null;
+      }
+    }
+
+    function showDashboard() {
+      authUi.loginSection.hidden = true;
+      authUi.dashboardSection.hidden = false;
+      authUi.message.textContent = "";
+    }
+
+    document.getElementById("clientLoginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = document.getElementById("clientLoginEmail").value.trim();
+      const password = document.getElementById("clientLoginPassword").value;
+
+      try {
+        await clientAuth.login(email, password);
+      } catch (error) {
+        showLogin(error.message);
+      }
+    });
+
+    document.getElementById("clientLogoutBtn").addEventListener("click", async () => {
+      await clientAuth.logout();
+      showLogin("Logged out");
+    });
+
+    clientAuth.monitorAuth({
+      onAuthorized: ({ user, db }) => {
+        showDashboard();
+        teardownPortfolio = setupClientPortfolio({ db, clientId: user.uid });
+      },
+      onUnauthorized: (message) => showLogin(message || "Please login to continue."),
+      onTimeout: () => showLogin("Session expired. Please login again.")
+    });
+  </script>
+</body>
+</html>

@@ -224,6 +224,38 @@ main {
   line-height: 1.8;
 }
 
+.client-auth-card {
+  max-width: 560px;
+  margin: 30px auto;
+}
+
+.client-dashboard-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.client-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.btn-inline {
+  margin-top: 12px;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, var(--blue-primary), var(--blue-deep));
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
 .alert {
   display: none;
   margin-bottom: 16px;
@@ -249,7 +281,8 @@ footer {
 @media (max-width: 920px) {
   .grid,
   .charts-grid,
-  .portfolio-grid {
+  .portfolio-grid,
+  .client-form-grid {
     grid-template-columns: 1fr;
   }
 
