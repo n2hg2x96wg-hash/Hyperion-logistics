@@ -1,5 +1,15 @@
 {
-  "buildCommand": "echo 'Static files ready'",
-  "outputDirectory": ".",
-  "public": false
+  "version": 2,
+  "builds": [
+    {
+      "src": "*.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
 }
