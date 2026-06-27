@@ -128,7 +128,7 @@
       gap: 30px;
     }
 
-    .form-card, .stats-card, .shipments-card {
+    .form-card, .stats-card, .shipments-card, .clients-card {
       background: rgba(255, 255, 255, 0.95);
       border-radius: 20px;
       padding: 32px;
@@ -138,7 +138,7 @@
       animation: slideIn 0.3s ease-out;
     }
 
-    .form-card.active, .stats-card.active, .shipments-card.active {
+    .form-card.active, .stats-card.active, .shipments-card.active, .clients-card.active {
       display: block;
     }
 
@@ -366,6 +366,36 @@
       background: #f8fafc;
     }
 
+    .empty-row {
+      text-align: center;
+      color: #64748b;
+      font-weight: 600;
+      padding: 18px !important;
+    }
+
+    .client-form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .client-form-grid .full-span {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 1000px) {
+      .client-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .client-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .status-badge {
       display: inline-block;
       padding: 4px 10px;
@@ -379,6 +409,8 @@
     .status-processing { background: #fce7f3; color: #831843; }
     .status-pending { background: #fef08a; color: #713f12; }
     .status-under-custom-review { background: #fed7aa; color: #92400e; }
+    .status-badge.positive { background: #dcfce7; color: #166534; }
+    .status-badge.negative { background: #fee2e2; color: #991b1b; }
 
     .toast {
       position: fixed;
@@ -553,6 +585,7 @@
         <button class="toggle-btn" id="btn-create" onclick="switchView('create')">➕ Create Shipment</button>
         <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">📋 View Shipments</button>
         <button class="toggle-btn" id="btn-couriers" onclick="switchView('couriers')">🚚 Manage Couriers</button>
+        <button class="toggle-btn" id="btn-clients" onclick="switchView('clients')">👥 Clients</button>
       </div>
     </div>
 
@@ -730,6 +763,56 @@
           </div>
         </div>
       </div>
+
+      <div class="clients-card" id="view-clients">
+        <div class="card-header">
+          <h3>Client Accounts</h3>
+          <p>Create, manage, and monitor client trading portfolios</p>
+        </div>
+        <div class="courier-stats-grid" id="clientsSummary">
+          <div class="courier-stat"><span>Loading clients...</span><strong>--</strong></div>
+        </div>
+        <form id="clientForm" style="margin-top:16px;">
+          <h4 id="clientFormTitle" style="font-size:14px; margin-bottom:12px; color:#1e293b;">Create Client</h4>
+          <div class="client-form-grid">
+            <input id="clientName" type="text" placeholder="Client Name" required>
+            <input id="clientEmail" type="email" placeholder="Client Email" required>
+            <input id="clientPassword" type="password" placeholder="Password (required for new)">
+            <select id="clientStatus">
+              <option value="active">active</option>
+              <option value="inactive">inactive</option>
+            </select>
+            <input id="clientXrpHoldings" type="number" step="0.0001" min="0" placeholder="XRP Holdings" value="0">
+            <input id="clientTslaHoldings" type="number" step="0.0001" min="0" placeholder="TSLA Holdings" value="0">
+            <input id="clientMaxXrp" type="number" step="0.01" min="0" placeholder="Max XRP Limit" value="0">
+            <input id="clientMaxTsla" type="number" step="0.01" min="0" placeholder="Max TSLA Limit" value="0">
+          </div>
+          <div class="form-footer" style="margin-top:12px;">
+            <button type="submit" class="btn btn-save"><span id="clientSubmitText">Save Client</span></button>
+            <button type="button" class="btn btn-reset" id="clientCancelEdit" style="display:none;">Cancel Edit</button>
+            <button type="button" class="btn btn-reset" id="exportClientsBtn">Export Clients</button>
+          </div>
+        </form>
+        <div style="overflow:auto; margin-top:16px;">
+          <table class="shipments-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>XRP</th>
+                <th>TSLA</th>
+                <th>Portfolio</th>
+                <th>Restrictions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clientsTableBody">
+              <tr><td colspan="8" class="empty-row">Loading clients...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -786,10 +869,12 @@
     </div>
   </div>
 
+  <script src="investment-data.js" defer></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { loadCouriers, generateTrackingCode, mapGenericStatusToCourier, buildDefaultCourierUpdates } from "./courier-config.js";
+    import { setupAdminClients } from "./admin-clients.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -805,13 +890,27 @@
     let allShipments = [];
     let activeCouriers = [];
     let editingCourierId = null;
+    let clientAdminTools = null;
 
     const PASSWORD = "Hyperion@2026!";
-    const input = prompt("Enter admin password:");
+    const ADMIN_SESSION_KEY = "hyperion-admin-session-expiry";
+    const ADMIN_SESSION_TTL_MS = 30 * 60 * 1000;
 
-    if (input !== PASSWORD) {
-      alert("Access denied!");
-      window.location.href = "index.html";
+    function refreshAdminSession() {
+      sessionStorage.setItem(ADMIN_SESSION_KEY, String(Date.now() + ADMIN_SESSION_TTL_MS));
+    }
+
+    const existingSessionExpiry = Number(sessionStorage.getItem(ADMIN_SESSION_KEY) || 0);
+    if (existingSessionExpiry < Date.now()) {
+      const input = prompt("Enter admin password:");
+      if (input !== PASSWORD) {
+        alert("Access denied!");
+        window.location.href = "index.html";
+      } else {
+        refreshAdminSession();
+      }
+    } else {
+      refreshAdminSession();
     }
 
     function findCourierById(courierId) {
@@ -857,11 +956,13 @@
       document.getElementById('view-create').classList.remove('active');
       document.getElementById('view-shipments').classList.remove('active');
       document.getElementById('view-couriers').classList.remove('active');
+      document.getElementById('view-clients').classList.remove('active');
 
       document.getElementById('btn-dashboard').classList.remove('active');
       document.getElementById('btn-create').classList.remove('active');
       document.getElementById('btn-shipments').classList.remove('active');
       document.getElementById('btn-couriers').classList.remove('active');
+      document.getElementById('btn-clients').classList.remove('active');
 
       if (view === 'dashboard') {
         document.getElementById('view-dashboard').classList.add('active');
@@ -882,6 +983,11 @@
         document.getElementById('btn-couriers').classList.add('active');
         document.getElementById('breadcrumb-view').innerText = 'Couriers';
         loadAvailableCouriers(true);
+      } else if (view === 'clients') {
+        document.getElementById('view-clients').classList.add('active');
+        document.getElementById('btn-clients').classList.add('active');
+        document.getElementById('breadcrumb-view').innerText = 'Clients';
+        clientAdminTools?.refreshClients?.();
       }
     };
 
@@ -1192,6 +1298,7 @@
 
     window.logout = function () {
       if (confirm("Are you sure you want to logout?")) {
+        sessionStorage.removeItem(ADMIN_SESSION_KEY);
         window.location.href = "index.html";
       }
     };
@@ -1213,6 +1320,7 @@
         await loadAvailableCouriers(true);
         await loadStats();
         document.getElementById("id").value = await createUniqueTrackingCode(document.getElementById("courier").value);
+        clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast });
       } catch (error) {
         console.error(error);
         showToast("Unable to initialize courier data. Using fallback configuration.", "error");
@@ -1220,6 +1328,18 @@
     }
 
     initializeAdmin();
+    ["click", "keydown", "mousemove", "touchstart"].forEach((eventName) => {
+      window.addEventListener(eventName, refreshAdminSession, { passive: true });
+    });
+    setInterval(() => {
+      const expiry = Number(sessionStorage.getItem(ADMIN_SESSION_KEY) || 0);
+      if (expiry && expiry < Date.now()) {
+        sessionStorage.removeItem(ADMIN_SESSION_KEY);
+        alert("Admin session expired. Please log in again.");
+        window.location.href = "index.html";
+      }
+    }, 15000);
+
     document.getElementById("courier").addEventListener("change", async () => {
       try {
         updateCourierPrefixHint();
