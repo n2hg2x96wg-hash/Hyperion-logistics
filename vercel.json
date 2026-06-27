@@ -1,0 +1,5 @@
+{
+  "buildCommand": "echo 'Static files ready'",
+  "outputDirectory": ".",
+  "public": false
+}
