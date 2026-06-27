@@ -57,11 +57,11 @@ function writeCache(cache) {
   } catch {
     // ignore storage write failures
   }
+}
 
-  function getStaleCacheData(key) {
-    const cache = readCache();
-    return cache[key]?.data || null;
-  }
+function getStaleCacheData(key) {
+  const cache = readCache();
+  return cache[key]?.data || null;
 }
 
 async function fetchJson(url) {
