@@ -591,7 +591,7 @@
 
     <div class="content" id="content">
       <!-- Dashboard -->
-      <div class="stats-card" id="view-dashboard">
+      <div class="stats-card active" id="view-dashboard">
         <div class="card-header">
           <h3>Quick Stats</h3>
           <p>System overview</p>
@@ -633,7 +633,7 @@
       </div>
 
       <!-- Create Shipment -->
-      <div class="form-card active" id="view-create">
+      <div class="form-card" id="view-create">
         <div class="card-header">
           <h3>Create Advanced Shipment</h3>
           <p>Add complete shipment information with real-time tracking</p>
@@ -645,7 +645,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="id">Tracking ID *</label>
-              <input id="id" type="text" placeholder="Auto-generated when courier is selected" spellcheck="false">
+              <input id="id" type="text" placeholder="Auto-generated when courier is selected" spellcheck="false" disabled>
               <div class="courier-prefix-hint" id="courierPrefixHint">Tracking prefix: --</div>
             </div>
             <div class="form-group">
@@ -667,7 +667,9 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="courier">Courier *</label>
-              <select id="courier" required></select>
+              <select id="courier" required onchange="autoGenerateTrackingId()">
+                <option value="">-- Select a Courier --</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="courierTrackingNumber">Courier Tracking Number</label>
@@ -758,8 +760,8 @@
         <div id="couriersContainer">
           <div class="empty-state">
             <div class="empty-icon">🚚</div>
-            <h3>No Couriers Yet</h3>
-            <p>Add your first courier to start managing support details</p>
+            <h3>Loading Couriers...</h3>
+            <p>Please wait</p>
           </div>
         </div>
       </div>
@@ -900,45 +902,77 @@
       sessionStorage.setItem(ADMIN_SESSION_KEY, String(Date.now() + ADMIN_SESSION_TTL_MS));
     }
 
-    const existingSessionExpiry = Number(sessionStorage.getItem(ADMIN_SESSION_KEY) || 0);
-    if (existingSessionExpiry < Date.now()) {
-      const input = prompt("Enter admin password:");
-      if (input !== PASSWORD) {
-        alert("Access denied!");
-        window.location.href = "index.html";
+    // Check authentication on page load
+    function checkAuth() {
+      const existingSessionExpiry = Number(sessionStorage.getItem(ADMIN_SESSION_KEY) || 0);
+      if (existingSessionExpiry < Date.now()) {
+        const input = prompt("Enter admin password:");
+        if (input !== PASSWORD) {
+          alert("Access denied!");
+          window.location.href = "index.html";
+        } else {
+          refreshAdminSession();
+        }
       } else {
         refreshAdminSession();
       }
-    } else {
-      refreshAdminSession();
     }
+
+    checkAuth();
 
     function findCourierById(courierId) {
       return activeCouriers.find((courier) => courier.id === courierId) || activeCouriers[0];
     }
 
     async function loadAvailableCouriers(forceReload = false) {
-      activeCouriers = await loadCouriers({ db, collection, getDocs, forceReload });
-      populateCourierOptions();
-      renderCouriersTable();
-      return activeCouriers;
+      try {
+        activeCouriers = await loadCouriers({ db, collection, getDocs, forceReload });
+        console.log("✅ Couriers loaded:", activeCouriers);
+        populateCourierOptions();
+        renderCouriersTable();
+        return activeCouriers;
+      } catch (error) {
+        console.error("❌ Error loading couriers:", error);
+        showToast("Error loading couriers", "error");
+      }
     }
 
     function populateCourierOptions() {
       const courierSelect = document.getElementById("courier");
       const courierFilter = document.getElementById("courierFilter");
-      if (!activeCouriers.length) return;
+      
+      if (!activeCouriers || activeCouriers.length === 0) {
+        courierSelect.innerHTML = '<option value="">No couriers available</option>';
+        courierFilter.innerHTML = '<option value="">No couriers available</option>';
+        return;
+      }
 
-      courierSelect.innerHTML = activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
-      courierFilter.innerHTML = `<option value="">All Couriers</option>${activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("")}`;
+      courierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' + 
+        activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
+      courierFilter.innerHTML = '<option value="">All Couriers</option>' +
+        activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
+      
       updateCourierPrefixHint();
     }
 
     function updateCourierPrefixHint() {
       const courierId = document.getElementById("courier").value;
+      if (!courierId) {
+        document.getElementById("courierPrefixHint").innerText = "Tracking prefix: --";
+        return;
+      }
       const courier = findCourierById(courierId);
       document.getElementById("courierPrefixHint").innerText = `Tracking prefix: ${courier.prefix}-XXXXX`;
     }
+
+    window.autoGenerateTrackingId = function() {
+      const courierId = document.getElementById("courier").value;
+      if (courierId) {
+        const trackingCode = generateTrackingCode(courierId);
+        document.getElementById("id").value = trackingCode;
+        updateCourierPrefixHint();
+      }
+    };
 
     async function createUniqueTrackingCode(courierId) {
       let attempts = 0;
@@ -1100,7 +1134,13 @@
     async function saveData(event) {
       event.preventDefault();
       const courierId = document.getElementById("courier").value;
-      const trackingCode = await createUniqueTrackingCode(courierId);
+      
+      if (!courierId) {
+        showToast("Please select a courier", "error");
+        return;
+      }
+
+      const trackingCode = document.getElementById("id").value || await createUniqueTrackingCode(courierId);
 
       const shipmentData = {
         id: trackingCode,
@@ -1115,12 +1155,12 @@
         longitude: parseFloat(document.getElementById("longitude").value),
         fee: document.getElementById("fee").value,
         createdAt: new Date().toISOString(),
-        updates: buildDefaultCourierUpdates(courierId)
+        updates: buildDefaultCourierUpdates({ courierName: findCourierById(courierId).name, ...document.getElementById("location").value })
       };
 
       try {
         await setDoc(doc(db, "shipments", trackingCode), shipmentData);
-        showToast(`Shipment ${trackingCode} created successfully!", "success");
+        showToast(`Shipment ${trackingCode} created successfully!`, "success");
         document.querySelector("form").reset();
         loadShipments();
       } catch (err) {
@@ -1130,7 +1170,7 @@
     }
 
     async function renderCouriersTable() {
-      if (!activeCouriers.length) {
+      if (!activeCouriers || activeCouriers.length === 0) {
         document.getElementById("couriersContainer").innerHTML = `
           <div class="empty-state">
             <div class="empty-icon">🚚</div>
@@ -1270,9 +1310,11 @@
       setTimeout(() => toast.remove(), 3000);
     }
 
+    window.saveData = saveData;
+
     // Initialize
-    loadAvailableCouriers();
-    setupAdminClients({ db, collection, getDocs, doc, setDoc, deleteDoc });
+    await loadAvailableCouriers();
+    clientAdminTools = setupAdminClients({ db, collection, getDocs, doc, setDoc, deleteDoc });
   </script>
 </body>
 </html>
