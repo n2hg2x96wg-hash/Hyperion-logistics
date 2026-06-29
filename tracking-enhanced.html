@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hyperion Logistics - Real-Time Tracking</title>
+  <title>Hyperion Logistics - Advanced Tracking</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,334 +18,134 @@
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
-      color: #1e293b;
+      color: #e2e8f0;
       min-height: 100vh;
     }
 
     nav {
-      background: rgba(15, 23, 42, 0.95);
+      background: rgba(15, 23, 42, 0.8);
       backdrop-filter: blur(10px);
-      padding: 16px 24px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
     }
 
     .nav-container {
-      max-width: 1400px;
+      max-width: 1200px;
       margin: 0 auto;
+      padding: 0 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .logo {
-      font-size: 24px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 32px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      color: #e2e8f0;
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.3s ease;
-    }
-
-    .nav-links a:hover {
-      color: #3b82f6;
-    }
-
-    @media (max-width: 768px) {
-      .nav-links { display: none; }
-    }
+    .logo { font-size: 20px; font-weight: 700; color: #3b82f6; }
+    .nav-links { display: flex; list-style: none; gap: 32px; }
+    .nav-links a { color: #e2e8f0; text-decoration: none; }
+    .nav-links a:hover { color: #3b82f6; }
 
     .hero {
-      padding: 60px 24px 40px;
+      max-width: 1200px;
+      margin: 60px auto;
+      padding: 0 24px;
       text-align: center;
-      max-width: 1400px;
-      margin: 0 auto;
     }
 
     .hero h1 {
       font-size: 48px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #fff, #e0e7ff);
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 16px;
     }
 
-    .hero p {
-      font-size: 18px;
-      color: #cbd5e1;
-      margin-bottom: 40px;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 24px 60px;
-    }
-
-    .search-card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 20px;
-      padding: 40px;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-      margin-bottom: 40px;
-      animation: slideIn 0.6s ease-out;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    .hero p { font-size: 18px; color: #94a3b8; margin-bottom: 40px; }
 
     .search-group {
       display: flex;
       gap: 12px;
-      margin-bottom: 16px;
+      margin-bottom: 40px;
+      flex-wrap: wrap;
     }
 
     .search-group input {
       flex: 1;
-      padding: 14px 16px;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
+      min-width: 250px;
+      padding: 12px 16px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 8px;
+      color: #e2e8f0;
       font-size: 16px;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      transition: all 0.3s ease;
-    }
-
-    .search-group input:focus {
-      outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     .btn-search {
-      padding: 14px 32px;
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      color: white;
+      padding: 12px 32px;
+      background: #3b82f6;
       border: none;
-      border-radius: 12px;
-      font-weight: 700;
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
       cursor: pointer;
-      font-family: 'Plus Jakarta Sans', sans-serif;
       transition: all 0.3s ease;
-      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
-      white-space: nowrap;
     }
 
     .btn-search:hover {
+      background: #2563eb;
       transform: translateY(-2px);
-      box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
+      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
     }
 
-    .error-message {
-      display: none;
-      padding: 14px 16px;
-      background: #fee2e2;
-      border-left: 4px solid #ef4444;
-      border-radius: 8px;
-      color: #991b1b;
-      font-weight: 500;
+    .results {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
     }
 
-    .error-message.show {
-      display: block;
-    }
-
-    .results-section {
-      display: none;
-      animation: slideIn 0.6s ease-out;
-    }
-
-    .results-section.show {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 40px;
-    }
-
-    @media (max-width: 1024px) {
-      .results-section.show {
-        grid-template-columns: 1fr;
-      }
+    .result-card {
+      background: rgba(30, 41, 59, 0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
     }
 
     .map-card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-      height: 500px;
-    }
-
-    #trackingMap {
-      width: 100%;
-      height: 100%;
-    }
-
-    .info-card {
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    }
-
-    .info-header {
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 2px solid #e2e8f0;
-    }
-
-    .info-title {
-      font-size: 20px;
-      font-weight: 800;
-      color: #1e293b;
-      margin-bottom: 8px;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 12px;
-    }
-
-    .status-processing { background: #fce7f3; color: #831843; }
-    .status-shipped { background: #dcfce7; color: #166534; }
-    .status-in-transit { background: #dbeafe; color: #0c4a6e; }
-    .status-delivered { background: #dcfce7; color: #166534; }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 0;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    .info-row:last-child {
-      border-bottom: none;
-    }
-
-    .info-label {
-      color: #64748b;
-      font-weight: 600;
-      font-size: 13px;
-    }
-
-    .info-value {
-      color: #1e293b;
-      font-weight: 700;
-      font-size: 15px;
-    }
-
-    .eta-box {
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      color: white;
-      padding: 20px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.1);
       border-radius: 12px;
-      margin: 24px 0;
-      text-align: center;
+      overflow: hidden;
+      height: 400px;
+      margin-top: 24px;
     }
 
-    .eta-label {
+    .status {
+      display: inline-block;
+      padding: 6px 12px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border-radius: 6px;
       font-size: 12px;
-      opacity: 0.9;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      margin-bottom: 12px;
     }
 
-    .eta-time {
-      font-size: 28px;
-      font-weight: 800;
-      margin-top: 8px;
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 16px;
     }
 
-    .timeline-section {
-      margin-top: 40px;
+    .info-item {
+      padding: 12px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 8px;
     }
 
-    .timeline-title {
-      font-size: 22px;
-      font-weight: 800;
-      color: #f1f5f9;
-      margin-bottom: 30px;
-    }
-
-    .timeline {
-      position: relative;
-      padding-left: 0;
-    }
-
-    .timeline-item {
-      display: flex;
-      margin-bottom: 32px;
-      position: relative;
-    }
-
-    .timeline-marker {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, #3b82f6, #1e40af);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 20px;
-      font-weight: 800;
-      flex-shrink: 0;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-
-    .timeline-marker.completed {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-    }
-
-    .timeline-content {
-      margin-left: 20px;
-      flex: 1;
-    }
-
-    .timeline-label {
-      font-size: 14px;
-      font-weight: 700;
-      color: #f1f5f9;
-      margin-bottom: 4px;
-    }
-
-    .timeline-info {
-      color: #cbd5e1;
-      font-size: 13px;
-    }
-
-    .timeline-time {
-      color: #94a3b8;
-      font-size: 12px;
-      margin-top: 4px;
-    }
+    .info-label { color: #94a3b8; font-size: 12px; margin-bottom: 4px; }
+    .info-value { color: #e2e8f0; font-size: 16px; font-weight: 600; }
 
     .spinner {
       display: inline-block;
@@ -379,14 +179,22 @@
       .map-card { height: 350px; }
     }
   </style>
+  <!-- Smartsupp Live Chat script -->
+  <script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = '8d189e08256876f6e213e16802a6f5b15da26d5c';
+  window.smartsupp||(function(d) {
+    var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+    s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+    c.type='text/javascript';c.charset='utf-8';c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+  })(document);
+  </script>
 </head>
 <body>
   <nav>
     <div class="nav-container">
-      <div class="logo">
-        <span>📦</span>
-        <span>Hyperion</span>
-      </div>
+      <div class="logo">📦 Hyperion</div>
       <ul class="nav-links">
         <li><a href="index.html">Home</a></li>
         <li><a href="investment.html">Investments</a></li>
@@ -395,263 +203,65 @@
     </div>
   </nav>
 
-  <section class="hero">
-    <h1>Real-Time Shipment Tracking</h1>
-    <p>Track your package with live map updates, ETA, and complete delivery history</p>
-  </section>
-
-  <div class="container">
-    <div class="search-card">
-      <div class="search-group">
-        <input 
-          id="trackingInput" 
-          type="text"
-          placeholder="Enter tracking code (e.g., TH169YRJOQ11)"
-          spellcheck="false"
-        >
-        <button class="btn-search" onclick="handleTrack()">
-          <span id="btn-text">Track</span>
-        </button>
-      </div>
-      <div class="error-message" id="error"></div>
-    </div>
-
-    <!-- Results Section -->
-    <div class="results-section" id="resultsSection">
-      <div class="map-card">
-        <div id="trackingMap"></div>
-      </div>
-
-      <div class="info-card">
-        <div class="info-header">
-          <div class="info-title">Shipment Details</div>
-          <span class="status-badge" id="statusBadge"></span>
-        </div>
-
-        <div class="info-row">
-          <span class="info-label">📦 Tracking ID</span>
-          <span class="info-value" id="trackingID"></span>
-        </div>
-
-        <div class="info-row">
-          <span class="info-label">📍 Current Location</span>
-          <span class="info-value" id="currentLocation"></span>
-        </div>
-
-        <div class="info-row">
-          <span class="info-label">🏠 From</span>
-          <span class="info-value" id="origin"></span>
-        </div>
-
-        <div class="info-row">
-          <span class="info-label">📌 To</span>
-          <span class="info-value" id="destination"></span>
-        </div>
-
-        <div class="info-row">
-          <span class="info-label">💵 Shipping Fee</span>
-          <span class="info-value" id="fee"></span>
-        </div>
-
-        <div class="eta-box">
-          <div class="eta-label">Estimated Delivery</div>
-          <div class="eta-time" id="etaTime">--</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Timeline Section -->
-    <div class="timeline-section" id="timelineSection" style="display: none;">
-      <div class="timeline-title">📍 Delivery Timeline</div>
-      <div class="timeline" id="timelineContent"></div>
+  <div class="hero">
+    <h1>Advanced Shipment Tracking</h1>
+    <p>Real-time tracking with detailed logistics insights</p>
+    <div class="search-group">
+      <input type="text" id="trackingInput" placeholder="Enter Tracking ID">
+      <button class="btn-search" onclick="track()">Track</button>
     </div>
   </div>
 
-  <footer>
-    <p>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</p>
-  </footer>
+  <div class="results" id="results"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-      authDomain: "hyperion-logistics.firebaseapp.com",
-      projectId: "hyperion-logistics",
-      storageBucket: "hyperion-logistics.firebasestorage.app",
-      messagingSenderId: "481927084665",
-      appId: "1:481927084665:web:6c067752a922890e44f2a8",
-      measurementId: "G-JWBT2EH4WY"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    let map = null;
-    let marker = null;
-
-    // Sample coordinates for demo
-    const cityCoords = {
-      "Philippines, Manila": [14.5994, 120.9842],
-      "United States, Alabama": [32.8067, -86.7113],
-      "Japan, Tokyo": [35.6762, 139.6503],
-      "Singapore": [1.3521, 103.8198],
-      "China, Shanghai": [31.2304, 121.4737],
-      "Thailand, Bangkok": [13.7563, 100.5018],
-      "Malaysia, Kuala Lumpur": [3.1390, 101.6869]
-    };
-
-    function initMap(lat, lng) {
-      const mapContainer = document.getElementById('trackingMap');
-      mapContainer.innerHTML = '';
-
-      map = L.map('trackingMap').setView([lat, lng], 10);
+    window.track = async () => {
+      const id = document.getElementById('trackingInput').value.trim();
+      const resultsDiv = document.getElementById('results');
       
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
-
-      if (marker) map.removeLayer(marker);
-      marker = L.marker([lat, lng], {
-        icon: L.icon({
-          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
-        })
-      }).addTo(map).bindPopup('📍 Current Location').openPopup();
-    }
-
-    function calculateETA(progress) {
-      const now = new Date();
-      const daysRemaining = Math.ceil((100 - progress) / 20);
-      const etaDate = new Date(now.getTime() + daysRemaining * 24 * 60 * 60 * 1000);
-      return etaDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-
-    function buildTimeline(data) {
-      const timeline = [
-        {
-          icon: '📦',
-          label: 'Picked Up',
-          info: `From ${data.origin}`,
-          completed: true
-        },
-        {
-          icon: '🚚',
-          label: 'In Transit',
-          info: `Currently at ${data.location}`,
-          completed: data.status !== 'Pending'
-        },
-        {
-          icon: '🚪',
-          label: 'Out for Delivery',
-          info: 'Package in delivery truck',
-          completed: false
-        },
-        {
-          icon: '✅',
-          label: 'Delivered',
-          info: `To ${data.destination}`,
-          completed: data.status === 'Delivered'
-        }
-      ];
-
-      const timelineHTML = timeline.map((item, idx) => `
-        <div class="timeline-item">
-          <div class="timeline-marker ${item.completed ? 'completed' : ''}">${item.icon}</div>
-          <div class="timeline-content">
-            <div class="timeline-label">${item.label}</div>
-            <div class="timeline-info">${item.info}</div>
-            <div class="timeline-time">${item.completed ? '✓ Completed' : 'Pending'}</div>
-          </div>
-        </div>
-      `).join('');
-
-      document.getElementById('timelineContent').innerHTML = timelineHTML;
-      document.getElementById('timelineSection').style.display = 'block';
-    }
-
-    window.handleTrack = async () => {
-      const id = document.getElementById("trackingInput").value.trim();
-      const errorEl = document.getElementById("error");
-      const resultsSection = document.getElementById("resultsSection");
-      const btnEl = document.querySelector(".btn-search");
-
-      errorEl.classList.remove("show");
-      errorEl.innerText = "";
-
       if (!id) {
-        errorEl.innerText = "❌ Please enter a tracking code";
-        errorEl.classList.add("show");
+        resultsDiv.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 20px;">Please enter a tracking ID</div>';
         return;
       }
 
-      btnEl.disabled = true;
-      btnEl.innerHTML = '<span class="spinner"></span>Tracking...';
-
+      resultsDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><span class="spinner"></span> Loading...</div>';
+      
       try {
-        const ref = doc(db, "shipments", id);
-        const snap = await getDoc(ref);
-
-        if (!snap.exists()) {
-          errorEl.innerText = "❌ Tracking code not found. Please check and try again.";
-          errorEl.classList.add("show");
-          resultsSection.classList.remove("show");
-          btnEl.disabled = false;
-          btnEl.innerHTML = 'Track';
-          return;
-        }
-
-        const data = snap.data();
-
-        // Enhance data with coordinates
-        if (!data.coordinates) {
-          data.coordinates = cityCoords[data.location] || [14.5994, 120.9842];
-          data.origin = data.origin || "Philippines, Manila";
-          data.destination = data.destination || "United States, Alabama";
-          data.distance = data.distance || "5,240 km";
-        }
-
-        // Update UI
-        document.getElementById("trackingID").innerText = id;
-        document.getElementById("currentLocation").innerText = data.location;
-        document.getElementById("origin").innerText = data.origin;
-        document.getElementById("destination").innerText = data.destination;
-        document.getElementById("fee").innerText = data.fee;
-        document.getElementById("etaTime").innerText = calculateETA(60);
-
-        const statusClass = `status-${data.status.toLowerCase().replace(' ', '-')}`;
-        document.getElementById("statusBadge").className = `status-badge ${statusClass}`;
-        document.getElementById("statusBadge").innerText = data.status;
-
-        // Initialize map
-        const [lat, lng] = data.coordinates;
-        initMap(lat, lng);
-
-        // Build timeline
-        buildTimeline(data);
-
-        resultsSection.classList.add("show");
-        errorEl.classList.remove("show");
-
-      } catch (error) {
-        errorEl.innerText = "⚠️ An error occurred. Please try again.";
-        errorEl.classList.add("show");
-        console.error(error);
-      } finally {
-        btnEl.disabled = false;
-        btnEl.innerHTML = 'Track';
+        const response = await fetch(`https://your-api-endpoint.com/api/shipments/${id}`);
+        if (!response.ok) throw new Error('Shipment not found');
+        
+        const shipment = await response.json();
+        
+        resultsDiv.innerHTML = `
+          <div class="result-card">
+            <div class="status">${shipment.status}</div>
+            <h3 style="margin: 12px 0;">${shipment.id}</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Origin</div>
+                <div class="info-value">${shipment.origin}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Destination</div>
+                <div class="info-value">${shipment.destination}</div>
+              </div>
+            </div>
+            <div class="map-card" id="map"></div>
+          </div>
+        `;
+      } catch (err) {
+        resultsDiv.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px;">Error: ${err.message}</div>`;
       }
     };
 
     document.getElementById("trackingInput").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") handleTrack();
+      if (e.key === "Enter") track();
     });
   </script>
+
+  <footer>
+    <p>&copy; 2024 Hyperion Logistics. All rights reserved.</p>
+  </footer>
 </body>
 </html>

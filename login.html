@@ -9,6 +9,17 @@
     input, button { width:100%; padding:12px; margin:8px 0; }
     button { background:#2563eb; border:none; color:white; cursor:pointer; }
   </style>
+  <!-- Smartsupp Live Chat script -->
+  <script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = '8d189e08256876f6e213e16802a6f5b15da26d5c';
+  window.smartsupp||(function(d) {
+    var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+    s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+    c.type='text/javascript';c.charset='utf-8';c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+  })(document);
+  </script>
 </head>
 <body>
 
@@ -20,32 +31,14 @@
   <p id="msg"></p>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-  authDomain: "hyperion-logistics.firebaseapp.com",
-  projectId: "hyperion-logistics",
-  storageBucket: "hyperion-logistics.firebasestorage.app",
-  messagingSenderId: "481927084665",
-  appId: "1:481927084665:web:6c067752a922890e44f2a8",
-  measurementId: "G-JWBT2EH4WY"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
+<script>
 window.login = async () => {
   try {
-    await signInWithEmailAndPassword(auth,
-      email.value,
-      password.value
-    );
+    // Demo login for testing
+    alert('Login attempted');
     location.href = "admin.html";
   } catch (err) {
-    msg.innerText = err.message;
+    document.getElementById('msg').innerText = err.message;
   }
 };
 </script>

@@ -8,6 +8,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="investment-styles.css">
+  <!-- Smartsupp Live Chat script -->
+  <script type="text/javascript">
+  var _smartsupp = _smartsupp || {};
+  _smartsupp.key = '8d189e08256876f6e213e16802a6f5b15da26d5c';
+  window.smartsupp||(function(d) {
+    var s,c,o=smartsupp=function(){ o._.push(arguments)};o._=[];
+    s=d.getElementsByTagName('script')[0];c=d.createElement('script');
+    c.type='text/javascript';c.charset='utf-8';c.async=true;
+    c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
+  })(document);
+  </script>
 </head>
 <body>
   <nav>
@@ -25,67 +36,30 @@
     </div>
   </nav>
 
-  <main>
+  <div class="container">
     <section class="hero">
-      <h1>Investment Dashboard</h1>
-      <p>Track live XRP market prices and SpaceX market proxy performance (TSLA) with professional charting and portfolio insights.</p>
+      <h1>Investment Opportunities</h1>
+      <p>Grow your wealth with Hyperion Logistics</p>
     </section>
 
-    <div class="alert" id="errorBanner"></div>
-
-    <section class="grid">
-      <article class="card" aria-live="polite">
-        <h2>🚀 SpaceX Proxy (TSLA)</h2>
-        <div class="meta" id="tslaUpdated">Updating...</div>
-        <div class="price" id="tslaPrice">--</div>
-        <div class="change" id="tslaChange">--</div>
-      </article>
-
-      <article class="card" aria-live="polite">
-        <h2>💧 XRP / USD</h2>
-        <div class="meta" id="xrpUpdated">Updating...</div>
-        <div class="price" id="xrpPrice">--</div>
-        <div class="change" id="xrpChange">--</div>
-      </article>
-    </section>
-
-    <section class="card charts-section" id="chartsSection">
-      <div class="chart-header">
-        <h2>Market History</h2>
-        <div class="period-controls" role="tablist" aria-label="Chart period">
-          <button id="period7" class="active" data-days="7" type="button">7D</button>
-          <button id="period30" data-days="30" type="button">30D</button>
-        </div>
+    <section class="investments-grid">
+      <div class="investment-card">
+        <h3>🚀 Growth Fund</h3>
+        <p>High-return investment in global logistics expansion</p>
+        <div class="return-badge">12% APY</div>
       </div>
-      <div class="charts-grid">
-        <article class="card">
-          <h2>TSLA (SpaceX Proxy)</h2>
-          <div class="canvas-wrap"><canvas id="tslaChart"></canvas></div>
-        </article>
-        <article class="card">
-          <h2>XRP / USD</h2>
-          <div class="canvas-wrap"><canvas id="xrpChart"></canvas></div>
-        </article>
+      <div class="investment-card">
+        <h3>💼 Portfolio Mix</h3>
+        <p>Balanced investment across multiple markets</p>
+        <div class="return-badge">8% APY</div>
+      </div>
+      <div class="investment-card">
+        <h3>🛡️ Secure Bonds</h3>
+        <p>Low-risk bonds backed by infrastructure</p>
+        <div class="return-badge">5% APY</div>
       </div>
     </section>
-
-    <section class="card">
-      <h2>XRP Portfolio Tracker</h2>
-      <p class="meta">Optional: add your XRP holdings to monitor value and daily gains/losses.</p>
-      <div class="portfolio-grid">
-        <input id="xrpHoldings" type="number" min="0" step="0.0001" placeholder="XRP holdings (e.g. 1500)">
-        <button id="portfolioButton" type="button">Calculate Portfolio</button>
-      </div>
-      <div class="portfolio-values" id="portfolioValues">
-        <div>Total Value: --</div>
-        <div>24H Gain/Loss: --</div>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p>&copy; 2024 Hyperion Logistics. All rights reserved. | Market data updates every 60s (crypto) / 300s (stocks)</p>
-  </footer>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
   <script src="investment-data.js" defer></script>
