@@ -166,5 +166,86 @@
   <section class="how-it-works" id="how"><div class="works-container"><div class="section-header"><h2 class="section-title">How It Works</h2><p class="section-subtitle">Simple, fast, and reliable shipment tracking in three easy steps</p></div><div class="steps-grid"><div class="step"><div class="step-number">1</div><div class="step-title">Enter Tracking Code</div><div class="step-desc">Input your unique shipment code in the tracking field above</div></div><div class="step"><div class="step-number">2</div><div class="step-title">Get Real-Time Data</div><div class="step-desc">Receive immediate updates on your shipment location and status</div></div><div class="step"><div class="step-number">3</div><div class="step-title">Stay Informed</div><div class="step-desc">Track every movement until your package reaches its destination</div></div></div></div></section>
   <section class="stats-section"><div class="stats-grid"><div class="stat"><div class="stat-number">10M+</div><div class="stat-label">Packages Tracked</div></div><div class="stat"><div class="stat-number">150+</div><div class="stat-label">Countries</div></div><div class="stat"><div class="stat-number">99.9%</div><div class="stat-label">Uptime</div></div><div class="stat"><div class="stat-number">24/7</div><div class="stat-label">Support</div></div></div></section>
   <footer>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</footer>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
+      authDomain: "hyperion-logistics.firebaseapp.com",
+      projectId: "hyperion-logistics",
+      storageBucket: "hyperion-logistics.firebasestorage.app",
+      messagingSenderId: "481927084665",
+      appId: "1:481927084665:web:6c067752a922890e44f2a8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    function showError(msg) {
+      const errEl = document.getElementById("error");
+      errEl.textContent = msg;
+      errEl.classList.add("show");
+      document.getElementById("resultContainer").style.display = "none";
+    }
+
+    function clearError() {
+      const errEl = document.getElementById("error");
+      errEl.textContent = "";
+      errEl.classList.remove("show");
+    }
+
+    window.track = async function () {
+      const id = document.getElementById("trackingInput").value.trim().toUpperCase();
+      const btnText = document.getElementById("btn-text");
+
+      clearError();
+
+      if (!id) {
+        showError("Please enter a tracking code.");
+        return;
+      }
+
+      btnText.textContent = "Tracking...";
+
+      try {
+        const shipmentDoc = await getDoc(doc(db, "shipments", id));
+
+        if (!shipmentDoc.exists()) {
+          showError("Shipment not found. Please check your tracking code.");
+          btnText.textContent = "Track";
+          return;
+        }
+
+        const s = shipmentDoc.data();
+
+        const statusClassMap = {
+          "in transit": "status-shipped",
+          "delivered": "status-delivered",
+          "processing": "status-processing",
+          "pending": "status-pending"
+        };
+
+        const badge = document.getElementById("statusBadge");
+        badge.textContent = s.status || "Unknown";
+        badge.className = "status-badge " + (statusClassMap[(s.status || "").toLowerCase()] || "status-pending");
+
+        document.getElementById("locationValue").textContent = s.location || "N/A";
+        document.getElementById("statusValue").textContent = s.status || "N/A";
+        document.getElementById("feeValue").textContent = s.fee ? "$" + s.fee : "N/A";
+
+        document.getElementById("resultContainer").style.display = "block";
+      } catch (err) {
+        showError("Error fetching shipment data. Please try again.");
+        console.error(err);
+      }
+
+      btnText.textContent = "Track";
+    };
+
+    document.getElementById("trackingInput").addEventListener("keypress", function (e) {
+      if (e.key === "Enter") window.track();
+    });
+  </script>
 </body>
 </html>
