@@ -107,7 +107,17 @@
     .partner-name { font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 8px; position: relative; z-index: 1; }
     .partner-coverage { font-size: 12px; color: #cbd5e1; opacity: 0.8; position: relative; z-index: 1; }
     .partner-badge { display: inline-block; margin-top: 12px; padding: 4px 12px; background: rgba(59, 130, 246, 0.3); border: 1px solid rgba(59, 130, 246, 0.5); color: #60a5fa; border-radius: 12px; font-size: 10px; font-weight: 700; position: relative; z-index: 1; }
-    .tesla-logo { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'%3E%3Cpath fill='%23ffffff' d='M109.7 35c27.5 0 52.6 4.3 67.6 12.4-5.8 9");background-size: contain; background-repeat: no-repeat; background-position: center; }
+    .tesla-logo {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 342 512'%3E%3Cpath fill='%23ffffff' d='M0 0l42 110h75L171 512l54-402h75L342 0H0zm171 110h-42l42-73 42 73h-42z'/%3E%3C/svg%3E");
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: teslaGlow 2s ease-in-out infinite;
+    }
+    @keyframes teslaGlow {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.6)); }
+      50% { filter: drop-shadow(0 0 18px rgba(220, 38, 38, 1)); }
+    }
     .partner-card.featured { border: 2px solid rgba(255, 193, 7, 0.5); background: rgba(255, 193, 7, 0.05); }
     .partner-card.featured:hover { border-color: rgba(255, 193, 7, 0.8); background: rgba(255, 193, 7, 0.1); box-shadow: 0 20px 40px rgba(255, 193, 7, 0.2); }
     .featured-badge { position: absolute; top: 10px; right: 10px; background: rgba(255, 193, 7, 0.9); color: #000; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
