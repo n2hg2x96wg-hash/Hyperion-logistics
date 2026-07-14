@@ -295,7 +295,7 @@
         const lng = typeof shipment.longitude === 'number' ? shipment.longitude : 120.9842;
         const currentLoc = shipment.currentLocation || shipment.location || 'Unknown';
 
-        setTimeout(() => {
+        setTimeout(async () => {
           if (window._hyperionMap) {
             window._hyperionMap.remove();
             window._hyperionMap = null;
@@ -316,6 +316,60 @@
             .addTo(map)
             .bindPopup(`<b>📦 Package Location</b><br>${currentLoc}`)
             .openPopup();
+
+          async function geocode(locationText) {
+            try {
+              const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`;
+              const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+              const data = await res.json();
+              if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+            } catch (e) {}
+            return null;
+          }
+
+          const originCoords = (typeof shipment.originLat === 'number' && typeof shipment.originLng === 'number')
+            ? [shipment.originLat, shipment.originLng]
+            : await geocode(shipment.origin);
+
+          const destCoords = (typeof shipment.destinationLat === 'number' && typeof shipment.destinationLng === 'number')
+            ? [shipment.destinationLat, shipment.destinationLng]
+            : await geocode(shipment.destination);
+
+          const currentCoords = [lat, lng];
+
+          if (originCoords && destCoords) {
+            L.polyline([originCoords, currentCoords], {
+              color: '#3b82f6',
+              weight: 3,
+              opacity: 0.6,
+              dashArray: '8, 6'
+            }).addTo(map);
+
+            L.polyline([currentCoords, destCoords], {
+              color: '#94a3b8',
+              weight: 3,
+              opacity: 0.5,
+              dashArray: '6, 8'
+            }).addTo(map);
+
+            const originIcon = L.divIcon({
+              className: '',
+              html: `<div style="width:14px;height:14px;background:#22c55e;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            });
+            L.marker(originCoords, { icon: originIcon }).addTo(map).bindPopup(`<b>📦 Origin</b><br>${shipment.origin}`);
+
+            const destIcon = L.divIcon({
+              className: '',
+              html: `<div style="width:14px;height:14px;background:#ef4444;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+              iconSize: [14, 14],
+              iconAnchor: [7, 7]
+            });
+            L.marker(destCoords, { icon: destIcon }).addTo(map).bindPopup(`<b>🏁 Destination</b><br>${shipment.destination}`);
+
+            map.fitBounds(L.latLngBounds([originCoords, currentCoords, destCoords]), { padding: [40, 40] });
+          }
         }, 150);
 
         errorDiv.classList.remove("show");
