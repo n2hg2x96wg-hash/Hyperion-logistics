@@ -882,6 +882,87 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="shipmentModal">
+    <div class="modal-card">
+      <div class="card-header">
+        <h3>Edit Shipment</h3>
+        <p>Update shipment details</p>
+      </div>
+      <form id="shipmentForm">
+        <div class="section-label">📦 Basic Information</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="shipmentIdInput">Tracking ID *</label>
+            <input id="shipmentIdInput" type="text" readonly required>
+          </div>
+          <div class="form-group">
+            <label for="shipmentStatusInput">Status *</label>
+            <input id="shipmentStatusInput" type="text" placeholder="e.g., Under Custom review" required list="status-list">
+          </div>
+        </div>
+
+        <div class="section-label">🚚 Courier Information</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="shipmentCourierInput">Courier *</label>
+            <select id="shipmentCourierInput" required>
+              <option value="">-- Select a Courier --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="shipmentCourierTrackingNumberInput">Courier Tracking Number</label>
+            <input id="shipmentCourierTrackingNumberInput" type="text" placeholder="Carrier-provided tracking number">
+          </div>
+        </div>
+
+        <div class="section-label">📍 Location Information</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="shipmentOriginInput">Origin Location *</label>
+            <input id="shipmentOriginInput" type="text" placeholder="e.g., Philippines, Manila" required>
+          </div>
+          <div class="form-group">
+            <label for="shipmentDestinationInput">Destination Location *</label>
+            <input id="shipmentDestinationInput" type="text" placeholder="e.g., United States, Alabama" required>
+          </div>
+          <div class="form-group">
+            <label for="shipmentLocationInput">Current Location *</label>
+            <input id="shipmentLocationInput" type="text" placeholder="e.g., Japan, Tokyo" required>
+          </div>
+          <div class="form-group">
+            <label for="shipmentDistanceInput">Distance (km)</label>
+            <input id="shipmentDistanceInput" type="text" placeholder="e.g., 5240">
+          </div>
+        </div>
+
+        <div class="section-label">🗺️ Map Coordinates</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="shipmentLatitudeInput">Latitude</label>
+            <input id="shipmentLatitudeInput" type="number" step="0.0001" placeholder="e.g., 35.6762" required>
+          </div>
+          <div class="form-group">
+            <label for="shipmentLongitudeInput">Longitude</label>
+            <input id="shipmentLongitudeInput" type="number" step="0.0001" placeholder="e.g., 139.6503" required>
+          </div>
+        </div>
+
+        <div class="section-label">💵 Shipping Information</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="shipmentFeeInput">Shipping Fee *</label>
+            <input id="shipmentFeeInput" type="text" placeholder="e.g., ₱39,719.00" required>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" class="btn btn-save">Save Shipment</button>
+          <button type="button" class="btn btn-reset" onclick="closeShipmentModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="investment-data.js" defer></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -903,6 +984,7 @@
     let allShipments = [];
     let activeCouriers = [];
     let editingCourierId = null;
+    let editingShipmentId = null;
     let clientAdminTools = null;
 
     const PASSWORD = "Hyperion@2026!";
@@ -951,10 +1033,14 @@
     function populateCourierOptions() {
       const courierSelect = document.getElementById("courier");
       const courierFilter = document.getElementById("courierFilter");
+      const shipmentCourierSelect = document.getElementById("shipmentCourierInput");
       
       if (!activeCouriers || activeCouriers.length === 0) {
         courierSelect.innerHTML = '<option value="">No couriers available</option>';
         courierFilter.innerHTML = '<option value="">No couriers available</option>';
+        if (shipmentCourierSelect) {
+          shipmentCourierSelect.innerHTML = '<option value="">No couriers available</option>';
+        }
         return;
       }
 
@@ -962,6 +1048,10 @@
         activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
       courierFilter.innerHTML = '<option value="">All Couriers</option>' +
         activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
+      if (shipmentCourierSelect) {
+        shipmentCourierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' +
+          activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
+      }
       
       updateCourierPrefixHint();
     }
@@ -1127,7 +1217,26 @@
     }
 
     window.editShipment = function(id) {
-      alert("Edit functionality coming soon");
+      const shipment = allShipments.find((item) => item.id === id);
+      if (!shipment) return;
+
+      editingShipmentId = id;
+      document.getElementById("shipmentIdInput").value = shipment.id || "";
+      document.getElementById("shipmentStatusInput").value = shipment.status || "";
+      document.getElementById("shipmentCourierInput").value = shipment.courier || "";
+      document.getElementById("shipmentCourierTrackingNumberInput").value = shipment.courierTrackingNumber || "";
+      document.getElementById("shipmentOriginInput").value = shipment.origin || "";
+      document.getElementById("shipmentDestinationInput").value = shipment.destination || "";
+      document.getElementById("shipmentLocationInput").value = shipment.location || "";
+      document.getElementById("shipmentDistanceInput").value = shipment.distance || "";
+      document.getElementById("shipmentLatitudeInput").value = shipment.latitude ?? "";
+      document.getElementById("shipmentLongitudeInput").value = shipment.longitude ?? "";
+      document.getElementById("shipmentFeeInput").value = shipment.fee || "";
+      document.getElementById("shipmentModal").classList.add("show");
+    };
+
+    window.closeShipmentModal = function() {
+      document.getElementById("shipmentModal").classList.remove("show");
     };
 
     window.deleteShipment = function(id) {
@@ -1286,6 +1395,35 @@
         loadAvailableCouriers(true);
       } catch (err) {
         showToast("Error saving courier", "error");
+        console.error(err);
+      }
+    });
+
+    document.getElementById("shipmentForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!editingShipmentId) return;
+
+      const shipmentData = {
+        id: document.getElementById("shipmentIdInput").value,
+        status: document.getElementById("shipmentStatusInput").value,
+        courier: document.getElementById("shipmentCourierInput").value,
+        courierTrackingNumber: document.getElementById("shipmentCourierTrackingNumberInput").value,
+        origin: document.getElementById("shipmentOriginInput").value,
+        destination: document.getElementById("shipmentDestinationInput").value,
+        location: document.getElementById("shipmentLocationInput").value,
+        distance: document.getElementById("shipmentDistanceInput").value,
+        latitude: parseFloat(document.getElementById("shipmentLatitudeInput").value),
+        longitude: parseFloat(document.getElementById("shipmentLongitudeInput").value),
+        fee: document.getElementById("shipmentFeeInput").value
+      };
+
+      try {
+        await setDoc(doc(db, "shipments", editingShipmentId), shipmentData, { merge: true });
+        showToast("Shipment updated successfully", "success");
+        closeShipmentModal();
+        loadShipments();
+      } catch (err) {
+        showToast("Error updating shipment", "error");
         console.error(err);
       }
     });
