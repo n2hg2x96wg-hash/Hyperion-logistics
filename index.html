@@ -308,8 +308,6 @@
         document.getElementById("feeValue").innerText = shipment.fee || "N/A";
 
         resultDiv.style.display = "block";
-        // Invalidate Leaflet size after the section is visible (fixes iOS Safari blank map)
-        setTimeout(() => { if (window._hyperionMap) window._hyperionMap.invalidateSize(); }, 300);
 
         // ETA card
         const etaCard = document.getElementById("etaCard");
@@ -323,57 +321,114 @@
 
         // Live map
         const mapContainer = document.getElementById("shipmentMap");
-        mapContainer.style.display = "block";
-        mapContainer.innerHTML = "";
         const lat = typeof shipment.latitude === 'number' ? shipment.latitude : 14.5995;
         const lng = typeof shipment.longitude === 'number' ? shipment.longitude : 120.9842;
         const currentLoc = shipment.currentLocation || shipment.location || 'Unknown';
 
-        // Hide stale summary/legend until map is ready
-        document.getElementById("routeSummary").style.display = "none";
-        document.getElementById("mapLegend").style.display = "none";
+        // Guard optional summary/legend elements
+        const summaryEl = document.getElementById("routeSummary");
+        const legendEl = document.getElementById("mapLegend");
+        if (summaryEl) summaryEl.style.display = "none";
+        if (legendEl) legendEl.style.display = "none";
 
+        // Destroy existing Leaflet instance BEFORE clearing innerHTML
+        if (window._hyperionMap) {
+          try { window._hyperionMap.remove(); } catch (e) {}
+          window._hyperionMap = null;
+        }
+        mapContainer.innerHTML = "";
+        mapContainer.style.display = "block";
+
+        // In-map loading overlay
+        const overlayId = 'mapLoadingOverlay';
+        const overlay = document.createElement('div');
+        overlay.id = overlayId;
+        overlay.style.cssText = 'position:absolute;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(241,245,249,0.88);border-radius:12px;pointer-events:none;transition:opacity 0.3s;font-family:inherit;';
+        overlay.innerHTML = '<span style="color:#334155;font-size:14px;font-weight:600;">🗺️ Loading map…</span>';
+        mapContainer.style.position = 'relative';
+        mapContainer.appendChild(overlay);
+
+        // Initialise map after a short delay so the container has real dimensions
         setTimeout(async () => {
-          if (window._hyperionMap) {
-            window._hyperionMap.remove();
-            window._hyperionMap = null;
-          }
-          const map = L.map('shipmentMap', { zoomControl: true }).setView([lat, lng], 8);
+          const map = L.map('shipmentMap', { zoomControl: true, preferCanvas: true }).setView([lat, lng], 8);
           window._hyperionMap = map;
 
-          // Primary tile layer: CartoDB Positron (reliable, no key required)
-          const primaryLayer = L.tileLayer(
-            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          // Tile providers in priority order
+          const providers = [
             {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-              subdomains: 'abcd',
-              maxZoom: 19
-            }
-          );
-
-          // Fallback tile layer: OpenStreetMap
-          const fallbackLayer = L.tileLayer(
-            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+              options: {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+              }
+            },
             {
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-              maxZoom: 19
+              url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              options: {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 19
+              }
+            },
+            {
+              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+              options: {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
+                maxZoom: 19
+              }
             }
-          );
+          ];
 
-          primaryLayer.addTo(map);
+          let currentProviderIdx = 0;
+          let tileLoaded = false;
+          let allFailed = false;
 
-          // Switch to fallback if primary tiles fail to load
-          let primaryFailed = false;
-          primaryLayer.on('tileerror', () => {
-            if (!primaryFailed) {
-              primaryFailed = true;
-              map.removeLayer(primaryLayer);
-              fallbackLayer.addTo(map);
+          function hideOverlay() {
+            const ov = document.getElementById(overlayId);
+            if (ov) { ov.style.opacity = '0'; setTimeout(() => { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 300); }
+          }
+          function showErrorOverlay(msg) {
+            const ov = document.getElementById(overlayId);
+            if (ov) { ov.innerHTML = `<span style="color:#64748b;font-size:13px;text-align:center;padding:8px;">${msg}</span>`; ov.style.pointerEvents = 'none'; }
+          }
+
+          let activeLayer = null;
+
+          function tryProvider(idx) {
+            if (idx >= providers.length) {
+              allFailed = true;
+              showErrorOverlay('Map background unavailable — shipment markers still shown below.');
+              return;
             }
-          });
+            if (activeLayer) { try { map.removeLayer(activeLayer); } catch (e) {} }
+            activeLayer = L.tileLayer(providers[idx].url, providers[idx].options);
+            activeLayer.addTo(map);
+            let tileErrorCount = 0;
+            activeLayer.on('tileload', () => {
+              if (!tileLoaded) { tileLoaded = true; hideOverlay(); }
+            });
+            activeLayer.on('tileerror', () => {
+              tileErrorCount++;
+              if (tileErrorCount >= 3 && !tileLoaded) {
+                currentProviderIdx++;
+                tryProvider(currentProviderIdx);
+              }
+            });
+            // Timeout fallback: if no tile loads within 6 s, try next provider
+            setTimeout(() => {
+              if (!tileLoaded && currentProviderIdx === idx) {
+                currentProviderIdx++;
+                tryProvider(currentProviderIdx);
+              }
+            }, 6000);
+          }
 
-          // Call invalidateSize once tiles start loading to fix iOS blank-map issue
+          tryProvider(0);
+
+          // invalidateSize chain to fix iOS Safari blank-map sizing issue
           map.invalidateSize();
+          setTimeout(() => { map.invalidateSize(); }, 200);
+          setTimeout(() => { map.invalidateSize(); }, 600);
 
           const pulseIcon = L.divIcon({
             className: '',
@@ -440,27 +495,29 @@
 
             map.fitBounds(L.latLngBounds([originCoords, currentCoords, destCoords]), { padding: [40, 40] });
 
-            // Route summary
-            const summaryEl = document.getElementById("routeSummary");
-            summaryEl.innerHTML =
-              `<span class="rs-label">Route:</span> ${shipment.origin || '—'} → <span style="color:#3b82f6;font-weight:600;">${currentLoc}</span> → ${shipment.destination || '—'}` +
-              (shipment.status ? ` &nbsp;·&nbsp; <span class="rs-label">Status:</span> ${shipment.status}` : '');
-            summaryEl.style.display = "flex";
+            // Route summary (guard: element may be absent)
+            if (summaryEl) {
+              summaryEl.innerHTML =
+                `<span class="rs-label">Route:</span> ${shipment.origin || '—'} → <span style="color:#3b82f6;font-weight:600;">${currentLoc}</span> → ${shipment.destination || '—'}` +
+                (shipment.status ? ` &nbsp;·&nbsp; <span class="rs-label">Status:</span> ${shipment.status}` : '');
+              summaryEl.style.display = "flex";
+            }
 
-            // Map legend
-            const legendEl = document.getElementById("mapLegend");
-            legendEl.innerHTML =
-              `<span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Origin</span>` +
-              `<span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Current location</span>` +
-              `<span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Destination</span>` +
-              `<span class="legend-item"><span class="legend-line" style="background:#3b82f6;"></span> Completed</span>` +
-              `<span class="legend-item"><span class="legend-line" style="background:#94a3b8;border-top:3px dashed #94a3b8;height:0;"></span> Remaining</span>`;
-            legendEl.style.display = "flex";
+            // Map legend (guard: element may be absent)
+            if (legendEl) {
+              legendEl.innerHTML =
+                `<span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Origin</span>` +
+                `<span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Current location</span>` +
+                `<span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Destination</span>` +
+                `<span class="legend-item"><span class="legend-line" style="background:#3b82f6;"></span> Completed</span>` +
+                `<span class="legend-item"><span class="legend-line" style="background:#94a3b8;border-top:3px dashed #94a3b8;height:0;"></span> Remaining</span>`;
+              legendEl.style.display = "flex";
+            }
           } else {
             // No origin/dest: just fit around current location marker
             map.setView(currentCoords, 10);
           }
-        }, 150);
+        }, 200);
 
         errorDiv.classList.remove("show");
         btnText.innerHTML = "Track";
