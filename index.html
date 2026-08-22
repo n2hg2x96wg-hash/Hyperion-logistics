@@ -184,12 +184,42 @@
       overflow: hidden;
       height: 360px;
       margin-top: 20px;
+      min-height: 220px;
+    }
+    @media (max-width: 768px) {
+      .result-map { height: 260px; }
     }
     @keyframes mapPulse {
       0%   { box-shadow: 0 0 0 0   rgba(59,130,246,0.7); }
       70%  { box-shadow: 0 0 0 12px rgba(59,130,246,0); }
       100% { box-shadow: 0 0 0 0   rgba(59,130,246,0); }
     }
+    /* Route progress & legend */
+    .route-summary {
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #334155;
+    }
+    .route-summary .rs-label { font-weight: 700; color: #1e293b; }
+    .map-legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #475569;
+      padding: 0 2px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+    .legend-line { width: 18px; height: 3px; display: inline-block; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -197,7 +227,9 @@
   <nav><div class="nav-container"><div class="logo"><span>📦</span><span>Hyperion</span></div><ul class="nav-links"><li><a href="#activity">Live Activity</a></li><li><a href="#partners">Partners</a></li><li><a href="#features">Features</a></li><li><a href="#how">How It Works</a></li></ul></div></nav>
   <section class="hero"><div class="hero-badge">🚀 Enterprise-Grade Global Logistics Network</div><h1>Real-Time Shipment Tracking Across 150+ Countries</h1><p>Track packages in motion right now. Enterprise-grade logistics intelligence at your fingertips.</p></section>
   <section class="live-activity" id="activity"><div class="activity-header"><div class="live-dot"></div><h3>🌍 Live Active Shipments Right Now</h3><div class="live-dot"></div></div><div class="active-shipments"><div class="shipment-card"><div class="shipment-route"><span>🇨🇳 Shanghai</span><div class="route-line"></div><span>🇺🇸 New York</span></div><div class="shipment-info"><span>HL-2847391</span><span class="shipment-status">In Transit</span></div></div><div class="shipment-card"><div class="shipment-route"><span>🇩🇪 Berlin</span><div class="route-line"></div><span>🇬🇧 London</span></div><div class="shipment-info"><span>HL-9183726</span><span class="shipment-status">Customs</span></div></div><div class="shipment-card"><div class="shipment-route"><span>🇯🇵 Tokyo</span><div class="route-line"></div><span>🇦🇺 Sydney</span></div><div class="shipment-info"><span>HL-5647281</span><span class="shipment-status">Delivered</span></div></div></div><div class="global-ticker"><div class="ticker-content"><div class="ticker-item">🌐 2,847 active shipments • 47 countries connected • 99.9% on-time delivery • Real-time GPS tracking enabled</div></div></div></section>
-  <section class="quick-track" id="track"><h2>Track Your Shipment</h2><p class="quick-track-subtitle">Enter your tracking code below to get real-time updates</p><div class="track-form"><input id="trackingInput" type="text" placeholder="Enter tracking code (e.g. HL-123456)" /><button class="btn-track" onclick="track()"><span id="btn-text">Track</span></button></div><div id="error" class="error-message"></div><div id="resultContainer" class="result-section"><div class="result-card"><div class="result-header"><span class="result-title">Shipment Details</span><span id="statusBadge" class="status-badge"></span></div><div class="result-row"><span class="result-label">CURRENT LOCATION</span><span id="locationValue" class="result-value"></span></div><div class="result-row"><span class="result-label">STATUS</span><span id="statusValue" class="result-value"></span></div><div class="result-row"><span class="result-label">DELIVERY FEE</span><span id="feeValue" class="result-value"></span></div></div><div class="eta-card" id="etaCard" style="display:none;"><div class="eta-label">ESTIMATED DELIVERY</div><div class="eta-date" id="etaValue">TBD</div></div><div class="result-map" id="shipmentMap" style="display:none;"></div></div></section>
+  <section class="quick-track" id="track"><h2>Track Your Shipment</h2><p class="quick-track-subtitle">Enter your tracking code below to get real-time updates</p><div class="track-form"><input id="trackingInput" type="text" placeholder="Enter tracking code (e.g. HL-123456)" /><button class="btn-track" onclick="track()"><span id="btn-text">Track</span></button></div><div id="error" class="error-message"></div><div id="resultContainer" class="result-section"><div class="result-card"><div class="result-header"><span class="result-title">Shipment Details</span><span id="statusBadge" class="status-badge"></span></div>  <div class="result-row"><span class="result-label">SHIPMENT LOCATION</span><span id="locationValue" class="result-value"></span></div><div class="result-row"><span class="result-label">STATUS</span><span id="statusValue" class="result-value"></span></div><div class="result-row"><span class="result-label">DELIVERY FEE</span><span id="feeValue" class="result-value"></span></div></div><div class="eta-card" id="etaCard" style="display:none;"><div class="eta-label">ESTIMATED DELIVERY</div><div class="eta-date" id="etaValue">TBD</div></div>  <div id="routeSummary" class="route-summary" style="display:none;"></div>
+  <div id="mapLegend" class="map-legend" style="display:none;"></div>
+  <div class="result-map" id="shipmentMap" style="display:none;"></div></div></section>
   <section class="partners-section" id="partners"><div class="partners-container"><div class="partners-header"><h2 class="partners-title">Our Global Courier Partners</h2><p class="partners-subtitle">Trusted by the world's leading logistics networks</p></div><div class="partners-grid">
     <div class="partner-card"><div class="partner-logo">🚚</div><div class="partner-name">DHL Express</div><div class="partner-coverage">220+ Countries</div><div class="partner-badge">PREMIUM</div></div>
     <div class="partner-card"><div class="partner-logo">✈️</div><div class="partner-name">FedEx</div><div class="partner-coverage">220+ Countries</div><div class="partner-badge">PREMIUM</div></div>
@@ -276,6 +308,8 @@
         document.getElementById("feeValue").innerText = shipment.fee || "N/A";
 
         resultDiv.style.display = "block";
+        // Invalidate Leaflet size after the section is visible (fixes iOS Safari blank map)
+        setTimeout(() => { if (window._hyperionMap) window._hyperionMap.invalidateSize(); }, 300);
 
         // ETA card
         const etaCard = document.getElementById("etaCard");
@@ -295,17 +329,52 @@
         const lng = typeof shipment.longitude === 'number' ? shipment.longitude : 120.9842;
         const currentLoc = shipment.currentLocation || shipment.location || 'Unknown';
 
+        // Hide stale summary/legend until map is ready
+        document.getElementById("routeSummary").style.display = "none";
+        document.getElementById("mapLegend").style.display = "none";
+
         setTimeout(async () => {
           if (window._hyperionMap) {
             window._hyperionMap.remove();
             window._hyperionMap = null;
           }
-          const map = L.map('shipmentMap').setView([lat, lng], 8);
+          const map = L.map('shipmentMap', { zoomControl: true }).setView([lat, lng], 8);
           window._hyperionMap = map;
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-          }).addTo(map);
+
+          // Primary tile layer: CartoDB Positron (reliable, no key required)
+          const primaryLayer = L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+              subdomains: 'abcd',
+              maxZoom: 19
+            }
+          );
+
+          // Fallback tile layer: OpenStreetMap
+          const fallbackLayer = L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              maxZoom: 19
+            }
+          );
+
+          primaryLayer.addTo(map);
+
+          // Switch to fallback if primary tiles fail to load
+          let primaryFailed = false;
+          primaryLayer.on('tileerror', () => {
+            if (!primaryFailed) {
+              primaryFailed = true;
+              map.removeLayer(primaryLayer);
+              fallbackLayer.addTo(map);
+            }
+          });
+
+          // Call invalidateSize once tiles start loading to fix iOS blank-map issue
+          map.invalidateSize();
+
           const pulseIcon = L.divIcon({
             className: '',
             html: `<div style="width:20px;height:20px;background:#3b82f6;border:3px solid white;border-radius:50%;animation:mapPulse 1.8s infinite;"></div>`,
@@ -314,7 +383,7 @@
           });
           L.marker([lat, lng], { icon: pulseIcon })
             .addTo(map)
-            .bindPopup(`<b>📦 Package Location</b><br>${currentLoc}`)
+            .bindPopup(`<b>📦 Current Location</b><br>${currentLoc}`)
             .openPopup();
 
           async function geocode(locationText) {
@@ -338,18 +407,19 @@
           const currentCoords = [lat, lng];
 
           if (originCoords && destCoords) {
+            // Completed segment: origin → current (solid blue)
             L.polyline([originCoords, currentCoords], {
               color: '#3b82f6',
-              weight: 3,
-              opacity: 0.6,
-              dashArray: '8, 6'
+              weight: 4,
+              opacity: 0.85
             }).addTo(map);
 
+            // Remaining segment: current → destination (dashed grey)
             L.polyline([currentCoords, destCoords], {
               color: '#94a3b8',
               weight: 3,
-              opacity: 0.5,
-              dashArray: '6, 8'
+              opacity: 0.7,
+              dashArray: '8, 8'
             }).addTo(map);
 
             const originIcon = L.divIcon({
@@ -358,7 +428,7 @@
               iconSize: [14, 14],
               iconAnchor: [7, 7]
             });
-            L.marker(originCoords, { icon: originIcon }).addTo(map).bindPopup(`<b>📦 Origin</b><br>${shipment.origin}`);
+            L.marker(originCoords, { icon: originIcon }).addTo(map).bindPopup(`<b>🟢 Origin</b><br>${shipment.origin || 'Origin'}`);
 
             const destIcon = L.divIcon({
               className: '',
@@ -366,9 +436,29 @@
               iconSize: [14, 14],
               iconAnchor: [7, 7]
             });
-            L.marker(destCoords, { icon: destIcon }).addTo(map).bindPopup(`<b>🏁 Destination</b><br>${shipment.destination}`);
+            L.marker(destCoords, { icon: destIcon }).addTo(map).bindPopup(`<b>🔴 Destination</b><br>${shipment.destination || 'Destination'}`);
 
             map.fitBounds(L.latLngBounds([originCoords, currentCoords, destCoords]), { padding: [40, 40] });
+
+            // Route summary
+            const summaryEl = document.getElementById("routeSummary");
+            summaryEl.innerHTML =
+              `<span class="rs-label">Route:</span> ${shipment.origin || '—'} → <span style="color:#3b82f6;font-weight:600;">${currentLoc}</span> → ${shipment.destination || '—'}` +
+              (shipment.status ? ` &nbsp;·&nbsp; <span class="rs-label">Status:</span> ${shipment.status}` : '');
+            summaryEl.style.display = "flex";
+
+            // Map legend
+            const legendEl = document.getElementById("mapLegend");
+            legendEl.innerHTML =
+              `<span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Origin</span>` +
+              `<span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Current location</span>` +
+              `<span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Destination</span>` +
+              `<span class="legend-item"><span class="legend-line" style="background:#3b82f6;"></span> Completed</span>` +
+              `<span class="legend-item"><span class="legend-line" style="background:#94a3b8;border-top:3px dashed #94a3b8;height:0;"></span> Remaining</span>`;
+            legendEl.style.display = "flex";
+          } else {
+            // No origin/dest: just fit around current location marker
+            map.setView(currentCoords, 10);
           }
         }, 150);
 
