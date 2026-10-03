@@ -8,11 +8,12 @@ import {
 } from "../../shared/status.js";
 import {
   ValidationError, cleanText, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
-  parseDateOnly, parseExceptionType, parseVisibility, parsePackage
+  parseDateOnly, parseExceptionType, parseVisibility, parsePackage, parseCoordinatePair, parsePastTimestamp
 } from "./validate.js";
 import { buildClientView } from "./client-view.js";
 import { notifyEvents } from "./notifications.js";
 import { geocode } from "./geocode.js";
+import { mergeCarriers, carrierId } from "../../shared/carriers.js";
 
 export class ServiceError extends Error {
   constructor(code, message, status = 400) { super(message); this.code = code; this.status = status; }
@@ -50,6 +51,9 @@ export function parsePatch(input = {}) {
   if (("latitude" in p) !== ("longitude" in p)) throw new ValidationError("Latitude and longitude must be provided together", "latitude");
   if (("originLat" in p) !== ("originLng" in p)) throw new ValidationError("Origin latitude and longitude must be provided together", "originLat");
   if (("destinationLat" in p) !== ("destinationLng" in p)) throw new ValidationError("Destination latitude and longitude must be provided together", "destinationLat");
+  for (const [a, b] of [["latitude", "longitude"], ["originLat", "originLng"], ["destinationLat", "destinationLng"]]) {
+    if (p[a] === 0 && p[b] === 0) throw new ValidationError("Coordinates 0, 0 are not a valid position", a);
+  }
   if ("statusCode" in input || "status" in input) p.statusCode = parseStatus(input.statusCode ?? input.status);
   if ("etaDate" in input) p.etaDate = parseDateOnly(input.etaDate, "etaDate");
   if ("etaWindowStart" in input) p.etaWindowStart = parseIsoDateTime(input.etaWindowStart, "etaWindowStart");
@@ -248,7 +252,7 @@ export async function createShipment(identity, input) {
 
   let code = input.trackingCode ? normalizeTrackingCode(String(input.trackingCode)) : null;
   if (input.trackingCode && !code) throw new ValidationError("Tracking code may contain letters, numbers, - and _ (3-40 chars)", "trackingCode");
-  const courier = patch.courier ? await store.getCourier(patch.courier) : null;
+  const courier = patch.courier ? await resolveCourier(store, patch.courier) : null;
   for (let attempt = 0; attempt < 6; attempt++) {
     const candidate = code || generateTrackingCode(courier?.prefix || "HY");
     const ctx = ctxFor(identity, { code: candidate, statusNote: input.statusNote });
@@ -310,8 +314,22 @@ export async function updateLocation(identity, codeInput, input, opts = {}) {
   if (patch.location == null && latitude == null) throw new ValidationError("Provide a location name and/or coordinates", "location");
   if ((latitude == null) !== (longitude == null)) throw new ValidationError("Latitude and longitude must be provided together", "latitude");
   if (latitude == null) { delete patch.latitude; delete patch.longitude; }
+  else parseCoordinatePair(latitude, longitude);
+  // Admin-supplied observation time ("when was the shipment here?"). Providers pass opts.occurredAt instead.
+  if (!opts.occurredAt && input.timestamp) {
+    const at = parsePastTimestamp(input.timestamp, "timestamp");
+    const store = await getStore();
+    const existing = await store.getShipment(await resolveCode(codeInput));
+    if (!notOlder(at, existing?.locationUpdatedAt)) {
+      throw new ValidationError("This time is earlier than the current recorded position. Add it as a tracking event to record past history.", "timestamp");
+    }
+    opts = { ...opts, occurredAt: at };
+  }
   return updateShipment(identity, codeInput, patch, opts);
 }
+
+/** Admin forms record times to the minute, so "now" must not lose against a write made seconds earlier. */
+const notOlder = (ts, than) => !than || ts.slice(0, 16) >= String(than).slice(0, 16);
 
 /** Manually entered tracking event (admin Event Manager). Duplicate submissions collapse to one event. */
 export async function addTrackingEvent(identity, codeInput, input) {
@@ -323,8 +341,10 @@ export async function addTrackingEvent(identity, codeInput, input) {
   const timestamp = input.timestamp ? parseIsoDateTime(input.timestamp, "timestamp") : new Date().toISOString();
   if (Date.parse(timestamp) > Date.now() + 5 * 60 * 1000) throw new ValidationError("Event time cannot be in the future", "timestamp");
   const clientVisible = input.clientVisible !== false;
-  const lat = input.latitude != null && input.latitude !== "" ? parseCoordinate(input.latitude, "latitude") : null;
-  const lng = input.longitude != null && input.longitude !== "" ? parseCoordinate(input.longitude, "longitude") : null;
+  const pair = parseCoordinatePair(input.latitude, input.longitude);
+  const lat = pair?.lat ?? null; const lng = pair?.lng ?? null;
+  // When set, the event also becomes the shipment's current status/position (only if it is the newest information).
+  const apply = input.applyToShipment === true;
   const now = new Date().toISOString();
   const minute = timestamp.slice(0, 16);
   const id = `ev_${sha(`${code}|manual|${statusCode}|${location.toLowerCase()}|${minute}|${description.toLowerCase()}`)}`;
@@ -338,12 +358,30 @@ export async function addTrackingEvent(identity, codeInput, input) {
     const rev = (Number(current.rev) || 0) + 1;
     const event = { id, kind: "manual", statusCode, title: STATUS_META[statusCode].event, description, location, lat, lng, timestamp,
       createdAt: now, source: "admin", actor: identity.sub, clientVisible, seq: rev * 10 + 3 };
-    return {
-      next: { ...current, rev, updatedAt: now, updatedBy: identity.sub },
-      events: [event],
-      audit: [{ at: now, actor: identity.sub, role: identity.role, via: identity.via || "admin", shipment: code, action: "event.added",
-        previous: null, next: { status: statusCode, location, description: brief(description), timestamp, clientVisible } }]
-    };
+    const base = { at: now, actor: identity.sub, role: identity.role, via: identity.via || "admin", shipment: code };
+    const next = { ...current, rev, updatedAt: now, updatedBy: identity.sub };
+    const audit = [{ ...base, action: "event.added", previous: null, next: { status: statusCode, location, latitude: lat, longitude: lng, description: brief(description), timestamp, clientVisible, applied: apply } }];
+    // Coordinates on an event are a recorded route point (history), whether or not they become "current".
+    const locations = lat != null ? [{ id: `loc_${sha(`${code}|event|${id}`)}`, lat, lng, name: location, timestamp, source: "admin",
+      statusCode, actor: identity.sub, clientVisible, eventId: id }] : [];
+    if (apply && clientVisible) {
+      const prevStatus = resolveShipmentStatus(current);
+      if (statusCode !== prevStatus && notOlder(timestamp, current.statusUpdatedAt)) {
+        next.statusCode = statusCode; next.status = STATUS_META[statusCode].label; next.statusUpdatedAt = timestamp;
+        if (STATUS_META[statusCode].order != null) next.progressCode = statusCode;
+        if (statusCode !== STATUS.DELAYED && statusCode !== STATUS.EXCEPTION && next.exception) next.exception = null;
+        audit.push({ ...base, action: "status.changed", previous: { status: prevStatus }, next: { status: statusCode } });
+      }
+      if ((location || lat != null) && notOlder(timestamp, current.locationUpdatedAt)) {
+        if (location) next.location = location;
+        if (lat != null) { next.latitude = lat; next.longitude = lng; }
+        next.locationUpdatedAt = timestamp; next.locationSource = "admin";
+        audit.push({ ...base, action: "location.changed", previous: { location: current.location || null, latitude: current.latitude ?? null, longitude: current.longitude ?? null },
+          next: { location: next.location || null, latitude: next.latitude ?? null, longitude: next.longitude ?? null, source: "admin" } });
+      }
+      Object.assign(next, derivedFields(next));
+    }
+    return { next, events: [event], locations, audit };
   });
   if (!result.written.events.length) return { duplicate: true, id }; // lost a race with an identical submission
   await finish(store, result, code);
@@ -411,11 +449,20 @@ export async function getClientView(codeInput, { preview = false } = {}) {
   return buildViewFor(store, shipment, { preview });
 }
 
+/** Stored courier record (Firestore) overrides the built-in catalog entry for the same id. */
+function mergedCourier(courierInput, stored) {
+  const id = carrierId(courierInput);
+  return id ? mergeCarriers(stored ? [{ ...stored, id }] : []).find((c) => c.id === id) || null : null;
+}
+async function resolveCourier(store, courierInput) {
+  return mergedCourier(courierInput, await store.getCourier(courierInput).catch(() => null));
+}
+
 export async function buildViewFor(store, shipment, { preview = false } = {}) {
-  const [events, locations, courier] = await Promise.all([
-    store.listEvents(shipment.id, 100), store.listLocations(shipment.id, 40), store.getCourier(shipment.courier)
+  const [events, locations, stored] = await Promise.all([
+    store.listEvents(shipment.id, 100), store.listLocations(shipment.id, 40), store.getCourier(shipment.courier).catch(() => null)
   ]);
-  return buildClientView({ shipment, events, locations, courier, preview });
+  return buildClientView({ shipment, events, locations, courier: mergedCourier(shipment.courier, stored), preview });
 }
 
 export async function getAdminShipment(codeInput) {

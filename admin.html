@@ -626,6 +626,43 @@
     .status-created, .status-registered { background: #e2e8f0; color: #334155; } .status-in-transit { background: #dbeafe; color: #1e40af; }
     .status-out-for-delivery { background: #e0e7ff; color: #3730a3; } .status-delayed, .status-at-facility { background: #fef3c7; color: #92400e; }
     .status-exception, .status-cancelled { background: #fee2e2; color: #991b1b; } .status-customs-inspection { background: #fed7aa; color: #92400e; }
+    /* ===== Live tracking upgrade: hierarchy, location controls, mobile ===== */
+    html { -webkit-text-size-adjust: 100%; }
+    body { min-height: 100dvh; }
+    .trk-summary > div:first-child { background: #0f172a; border-color: #0f172a; color: #fff; }
+    .trk-summary > div:first-child small { color: #94a3b8; }
+    .trk-summary > div:first-child strong { font-size: 20px; letter-spacing: .5px; }
+    .trk-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 18px; }
+    .trk-layout .admin-map { margin-bottom: 6px; height: 420px; }
+    .trk-layout .panel { margin-bottom: 0; }
+    .panel-primary { border: 2px solid #bfdbfe; box-shadow: 0 10px 30px rgba(37, 99, 235, .08); }
+    .coord-group { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 10px 12px 4px; margin: 0 0 12px; }
+    .coord-group legend { font-size: 12px; font-weight: 700; color: #334155; padding: 0 6px; }
+    .coord-group legend small { font-weight: 500; color: #64748b; }
+    .inline-field { display: flex; gap: 8px; } .inline-field input { flex: 1 1 auto; min-width: 0; } .inline-field .btn-action { flex: 0 0 auto; }
+    .field-err { color: #b91c1c; font-size: 12px; font-weight: 600; min-height: 0; margin: 0 0 8px; }
+    .field-err:empty { display: none; }
+    input[aria-invalid="true"] { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
+    .panel-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .form-msg { font-size: 13px; font-weight: 700; } .form-msg.ok { color: #15803d; } .form-msg.err { color: #b91c1c; }
+    .check-row { text-transform: none !important; letter-spacing: 0 !important; display: flex !important; align-items: flex-start; gap: 0; margin-bottom: 12px; font-weight: 600; font-size: 13px; }
+    .check-row small { display: block; color: #64748b; font-weight: 500; }
+    .courier-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 6px; border-radius: 6px; background: #e2e8f0; color: #334155; margin-left: 6px; }
+    .courier-badge.custom { background: #fef3c7; color: #92400e; }
+    .admin-map .hx-map-hint { bottom: 10px; }
+    .admin-map.picking { cursor: crosshair; }
+    @media (max-width: 1000px) { .trk-layout { grid-template-columns: 1fr; } .trk-layout .admin-map { height: 320px; } }
+    @media (max-width: 760px) {
+      input, select, textarea { font-size: 16px !important; } /* stops iOS zoom-on-focus */
+      .btn, .btn-action, .toggle-btn { min-height: 44px; }
+      .sticky-actions { position: sticky; bottom: 0; z-index: 5; background: rgba(255,255,255,.96); backdrop-filter: blur(6px); margin: 20px -18px -18px; padding: 12px 96px calc(12px + env(safe-area-inset-bottom, 0px)) 18px; border-top: 1px solid #e2e8f0; flex-direction: row !important; border-radius: 0 0 16px 16px; }
+      .sticky-actions .btn { width: auto; flex: 1 1 auto; }
+      .container { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+      .trk-summary { grid-template-columns: 1fr 1fr; }
+      .trk-summary > div:first-child { grid-column: 1 / -1; }
+      .view-toggle { scroll-snap-type: x proximity; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+      .toggle-btn { scroll-snap-align: start; }
+    }
     @media (max-width: 760px) {
       body { padding: 12px; }
       .form-card, .stats-card, .shipments-card, .clients-card { padding: 18px; border-radius: 16px; }
@@ -640,6 +677,8 @@
     }
   </style>
   <link rel="stylesheet" href="tracker/tracker.css">
+  <link rel="stylesheet" href="ui/motion.css">
+  <script type="module" src="ui/motion.js"></script>
   <!-- Smartsupp Live Chat script -->
   <script type="text/javascript">
   var _smartsupp = _smartsupp || {};
@@ -710,8 +749,8 @@
           <p>Live figures from the shipment database · <span id="lastUpdated">--</span></p>
         </div>
         <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><button class="btn-action" id="migrateBtn" type="button">Run data migration</button></div>
-        <div class="kpi-grid" id="kpiGrid"></div>
-        <div class="dash-cols">
+        <div class="kpi-grid" id="kpiGrid" data-reveal-stagger></div>
+        <div class="dash-cols" data-reveal>
           <div>
             <h4>Recent shipment activity</h4><ul class="feed" id="dashRecent"></ul>
             <h4>Recent activity log</h4><ul class="feed" id="dashActivity"></ul>
@@ -798,9 +837,10 @@
 
           <div class="section-label">🗺️ Map Coordinates (optional)</div>
           <div class="form-grid">
-            <div class="form-group"><label for="latitude">Current latitude</label><input id="latitude" type="number" step="any" placeholder="e.g., 35.6762"></div>
-            <div class="form-group"><label for="longitude">Current longitude</label><input id="longitude" type="number" step="any" placeholder="e.g., 139.6503"></div>
+            <div class="form-group"><label for="latitude">Current latitude</label><input id="latitude" type="text" inputmode="decimal" placeholder="e.g., 35.6762" autocomplete="off" aria-describedby="createCoordErr"></div>
+            <div class="form-group"><label for="longitude">Current longitude</label><input id="longitude" type="text" inputmode="decimal" placeholder="e.g., 139.6503" autocomplete="off" aria-describedby="createCoordErr"></div>
           </div>
+          <div class="field-err" id="createCoordErr" role="alert"></div>
           <p class="hint">Origin and destination are placed on the map automatically (geocoded server-side) unless you set exact points in Live Tracking.</p>
 
           <div class="section-label">🕒 Estimated Delivery</div>
@@ -827,8 +867,8 @@
             </div>
           </div>
 
-          <div class="form-footer">
-            <button type="submit" class="btn btn-save"><span id="save-btn-text">Save Shipment</span></button>
+          <div class="form-footer sticky-actions">
+            <button type="submit" class="btn btn-save hx-press"><span id="save-btn-text">Save Shipment</span></button>
             <button type="reset" class="btn btn-reset">Clear</button>
           </div>
         </form>
@@ -867,22 +907,33 @@
         </div>
         <div id="trkEmpty" class="empty-state"><div class="empty-icon">📍</div><h3>Select a shipment</h3><p>Enter a tracking code above and press “Load shipment”.</p></div>
         <div id="trkBody" class="hidden">
-          <div class="summary-grid" id="trkSummary"></div>
-          <div class="admin-map" id="adminMap"></div>
-          <div class="panel-grid">
-            <form class="panel" id="locForm">
-              <h4>Update live location</h4>
-              <div class="form-group" style="margin-bottom:12px;"><label for="locName">Current location</label><input id="locName" type="text" placeholder="e.g., Lagos, Nigeria" maxlength="160" required></div>
+          <div class="summary-grid trk-summary" id="trkSummary"></div>
+          <div class="trk-layout">
+            <div class="trk-map-col" data-reveal="fade">
+              <div class="admin-map" id="adminMap"></div>
+              <p class="hint" id="mapPickHint">Tip: click the map to fill in the coordinates of a new position.</p>
+            </div>
+            <form class="panel panel-primary" id="locForm" novalidate data-reveal>
+              <h4>📍 Update shipment location</h4>
+              <div class="form-group" style="margin-bottom:12px;"><label for="locName">Current location</label><input id="locName" type="text" placeholder="e.g., Dubai, UAE" maxlength="160" required autocomplete="off"></div>
+              <fieldset class="coord-group">
+                <legend>Coordinates <small>(paste “25.2048, 55.2708” into Latitude to fill both)</small></legend>
+                <div class="tool-grid" style="margin-bottom:6px;">
+                  <div><label for="locLat">Latitude</label><input id="locLat" type="text" inputmode="decimal" placeholder="25.2048" autocomplete="off" aria-describedby="locCoordErr"></div>
+                  <div><label for="locLng">Longitude</label><input id="locLng" type="text" inputmode="decimal" placeholder="55.2708" autocomplete="off" aria-describedby="locCoordErr"></div>
+                </div>
+                <div class="field-err" id="locCoordErr" role="alert"></div>
+              </fieldset>
               <div class="tool-grid" style="margin-bottom:12px;">
-                <div><label for="locLat">Latitude</label><input id="locLat" type="number" step="any" placeholder="6.5244"></div>
-                <div><label for="locLng">Longitude</label><input id="locLng" type="number" step="any" placeholder="3.3792"></div>
+                <div><label for="locTime">Position recorded at</label><div class="inline-field"><input id="locTime" type="datetime-local"><button type="button" class="btn-action" id="locNow">Now</button></div></div>
+                <div><label for="locStatus">Status</label><select id="locStatus"></select></div>
               </div>
-              <div class="form-group" style="margin-bottom:12px;"><label for="locStatus">Status</label><select id="locStatus"></select></div>
               <div class="form-group" style="margin-bottom:12px;"><label for="locNote">Note for timeline (optional)</label><input id="locNote" type="text" maxlength="600"></div>
-              <button class="btn btn-primary inline" type="submit" id="locBtn">UPDATE LOCATION</button>
-              <p class="hint">Saved as an <strong>operations update</strong>. Only a connected carrier/GPS provider can label a position as carrier or GPS data.</p>
+              <div class="panel-actions"><button class="btn btn-primary inline hx-press" type="submit" id="locBtn">UPDATE LOCATION</button><span class="form-msg" id="locMsg" role="status"></span></div>
+              <p class="hint">Saved as an <strong>operations update</strong> and pushed to the client page instantly. Clients see “Live” only while this position is recent; only a connected carrier/GPS provider can label a position as carrier or GPS data.</p>
             </form>
-
+          </div>
+          <div class="panel-grid">
             <form class="panel" id="statusForm">
               <h4>Status &amp; exceptions</h4>
               <div class="form-group" style="margin-bottom:12px;"><label for="stStatus">Shipment status</label><select id="stStatus"></select></div>
@@ -906,12 +957,13 @@
             <form class="panel" id="routeForm">
               <h4>Route points (origin / destination)</h4>
               <div class="tool-grid" style="margin-bottom:12px;">
-                <div><label for="oLat">Origin lat</label><input id="oLat" type="number" step="any"></div>
-                <div><label for="oLng">Origin lng</label><input id="oLng" type="number" step="any"></div>
-                <div><label for="dLat">Dest. lat</label><input id="dLat" type="number" step="any"></div>
-                <div><label for="dLng">Dest. lng</label><input id="dLng" type="number" step="any"></div>
+                <div><label for="oLat">Origin lat</label><input id="oLat" type="text" inputmode="decimal" autocomplete="off"></div>
+                <div><label for="oLng">Origin lng</label><input id="oLng" type="text" inputmode="decimal" autocomplete="off"></div>
+                <div><label for="dLat">Dest. lat</label><input id="dLat" type="text" inputmode="decimal" autocomplete="off"></div>
+                <div><label for="dLng">Dest. lng</label><input id="dLng" type="text" inputmode="decimal" autocomplete="off"></div>
               </div>
-              <button class="btn btn-primary inline" type="submit">Save route points</button>
+              <div class="field-err" id="routeErr" role="alert"></div>
+              <button class="btn btn-primary inline hx-press" type="submit">Save route points</button>
               <p class="hint" id="routeHint"></p>
             </form>
 
@@ -937,11 +989,15 @@
               <div><label for="evLocation">Location</label><input id="evLocation" type="text" maxlength="160" placeholder="Lagos, Nigeria"></div>
               <div><label for="evDate">Date</label><input id="evDate" type="date" required></div>
               <div><label for="evTime">Time</label><input id="evTime" type="time" required></div>
+              <div><label for="evLat">Latitude (optional)</label><input id="evLat" type="text" inputmode="decimal" placeholder="25.2048" autocomplete="off" aria-describedby="evCoordErr"></div>
+              <div><label for="evLng">Longitude (optional)</label><input id="evLng" type="text" inputmode="decimal" placeholder="55.2708" autocomplete="off" aria-describedby="evCoordErr"></div>
               <div class="span2"><label for="evDesc">Description</label><input id="evDesc" type="text" maxlength="600" required placeholder="Shipment departed from processing facility."></div>
             </div>
-            <label style="text-transform:none;letter-spacing:0;display:flex;align-items:center;margin-bottom:12px;"><input type="checkbox" id="evVisible" checked>Visible to client</label>
-            <button class="btn btn-primary inline" type="submit">ADD TRACKING EVENT</button>
-            <p class="hint">Date and time use your browser’s local time zone. Future-dated events are rejected.</p>
+            <div class="field-err" id="evCoordErr" role="alert"></div>
+            <label class="check-row"><input type="checkbox" id="evVisible" checked>Visible to client</label>
+            <label class="check-row"><input type="checkbox" id="evApply" checked><span>Also make this the shipment’s current status and map position <small>(only applied if it is newer than the current information)</small></span></label>
+            <div class="panel-actions"><button class="btn btn-primary inline hx-press" type="submit">ADD TRACKING EVENT</button><button type="button" class="btn-action" id="evNow">Set time to now</button></div>
+            <p class="hint">Date and time use your browser’s local time zone. Future-dated events are rejected. Coordinates are added to the route history shown on the client map.</p>
           </form>
           <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">Event history</h4>
           <ul class="ev-list" id="evList"></ul>
@@ -1066,16 +1122,23 @@
             <input id="courierBrandColorInput" type="text" placeholder="#0ea5e9" required>
           </div>
           <div class="form-group">
-            <label for="courierPhoneInput">Phone *</label>
-            <input id="courierPhoneInput" type="text" placeholder="+1-800-000-0000" required>
+            <label for="courierPhoneInput">Phone</label>
+            <input id="courierPhoneInput" type="text" placeholder="+1-800-000-0000">
           </div>
           <div class="form-group">
-            <label for="courierEmailInput">Email *</label>
-            <input id="courierEmailInput" type="email" placeholder="support@courier.com" required>
+            <label for="courierEmailInput">Email</label>
+            <input id="courierEmailInput" type="email" placeholder="support@courier.com">
           </div>
           <div class="form-group">
-            <label for="courierWebsiteInput">Website *</label>
-            <input id="courierWebsiteInput" type="url" placeholder="https://courier.com" required>
+            <label for="courierWebsiteInput">Website</label>
+            <input id="courierWebsiteInput" type="url" placeholder="https://courier.com">
+          </div>
+          <div class="form-group">
+            <label for="courierTypeInput">Type</label>
+            <select id="courierTypeInput">
+              <option value="carrier">Carrier / postal service</option>
+              <option value="custom">Custom / internal arrangement</option>
+            </select>
           </div>
           <div class="form-group">
             <label for="courierLogoInput">Logo</label>
@@ -1174,6 +1237,8 @@
     let editingCourierId = null;
     let clientAdminTools = null;
 
+    const escapeHtml = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
     function findCourierById(courierId) {
       return activeCouriers.find((courier) => courier.id === courierId) || activeCouriers[0];
     }
@@ -1203,12 +1268,14 @@
         return;
       }
 
-      courierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' + 
-        activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
-      if (shipmentCourierSelect) {
-        shipmentCourierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' +
-          activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
-      }
+      // Grouped: public carriers first, then custom/internal options (e.g. Tesla Transport, which is not an official Tesla service).
+      const opt = (courier) => `<option value="${escapeHtml(courier.id)}">${escapeHtml(courier.name)}${courier.type === "custom" ? " (custom)" : ""}</option>`;
+      const group = (label, list) => (list.length ? `<optgroup label="${label}">${list.map(opt).join("")}</optgroup>` : "");
+      const options = '<option value="">-- Select a Courier --</option>' +
+        group("Carriers", activeCouriers.filter((c) => c.type !== "custom")) + group("Custom / internal", activeCouriers.filter((c) => c.type === "custom"));
+      const keep = [courierSelect.value, shipmentCourierSelect?.value];
+      courierSelect.innerHTML = options; courierSelect.value = keep[0] || "";
+      if (shipmentCourierSelect) { shipmentCourierSelect.innerHTML = options; shipmentCourierSelect.value = keep[1] || ""; }
       
       updateCourierPrefixHint();
     }
@@ -1259,13 +1326,13 @@
             <tbody>
               ${activeCouriers.map((courier) => `
                 <tr>
-                  <td>${courier.name}</td>
-                  <td><span class="courier-chip" style="background: ${courier.brandColor}33; color: ${courier.brandColor};">${courier.prefix}</span></td>
-                  <td>${courier.phone}</td>
-                  <td><a href="${courier.website}" target="_blank" style="color: #3b82f6;">Visit</a></td>
+                  <td>${escapeHtml(courier.name)}${courier.type === "custom" ? '<span class="courier-badge custom" title="Internal/custom carrier option, not an official carrier service">custom</span>' : ""}${courier.builtIn && !courier.stored ? '<span class="courier-badge" title="From the built-in carrier catalog. Edit to save your own details.">built-in</span>' : ""}</td>
+                  <td><span class="courier-chip" style="background: ${escapeHtml(courier.brandColor)}33; color: ${escapeHtml(courier.brandColor)};">${escapeHtml(courier.prefix)}</span></td>
+                  <td>${escapeHtml(courier.phone)}</td>
+                  <td>${/^https?:\/\//.test(courier.website) ? `<a href="${escapeHtml(courier.website)}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6;">Visit</a>` : "—"}</td>
                   <td>
-                    <button class="btn-action" onclick="editCourier('${courier.id}')">Edit</button>
-                    <button class="btn-action btn-danger" onclick="deleteCourier('${courier.id}')">Delete</button>
+                    <button class="btn-action" onclick="editCourier('${escapeHtml(courier.id)}')">Edit</button>
+                    ${courier.stored ? `<button class="btn-action btn-danger" onclick="deleteCourier('${escapeHtml(courier.id)}')">${courier.builtIn ? "Reset" : "Delete"}</button>` : ""}
                   </td>
                 </tr>
               `).join("")}
@@ -1296,9 +1363,11 @@
       document.getElementById("courierNameInput").value = courier.name;
       document.getElementById("courierPrefixInput").value = courier.prefix;
       document.getElementById("courierBrandColorInput").value = courier.brandColor;
-      document.getElementById("courierPhoneInput").value = courier.phone;
-      document.getElementById("courierEmailInput").value = courier.email;
-      document.getElementById("courierWebsiteInput").value = courier.website;
+      const real = (v) => (v && v !== "--" ? v : "");
+      document.getElementById("courierPhoneInput").value = real(courier.phone);
+      document.getElementById("courierEmailInput").value = real(courier.email);
+      document.getElementById("courierWebsiteInput").value = real(courier.website);
+      document.getElementById("courierTypeInput").value = courier.type === "custom" ? "custom" : "carrier";
       document.getElementById("courierLogoInput").value = courier.logo || "";
       document.getElementById("courierApiEndpointInput").value = courier.apiEndpoint || "";
       document.getElementById("courierModalTitle").innerText = "Edit Courier";
@@ -1306,7 +1375,8 @@
     };
 
     window.deleteCourier = function(courierId) {
-      if (confirm("Are you sure you want to delete this courier?")) {
+      const c = activeCouriers.find((x) => x.id === courierId);
+      if (confirm(c?.builtIn ? "Remove your saved details for this courier? It stays available with its built-in details." : "Are you sure you want to delete this courier?")) {
         deleteDoc(doc(db, "couriers", courierId)).then(() => {
           showToast("Courier deleted successfully", "success");
           loadAvailableCouriers(true);
@@ -1328,7 +1398,8 @@
         email: document.getElementById("courierEmailInput").value,
         website: document.getElementById("courierWebsiteInput").value,
         logo: document.getElementById("courierLogoInput").value,
-        apiEndpoint: document.getElementById("courierApiEndpointInput").value
+        apiEndpoint: document.getElementById("courierApiEndpointInput").value,
+        type: document.getElementById("courierTypeInput").value === "custom" ? "custom" : "carrier"
       };
 
       try {

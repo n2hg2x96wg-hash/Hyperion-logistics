@@ -25,6 +25,7 @@ export function createServer({ seed = false } = {}) {
       const file = path.join(root, rel);
       if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.statusCode = 404; return res.end("Not found"); }
       res.setHeader("Content-Type", MIME[path.extname(file)] || "application/octet-stream");
+      if (/^\/(index|track|tracking-enhanced)\.html$/.test(rel)) res.setHeader("Cache-Control", "no-store"); // mirrors vercel.json
       fs.createReadStream(file).pipe(res);
     } catch (err) { console.error(err); res.statusCode = 500; res.end("error"); }
   });

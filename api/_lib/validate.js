@@ -40,6 +40,26 @@ export function parseCoordinate(value, kind, { required = false } = {}) {
   return Math.round(n * 1e6) / 1e6;
 }
 
+/** Both-or-neither coordinate pair. Rejects (0, 0) ("Null Island"), which is almost always a blank form, never a real position. */
+export function parseCoordinatePair(lat, lng, { field = "latitude", required = false } = {}) {
+  const blank = (v) => v === "" || v == null;
+  if (blank(lat) && blank(lng)) {
+    if (required) throw new ValidationError("Latitude and longitude are required", field);
+    return null;
+  }
+  if (blank(lat) !== blank(lng)) throw new ValidationError("Latitude and longitude must be provided together", field);
+  const a = parseCoordinate(lat, "latitude"); const b = parseCoordinate(lng, "longitude");
+  if (a === 0 && b === 0) throw new ValidationError("Coordinates 0, 0 are not a valid shipment position", field);
+  return { lat: a, lng: b };
+}
+
+/** A recorded time: valid, not in the future (5 min clock-skew allowance). */
+export function parsePastTimestamp(value, field = "timestamp") {
+  const iso = parseIsoDateTime(value, field);
+  if (iso && Date.parse(iso) > Date.now() + 5 * 60 * 1000) throw new ValidationError("Time cannot be in the future", field);
+  return iso;
+}
+
 export function parseStatus(value, { required = true } = {}) {
   if (value == null || value === "") {
     if (required) throw new ValidationError("status is required", "status");

@@ -1,0 +1,23 @@
+/* Hyperion motion system. Subtle, GPU-friendly (opacity + transform), plays once per element. */
+html.hx-motion [data-reveal] {
+  transition: opacity .55s ease, transform .6s cubic-bezier(.2, .7, .2, 1);
+  transition-delay: calc(var(--reveal-i, 0) * 55ms);
+}
+html.hx-motion [data-reveal]:not(.is-visible) { opacity: 0; transform: translate3d(0, 18px, 0); }
+html.hx-motion [data-reveal="fade"]:not(.is-visible) { transform: none; }
+html.hx-motion [data-reveal].is-visible { opacity: 1; transform: none; }
+
+/* Interactive feedback: buttons lift slightly on hover and press down on tap. Inputs are never animated. */
+.hx-press { transition: transform .15s ease, box-shadow .2s ease, background-color .2s ease; }
+@media (hover: hover) { .hx-press:hover { transform: translateY(-1px); } }
+.hx-press:active { transform: translateY(0) scale(.98); }
+
+/* Sticky navigation picks up depth once the page scrolls. */
+[data-scroll-nav] { transition: box-shadow .25s ease, background-color .25s ease; }
+[data-scroll-nav].is-scrolled { box-shadow: 0 8px 24px rgba(2, 6, 23, .35); }
+
+@media (prefers-reduced-motion: reduce) {
+  html.hx-motion [data-reveal], [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .hx-press, [data-scroll-nav] { transition: none !important; }
+  .hx-press:hover, .hx-press:active { transform: none !important; }
+}
