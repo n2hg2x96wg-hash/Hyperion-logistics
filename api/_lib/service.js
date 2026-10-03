@@ -443,7 +443,8 @@ export async function dashboardStats() {
       delayed: n(STATUS.DELAYED),
       exceptions: n(STATUS.EXCEPTION),
       cancelled: n(STATUS.CANCELLED),
-      archived: stats.archived
+      archived: stats.archived,
+      unclassified: stats.unmigrated
     },
     byStatus: by,
     needsMigration: stats.unmigrated > 0,

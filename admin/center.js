@@ -102,7 +102,7 @@ export function initControlCenter(host) {
       const t = d.totals;
       const tile = (label, value, cls = "") => `<div class="kpi ${cls}"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div></div>`;
       $("kpiGrid").innerHTML = tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
-        tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived);
+        tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived) + (t.unclassified ? tile("Not yet classified", t.unclassified, "warn") : "");
       $("lastUpdated").textContent = `refreshed ${fmt(d.generatedAt)}`;
       const banner = $("migrationBanner");
       banner.classList.toggle("hidden", !d.needsMigration);

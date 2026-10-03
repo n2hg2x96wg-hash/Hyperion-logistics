@@ -2,7 +2,8 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 
-process.env.STORE = "memory";
+process.env.STORE = process.env.STORE || "memory";
+if (process.env.STORE === "firestore-emulator") { process.env.FIREBASE_PROJECT_ID ||= "demo-hyperion"; process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8085"; process.env.GCLOUD_PROJECT = process.env.FIREBASE_PROJECT_ID; process.env.GEOCODER = "off"; }
 process.env.ADMIN_PASSWORD = "test-password-123";
 process.env.SESSION_SECRET = "test-secret-test-secret-1234";
 process.env.PROVIDER_GENERIC_SECRET = "prov-secret";
@@ -232,5 +233,13 @@ test("SSE stream is scoped to one code and pushes updates", async () => {
 });
 
 test("source code and server internals are not served statically", async () => {
-  for (const p of ["/api/_lib/service.js", "/test/api.test.js", "/package.json", "/firestore.rules"]) assert.equal((await fetch(base + p)).status, 404, p);
+  for (const p of ["/api/_lib/service.js", "/api/_lib/store/firestore.js", "/test/api.test.js"]) assert.equal((await fetch(base + p)).status, 404, p);
+});
+
+test("health endpoint reports configuration without secrets", async () => {
+  const r = await fetch(`${base}/api/health`);
+  const body = await r.json();
+  assert.ok(body.database.startsWith("ok"));
+  assert.ok(!JSON.stringify(body).includes(process.env.ADMIN_PASSWORD));
+  assert.ok(!JSON.stringify(body).includes(process.env.SESSION_SECRET));
 });

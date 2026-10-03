@@ -1,20 +1,26 @@
 // Small helpers shared by all serverless handlers (Vercel-compatible req/res).
 export async function readRawBody(req, limit = 256 * 1024) {
-  if (req.rawBody != null) return req.rawBody;
-  if (req.body != null && typeof req.body === "string") return req.body;
-  if (req.body != null && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return JSON.stringify(req.body);
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > limit) throw Object.assign(new Error("Payload too large"), { status: 413 });
-    chunks.push(chunk);
+  if (req.rawBody != null) return String(req.rawBody);
+  // Read the stream first (never touch Vercel's lazy req.body getter before this, it would consume the stream).
+  if (!req.readableEnded) {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > limit) throw Object.assign(new Error("Payload too large"), { status: 413 });
+      chunks.push(chunk);
+    }
+    req.rawBody = Buffer.concat(chunks).toString("utf8");
+    return req.rawBody;
   }
-  return Buffer.concat(chunks).toString("utf8");
+  const body = req.body;
+  if (body == null) return "";
+  if (typeof body === "string") return body;
+  if (Buffer.isBuffer(body)) return body.toString("utf8");
+  return JSON.stringify(body);
 }
 
 export async function readJson(req) {
-  if (req.body && typeof req.body === "object" && !Buffer.isBuffer(req.body)) return req.body;
   const raw = await readRawBody(req);
   if (!raw) return {};
   try { return JSON.parse(raw); } catch { throw Object.assign(new Error("Invalid JSON"), { status: 400 }); }

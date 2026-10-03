@@ -13,6 +13,7 @@ import { getAuth } from "firebase-admin/auth";
 import { resolveShipmentStatus, STATUS_CODES } from "../../../shared/status.js";
 
 function credentials() {
+  if (process.env.FIRESTORE_EMULATOR_HOST && !process.env.FIREBASE_SERVICE_ACCOUNT) return undefined; // emulator needs no credentials
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) return applicationDefault();
   const text = raw.trim().startsWith("{") ? raw : Buffer.from(raw, "base64").toString("utf8");
@@ -20,7 +21,7 @@ function credentials() {
 }
 
 export function createFirestoreStore() {
-  const app = getApps()[0] || initializeApp({ credential: credentials(), projectId: process.env.FIREBASE_PROJECT_ID || "hyperion-logistics" });
+  const app = getApps()[0] || initializeApp({ ...(credentials() ? { credential: credentials() } : {}), projectId: process.env.FIREBASE_PROJECT_ID || "hyperion-logistics" });
   const db = getFirestore(app);
   try { db.settings({ ignoreUndefinedProperties: true }); } catch { /* already initialised */ }
   const shipments = db.collection("shipments");

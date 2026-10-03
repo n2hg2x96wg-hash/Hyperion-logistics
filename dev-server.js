@@ -34,7 +34,11 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.env.STORE = process.env.STORE || "memory";
   process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "dev-password";
   const port = Number(process.env.PORT) || 3000;
-  if (process.env.STORE === "memory") {
+  if (process.env.STORE === "firestore-emulator") {
+    process.env.FIREBASE_PROJECT_ID ||= "demo-hyperion"; process.env.FIRESTORE_EMULATOR_HOST ||= "127.0.0.1:8085";
+    process.env.GCLOUD_PROJECT = process.env.FIREBASE_PROJECT_ID; process.env.SESSION_SECRET ||= "dev-only-session-secret-change-me";
+  }
+  if (process.env.STORE === "memory" || process.env.STORE === "firestore-emulator") {
     const { __seedDemo } = await import("./test/seed.js");
     await __seedDemo();
   }
