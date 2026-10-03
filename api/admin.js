@@ -12,11 +12,13 @@ import { getStore } from "./_lib/store/index.js";
 import { notificationsConfigured } from "./_lib/notifications.js";
 import { listProviders } from "./_lib/providers/index.js";
 import { resolveMapConfig } from "./_lib/map-config.js";
+import * as couriers from "./_lib/couriers.js";
 
 const PERMISSION = {
   me: "read", logout: "read", stats: "read", list: "read", get: "read", preview: "read", audit: "read", settings: "read",
   create: "write", update: "write", updateLocation: "location", addEvent: "event", setVisibility: "visibility",
-  archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate"
+  archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate",
+  listCouriers: "read", saveCourier: "couriers", setCourierState: "couriers"
 };
 
 export default async function handler(req, res) {
@@ -80,12 +82,19 @@ export default async function handler(req, res) {
       case "unarchive": return send(res, 200, { changed: await svc.setArchived(identity, body.code, false) });
       case "delete": await svc.deleteShipment(identity, body.code); return send(res, 200, { ok: true });
       case "migrate": return send(res, 200, await svc.runBackfill(identity, { cursor: body.cursor || null }));
+      case "listCouriers": return send(res, 200, { couriers: await couriers.listCouriers() });
+      case "saveCourier": return send(res, 200, await couriers.saveCourier(identity, body));
+      case "setCourierState": return send(res, 200, await couriers.setCourierState(identity, body));
       default: return send(res, 400, { error: "unknown_action" });
     }
   } catch (err) {
     if (err instanceof ValidationError) return send(res, 400, { error: "validation", message: err.message, field: err.field });
     if (err instanceof svc.ServiceError) return send(res, err.status, { error: err.code, message: err.message });
     console.error("[admin] failure", action, err?.message);
+    // Database errors are reported by kind (never with internals) so the admin sees what actually failed.
+    const dbCode = String(err?.code ?? "");
+    if (dbCode === "7" || /PERMISSION_DENIED/i.test(dbCode)) return send(res, 500, { error: "db_permission", message: "The database refused the write. Check that FIREBASE_SERVICE_ACCOUNT in Vercel belongs to the hyperion-logistics Firebase project." });
+    if (["4", "14", "DEADLINE_EXCEEDED", "UNAVAILABLE"].includes(dbCode)) return send(res, 503, { error: "db_unavailable", message: "The database did not respond. Please try again in a moment." });
     return send(res, 500, { error: "internal", message: "The request could not be completed." });
   }
 }

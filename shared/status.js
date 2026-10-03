@@ -166,7 +166,7 @@ export function timeAgo(iso, now = Date.now()) {
 
 // Roles / permissions (admin side)
 export const ROLES = Object.freeze({
-  admin:    ["read", "write", "location", "event", "visibility", "archive", "delete", "settings", "migrate"],
+  admin:    ["read", "write", "location", "event", "visibility", "archive", "delete", "settings", "migrate", "couriers"],
   operator: ["read", "write", "location", "event", "visibility", "archive"],
   viewer:   ["read"]
 });
@@ -178,7 +178,7 @@ export function can(role, permission) {
 // "Live" means the system holds a recent, recorded position with coordinates. It never means "the page is open".
 export const LOCATION_WINDOWS = Object.freeze({ liveMs: 30 * 60 * 1000, recentMs: 24 * 60 * 60 * 1000 });
 export const LOCATION_STATE_LABELS = Object.freeze({
-  live: "Live", recent: "Recently updated", last: "Last known location", none: "Location unavailable"
+  live: "Live", recent: "Recently updated", last: "Last known location", none: "Awaiting location update"
 });
 
 /**

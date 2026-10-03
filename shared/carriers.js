@@ -28,10 +28,11 @@ export const CARRIERS = Object.freeze([
   { id: "canadapost", name: "Canada Post", prefix: "CP", logo: "🇨🇦", brandColor: "#ef4444", type: "carrier", website: "https://www.canadapost-postescanada.ca" },
   { id: "auspost", name: "Australia Post", prefix: "AP", logo: "🇦🇺", brandColor: "#dc2626", type: "carrier", website: "https://auspost.com.au" },
   { id: "japanpost", name: "Japan Post", prefix: "JP", logo: "🇯🇵", brandColor: "#b91c1c", type: "carrier", website: "https://www.post.japanpost.jp" },
+  { id: "correios", name: "Correios", prefix: "COR", logo: "🇧🇷", brandColor: "#0057a8", type: "carrier", website: "https://www.correios.com.br" },
   { id: "ems", name: "EMS (Express Mail Service)", prefix: "EMS", logo: "📮", brandColor: "#0369a1", type: "carrier", website: "https://www.ems.post" },
   { id: "tesla-transport", name: "Tesla Transport", prefix: "TSL", logo: "⚡", brandColor: "#64748b", type: "custom",
     note: "Internal/custom carrier option. Not an official Tesla logistics service." }
-].map((c) => Object.freeze({ email: "", apiEndpoint: "", phone: "", website: "", note: "", integration: null, ...c })));
+].map((c) => Object.freeze({ email: "", apiEndpoint: "", phone: "", website: "", trackingUrl: "", region: "", note: "", integration: null, ...c })));
 
 const BY_ID = new Map(CARRIERS.map((c) => [c.id, c]));
 

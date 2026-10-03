@@ -117,6 +117,22 @@ export function createMemoryStore(seed = {}) {
     },
 
     async getCourier(id) { return id ? clone(couriers.get(String(id).toLowerCase())) || null : null; },
+    async listCouriers() { return [...couriers.entries()].map(([docId, c]) => ({ ...clone(c), docId })); },
+    async findCourierDoc(id) {
+      if (!id) return null;
+      const key = String(id).trim();
+      if (couriers.has(key.toLowerCase())) return { ...clone(couriers.get(key.toLowerCase())), docId: key.toLowerCase() };
+      for (const [docId, c] of couriers) if (c.id === key) return { ...clone(c), docId };
+      return null;
+    },
+    async createCourier(docId, data, auditEntry) {
+      if (couriers.has(docId)) throw Object.assign(new Error("exists"), { code: "courier_exists" });
+      couriers.set(docId, clone(data)); if (auditEntry) audit.push(clone(auditEntry));
+    },
+    async updateCourier(docId, patch, auditEntry) {
+      if (!couriers.has(docId)) throw Object.assign(new Error("missing"), { code: "courier_missing" });
+      couriers.set(docId, { ...couriers.get(docId), ...clone(patch) }); if (auditEntry) audit.push(clone(auditEntry));
+    },
     async verifyIdToken() { return null; },
     __dump() { return { shipments, events, locations, audit }; }
   };

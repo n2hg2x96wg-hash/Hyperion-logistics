@@ -22,6 +22,10 @@ function normalizeCourier(courier) {
     contact: { phone, email, website },
     type: courier.type === "custom" ? "custom" : "carrier",
     note: courier.note || "",
+    trackingUrl: courier.trackingUrl || "",
+    region: courier.region || "",
+    active: courier.active !== false && courier.archived !== true,
+    archived: courier.archived === true,
     stored: !!courier.stored,
     builtIn: !!courier.builtIn
   };
@@ -54,6 +58,15 @@ export async function loadCouriers(options = {}) {
     activeCouriers = FALLBACK_COURIERS.map(normalizeCourier);
   }
 
+  COURIERS.length = 0;
+  COURIERS.push(...activeCouriers);
+  couriersLoaded = true;
+  return activeCouriers;
+}
+
+/** Use a courier list loaded elsewhere (the admin page loads it from the server API). */
+export function setCouriers(list = []) {
+  activeCouriers = list.map(normalizeCourier).filter((courier) => courier.id);
   COURIERS.length = 0;
   COURIERS.push(...activeCouriers);
   couriersLoaded = true;

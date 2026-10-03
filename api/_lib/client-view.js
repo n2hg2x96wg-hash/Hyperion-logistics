@@ -132,6 +132,9 @@ export function buildClientView({ shipment, events = [], locations = [], courier
       serviceType: shipment.serviceType ? String(shipment.serviceType).slice(0, 80) : null,
       phone: courier?.phone && courier.phone !== "--" ? courier.phone : null,
       website: courier?.website && /^https?:\/\//i.test(courier.website) && !/\.example(\/|$)/i.test(courier.website) ? courier.website : null,
+      // Carrier tracking link only when the admin configured a tracking URL AND the shipment has a carrier reference.
+      trackingUrl: courier?.trackingUrl && /^https:\/\/[^\s]+\{code\}/i.test(courier.trackingUrl) && shipment.courierTrackingNumber
+        ? courier.trackingUrl.replace("{code}", encodeURIComponent(String(shipment.courierTrackingNumber).slice(0, 80))) : null,
       // Custom/internal carriers (e.g. "Tesla Transport") are labelled so they are never mistaken for an official service.
       custom: courier?.type === "custom"
     };
