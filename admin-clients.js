@@ -1,18 +1,11 @@
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-const CLIENT_APP_NAME = "hyperion-client-provisioner";
+// Admin → Clients (registered client portfolio accounts).
+// Every read and write goes through the authenticated server API (/api/admin → api/_lib/clients.js). The browser
+// previously wrote Firestore directly, which the security rules reject because the browser has no Firebase
+// admin sign-in. Deletion is permanent, keyed by the client's uid, and needs a typed "DELETE" confirmation.
 
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-async function hashPassword(value) {
-  const encoded = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function safeText(value = "") {
@@ -24,24 +17,28 @@ function safeText(value = "") {
     .replace(/'/g, "&#039;");
 }
 
-export function setupAdminClients({ db, firebaseConfig, showToast }) {
-  const form = document.getElementById("clientForm");
-  const table = document.getElementById("clientsTableBody");
-  const title = document.getElementById("clientFormTitle");
-  const submitBtn = document.getElementById("clientSubmitText");
-  const cancelBtn = document.getElementById("clientCancelEdit");
-  const exportBtn = document.getElementById("exportClientsBtn");
-  const stats = document.getElementById("clientsSummary");
+const fmtDate = (iso) => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(+d) ? "—" : d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); };
+const fmtDateTime = (iso) => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(+d) ? "—" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
 
-  let unsubscribeClients = null;
+export function setupAdminClients({ api, showToast }) {
+  const $ = (id) => document.getElementById(id);
+  const form = $("clientForm");
+  const table = $("clientsTableBody");
+  const title = $("clientFormTitle");
+  const submitBtn = $("clientSubmitText");
+  const cancelBtn = $("clientCancelEdit");
+  const exportBtn = $("exportClientsBtn");
+  const stats = $("clientsSummary");
+
   let editingClientId = null;
   let clients = [];
+  let policy = null;
   let prices = { xrp: 0, tsla: 0 };
+  let loading = false;
+  let deleting = null; // client being deleted (prevents duplicate requests)
 
-  function getProvisionerAuth() {
-    const provisionerApp = getApps().find((app) => app.name === CLIENT_APP_NAME) || initializeApp(firebaseConfig, CLIENT_APP_NAME);
-    return getAuth(provisionerApp);
-  }
+  const statusOption = $("clientStatus");
+  if (statusOption) { statusOption.options[0].textContent = "Active"; statusOption.options[1].textContent = "Deactivated"; }
 
   function calculatePortfolioValue(client) {
     const holdings = client.portfolios || {};
@@ -50,70 +47,96 @@ export function setupAdminClients({ db, firebaseConfig, showToast }) {
 
   function renderSummary() {
     const activeCount = clients.filter((client) => client.status === "active").length;
-    const inactiveCount = clients.length - activeCount;
     const totalValue = clients.reduce((acc, client) => acc + calculatePortfolioValue(client), 0);
-
     stats.innerHTML = `
       <div class="courier-stat"><span>Total Clients</span><strong>${clients.length}</strong></div>
       <div class="courier-stat"><span>Active</span><strong>${activeCount}</strong></div>
-      <div class="courier-stat"><span>Inactive</span><strong>${inactiveCount}</strong></div>
+      <div class="courier-stat"><span>Deactivated</span><strong>${clients.length - activeCount}</strong></div>
       <div class="courier-stat"><span>Portfolio Value</span><strong>$${totalValue.toFixed(2)}</strong></div>
     `;
   }
 
+  function visibleClients() {
+    const q = ($("clientSearch")?.value || "").trim().toLowerCase();
+    const st = $("clientStatusFilter")?.value || "all";
+    const sort = $("clientSort")?.value || "registered-desc";
+    const rows = clients.filter((c) => (st === "all" || c.status === st) && (!q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)));
+    const t = (c) => (c.registeredAt ? Date.parse(c.registeredAt) : 0);
+    rows.sort(sort === "name-asc" ? (a, b) => a.name.localeCompare(b.name) : sort === "registered-asc" ? (a, b) => t(a) - t(b) : (a, b) => t(b) - t(a));
+    return rows;
+  }
+
   function renderClients() {
-    if (!clients.length) {
-      table.innerHTML = '<tr><td colspan="8" class="empty-row">No clients created yet.</td></tr>';
-      renderSummary();
+    renderSummary();
+    const rows = visibleClients();
+    if (!rows.length) {
+      table.innerHTML = '<tr><td colspan="8" class="empty-row">No registered clients found.</td></tr>';
       return;
     }
-
-    table.innerHTML = clients.map((client) => {
-      const value = calculatePortfolioValue(client);
-      const statusClass = client.status === "active" ? "positive" : "negative";
+    table.innerHTML = rows.map((client) => {
+      const id = safeText(client.id);
+      const active = client.status === "active";
       return `
-        <tr>
-          <td>${safeText(client.name || "--")}</td>
-          <td>${safeText(client.email || "--")}</td>
-          <td><span class="status-badge ${statusClass}">${safeText(client.status || "inactive")}</span></td>
-          <td>${toNumber(client.portfolios?.xrp_holdings).toFixed(4)}</td>
-          <td>${toNumber(client.portfolios?.tsla_holdings).toFixed(4)}</td>
-          <td>$${value.toFixed(2)}</td>
-          <td>XRP: ${toNumber(client.restrictions?.max_xrp).toFixed(2)}<br>TSLA: ${toNumber(client.restrictions?.max_tsla).toFixed(2)}</td>
-          <td>
+        <tr data-client="${id}">
+          <td class="client-name" data-label="Name">${safeText(client.name || "--")}</td>
+          <td data-label="Email">${safeText(client.email || "--")}</td>
+          <td data-label="Registered">${safeText(fmtDate(client.registeredAt))}</td>
+          <td data-label="Status"><span class="client-state ${active ? "active" : "inactive"}">${active ? "Active" : "Deactivated"}</span></td>
+          <td data-label="Shipments"><span title="Shipments are not linked to client accounts in the current data model">Not linked</span></td>
+          <td data-label="Last activity">${safeText(fmtDateTime(client.lastActivityAt))}</td>
+          <td data-label="Portfolio">$${calculatePortfolioValue(client).toFixed(2)}</td>
+          <td data-label="Actions">
             <div class="courier-actions">
-              <button class="btn-action" data-action="quick" data-id="${safeText(client.id)}">Quick Edit</button>
-              <button class="btn-action" data-action="toggle" data-id="${safeText(client.id)}">${client.status === "active" ? "Disable" : "Enable"}</button>
-              <button class="btn-action" data-action="edit" data-id="${safeText(client.id)}">Edit</button>
-              <button class="btn-action btn-danger" data-action="delete" data-id="${safeText(client.id)}">Delete</button>
+              <button type="button" class="btn-action" data-action="view" data-id="${id}">View</button>
+              <button type="button" class="btn-action" data-action="edit" data-id="${id}">Edit</button>
+              <button type="button" class="btn-action" data-action="quick" data-id="${id}">Quick Edit</button>
+              <button type="button" class="btn-action" data-action="toggle" data-id="${id}">${active ? "Deactivate" : "Restore"}</button>
+              <button type="button" class="btn-action btn-delete-client" data-action="delete" data-id="${id}">Delete client</button>
             </div>
           </td>
-        </tr>
-      `;
+        </tr>`;
     }).join("");
+  }
 
-    renderSummary();
+  async function loadClients({ quiet = false } = {}) {
+    if (loading) return;
+    loading = true;
+    if (!clients.length) table.innerHTML = '<tr><td colspan="8" class="empty-row">Loading clients...</td></tr>';
+    try {
+      await refreshPrices();
+      const res = await api("listClients");
+      clients = res.clients || [];
+      policy = res.deletionPolicy || policy;
+      renderClients();
+    } catch (error) {
+      if (error.silent) return;
+      console.error("[clients] load failed", error.code || "", error.message);
+      table.innerHTML = `<tr><td colspan="8" class="empty-row">Client accounts could not be loaded: ${safeText(error.message)}</td></tr>`;
+      stats.innerHTML = "";
+      if (!quiet) showToast(`Couldn't load clients: ${error.message}`, "error");
+    } finally {
+      loading = false;
+    }
   }
 
   function loadClientToForm(clientId) {
     const selected = clients.find((client) => client.id === clientId);
     if (!selected) return;
-
     editingClientId = selected.id;
-    title.innerText = "Edit Client";
+    title.innerText = `Edit Client: ${selected.name || selected.email}`;
     submitBtn.innerText = "Update Client";
     cancelBtn.style.display = "inline-flex";
-
-    document.getElementById("clientName").value = selected.name || "";
-    document.getElementById("clientEmail").value = selected.email || "";
-    document.getElementById("clientPassword").value = "";
-    document.getElementById("clientStatus").value = selected.status || "active";
-    document.getElementById("clientXrpHoldings").value = toNumber(selected.portfolios?.xrp_holdings);
-    document.getElementById("clientTslaHoldings").value = toNumber(selected.portfolios?.tsla_holdings);
-    document.getElementById("clientMaxXrp").value = toNumber(selected.restrictions?.max_xrp);
-    document.getElementById("clientMaxTsla").value = toNumber(selected.restrictions?.max_tsla);
-
-    document.getElementById("clientEmail").readOnly = true;
+    $("clientName").value = selected.name || "";
+    $("clientEmail").value = selected.email || "";
+    $("clientPassword").value = "";
+    $("clientPassword").placeholder = "New password (leave blank to keep)";
+    $("clientStatus").value = selected.status || "active";
+    $("clientXrpHoldings").value = toNumber(selected.portfolios?.xrp_holdings);
+    $("clientTslaHoldings").value = toNumber(selected.portfolios?.tsla_holdings);
+    $("clientMaxXrp").value = toNumber(selected.restrictions?.max_xrp);
+    $("clientMaxTsla").value = toNumber(selected.restrictions?.max_tsla);
+    $("clientEmail").readOnly = true;
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function resetForm() {
@@ -122,216 +145,180 @@ export function setupAdminClients({ db, firebaseConfig, showToast }) {
     title.innerText = "Create Client";
     submitBtn.innerText = "Save Client";
     cancelBtn.style.display = "none";
-    document.getElementById("clientEmail").readOnly = false;
-    document.getElementById("clientStatus").value = "active";
-  }
-
-  async function persistHistory(clientId, payload) {
-    const dateKey = new Date().toISOString().slice(0, 10);
-    const xrpHoldings = toNumber(payload.portfolios?.xrp_holdings);
-    const tslaHoldings = toNumber(payload.portfolios?.tsla_holdings);
-    const xrpValue = xrpHoldings * prices.xrp;
-    const tslaValue = tslaHoldings * prices.tsla;
-    await setDoc(doc(db, "portfolio_history", clientId, "history", dateKey), {
-      xrp_value: xrpValue,
-      tsla_value: tslaValue,
-      total_value: xrpValue + tslaValue,
-      timestamp: serverTimestamp()
-    }, { merge: true });
+    $("clientEmail").readOnly = false;
+    $("clientPassword").placeholder = "Password (required for new)";
+    $("clientStatus").value = "active";
   }
 
   async function refreshPrices() {
     try {
       const market = await window.HyperionInvestmentApi?.getMarketSnapshot?.();
-      if (market?.xrp?.price && market?.tsla?.price) {
-        prices = { xrp: market.xrp.price, tsla: market.tsla.price };
-      }
+      if (market?.xrp?.price && market?.tsla?.price) prices = { xrp: market.xrp.price, tsla: market.tsla.price };
     } catch (error) {
       console.error("Unable to refresh market prices for clients", error);
     }
   }
 
+  const historyFor = (xrp, tsla) => (prices.xrp || prices.tsla ? { xrp_value: xrp * prices.xrp, tsla_value: tsla * prices.tsla } : undefined);
+
   async function saveClient(event) {
     event.preventDefault();
-
-    const email = document.getElementById("clientEmail").value.trim().toLowerCase();
-    const name = document.getElementById("clientName").value.trim();
-    const password = document.getElementById("clientPassword").value;
-    const status = document.getElementById("clientStatus").value;
-    const xrpHoldings = toNumber(document.getElementById("clientXrpHoldings").value);
-    const tslaHoldings = toNumber(document.getElementById("clientTslaHoldings").value);
-    const maxXrp = toNumber(document.getElementById("clientMaxXrp").value);
-    const maxTsla = toNumber(document.getElementById("clientMaxTsla").value);
-
-    if (!email || !name) {
-      showToast("Client name and email are required", "error");
-      return;
-    }
-
-    if (!editingClientId && !password) {
-      showToast("Password is required for new clients", "error");
-      return;
-    }
-
+    const client = {
+      name: $("clientName").value.trim(), email: $("clientEmail").value.trim().toLowerCase(), password: $("clientPassword").value,
+      status: $("clientStatus").value, xrp_holdings: toNumber($("clientXrpHoldings").value), tsla_holdings: toNumber($("clientTslaHoldings").value),
+      max_xrp: toNumber($("clientMaxXrp").value), max_tsla: toNumber($("clientMaxTsla").value)
+    };
+    if (!client.name || (!editingClientId && !client.email)) { showToast("Client name and email are required", "error"); return; }
+    if (!editingClientId && !client.password) { showToast("Password is required for new clients", "error"); return; }
+    const btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
     try {
       await refreshPrices();
-      let clientId = editingClientId;
-      const currentClient = clients.find((client) => client.id === editingClientId);
-
-      if (!clientId) {
-        const provisionerAuth = getProvisionerAuth();
-        const credential = await createUserWithEmailAndPassword(provisionerAuth, email, password);
-        clientId = credential.user.uid;
-        await signOut(provisionerAuth);
-      }
-
-      const payload = {
-        email,
-        name,
-        status,
-        portfolios: {
-          xrp_holdings: xrpHoldings,
-          tsla_holdings: tslaHoldings,
-          last_updated: serverTimestamp()
-        },
-        restrictions: {
-          max_xrp: maxXrp,
-          max_tsla: maxTsla
-        },
-        updated_at: serverTimestamp(),
-        created_at: currentClient?.created_at || serverTimestamp(),
-        password_hash: password ? await hashPassword(password) : (currentClient?.password_hash || "managed-by-firebase-auth")
-      };
-
-      await setDoc(doc(db, "clients", clientId), payload, { merge: true });
-      await persistHistory(clientId, payload);
-
-      showToast(editingClientId ? "✅ Client updated" : "✅ Client created", "success");
+      const res = await api("saveClient", editingClientId
+        ? { mode: "update", id: editingClientId, client, history: historyFor(client.xrp_holdings, client.tsla_holdings) }
+        : { mode: "create", client, history: historyFor(client.xrp_holdings, client.tsla_holdings) });
+      showToast(res.message || "Client saved.", "success");
       resetForm();
+      await loadClients({ quiet: true });
     } catch (error) {
-      console.error(error);
-      showToast(`Client save failed: ${error.message}`, "error");
+      if (!error.silent) showToast(`Client save failed: ${error.message}`, "error");
+    } finally {
+      btn.disabled = false;
     }
   }
 
   async function quickEdit(clientId) {
     const selected = clients.find((client) => client.id === clientId);
     if (!selected) return;
-
     const xrpInput = prompt("Update XRP holdings", toNumber(selected.portfolios?.xrp_holdings));
     const tslaInput = prompt("Update TSLA holdings", toNumber(selected.portfolios?.tsla_holdings));
     if (xrpInput === null || tslaInput === null) return;
-
-    const xrpHoldings = toNumber(xrpInput);
-    const tslaHoldings = toNumber(tslaInput);
+    const xrp = toNumber(xrpInput); const tsla = toNumber(tslaInput);
     try {
-      await setDoc(doc(db, "clients", clientId), {
-        portfolios: {
-          xrp_holdings: xrpHoldings,
-          tsla_holdings: tslaHoldings,
-          last_updated: serverTimestamp()
-        },
-        updated_at: serverTimestamp()
-      }, { merge: true });
-      await persistHistory(clientId, {
-        portfolios: { xrp_holdings: xrpHoldings, tsla_holdings: tslaHoldings }
-      });
+      await refreshPrices();
+      await api("saveClient", { mode: "update", id: clientId, history: historyFor(xrp, tsla), client: {
+        name: selected.name, status: selected.status, xrp_holdings: xrp, tsla_holdings: tsla,
+        max_xrp: selected.restrictions?.max_xrp, max_tsla: selected.restrictions?.max_tsla } });
       showToast("✅ Holdings updated", "success");
+      await loadClients({ quiet: true });
     } catch (error) {
-      console.error(error);
-      showToast("Unable to update holdings", "error");
+      if (!error.silent) showToast(`Unable to update holdings: ${error.message}`, "error");
     }
   }
 
   async function toggleStatus(clientId) {
     const selected = clients.find((client) => client.id === clientId);
     if (!selected) return;
-    const nextStatus = selected.status === "active" ? "inactive" : "active";
+    const next = selected.status === "active" ? "inactive" : "active";
+    if (next === "inactive" && !confirm(`Deactivate ${selected.name || selected.email}? They will be signed out and unable to sign in until restored. Nothing is deleted.`)) return;
     try {
-      await setDoc(doc(db, "clients", clientId), { status: nextStatus, updated_at: serverTimestamp() }, { merge: true });
-      showToast(`✅ Client ${nextStatus}`, "success");
+      const res = await api("setClientStatus", { id: clientId, status: next });
+      showToast(res.message, "success");
+      await loadClients({ quiet: true });
     } catch (error) {
-      console.error(error);
-      showToast("Unable to update status", "error");
+      if (!error.silent) showToast(`Unable to update status: ${error.message}`, "error");
     }
   }
 
-  async function removeClient(clientId) {
-    if (!confirm("Delete this client? This removes profile and portfolio data.")) return;
-    try {
-      await deleteDoc(doc(db, "clients", clientId));
-      showToast("✅ Client deleted", "success");
-    } catch (error) {
-      console.error(error);
-      showToast("Unable to delete client", "error");
-    }
+  // ---------- view ----------
+  function openModal(id) { $(id).classList.add("show"); }
+  function closeModal(id) { $(id).classList.remove("show"); }
+  document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeModal(b.dataset.close)));
+
+  function viewClient(clientId) {
+    const c = clients.find((x) => x.id === clientId);
+    if (!c) return;
+    $("clientViewTitle").textContent = c.name || c.email;
+    const rows = [
+      ["Email", c.email], ["Status", c.status === "active" ? "Active" : "Deactivated (cannot sign in)"],
+      ["Registered", fmtDateTime(c.registeredAt)], ["Last activity", fmtDateTime(c.lastActivityAt)], ["Last sign-in", fmtDateTime(c.lastSignInAt)],
+      ["Sign-in account", c.hasSignIn ? (c.signInDisabled ? "Exists (disabled)" : "Exists (enabled)") : "Not found"],
+      ["XRP holdings", toNumber(c.portfolios?.xrp_holdings).toFixed(4)], ["TSLA holdings", toNumber(c.portfolios?.tsla_holdings).toFixed(4)],
+      ["Limits", `XRP ${toNumber(c.restrictions?.max_xrp).toFixed(2)} · TSLA ${toNumber(c.restrictions?.max_tsla).toFixed(2)}`],
+      ["Portfolio value", `$${calculatePortfolioValue(c).toFixed(2)}`], ["Shipments", "Not linked to client accounts"], ["Client ID", c.id]
+    ];
+    $("clientViewBody").innerHTML = rows.map(([k, v]) => `<dt>${safeText(k)}</dt><dd>${safeText(v)}</dd>`).join("");
+    openModal("clientViewModal");
   }
+
+  // ---------- permanent delete ----------
+  const confirmInput = $("clientDeleteConfirm");
+  const goBtn = $("clientDeleteGo");
+  const errBox = $("clientDeleteErr");
+  function openDelete(clientId) {
+    const c = clients.find((x) => x.id === clientId);
+    if (!c) return;
+    deleting = { id: c.id, email: c.email, busy: false };
+    $("clientDeleteWho").textContent = `${c.name || "Unnamed client"} · ${c.email}`;
+    const p = policy || { removes: ["The client's sign-in account", "The client profile", "The client's portfolio history"], keeps: ["All shipments and tracking records"] };
+    $("clientDeleteRemoves").innerHTML = p.removes.map((x) => `<li>${safeText(x)}</li>`).join("");
+    $("clientDeleteKeeps").innerHTML = p.keeps.map((x) => `<li>${safeText(x)}</li>`).join("");
+    confirmInput.value = ""; goBtn.disabled = true; goBtn.textContent = "Delete permanently"; errBox.hidden = true;
+    $("clientDeleteCancel").disabled = false;
+    openModal("clientDeleteModal");
+    setTimeout(() => confirmInput.focus(), 50);
+  }
+  function closeDelete() { if (deleting?.busy) return; deleting = null; closeModal("clientDeleteModal"); }
+  confirmInput.addEventListener("input", () => { goBtn.disabled = confirmInput.value.trim() !== "DELETE" || !!deleting?.busy; });
+  $("clientDeleteCancel").addEventListener("click", closeDelete);
+  $("clientDeleteModal").addEventListener("click", (e) => { if (e.target.id === "clientDeleteModal") closeDelete(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("clientDeleteModal").classList.contains("show")) closeDelete(); });
+
+  goBtn.addEventListener("click", async () => {
+    if (!deleting || deleting.busy || confirmInput.value.trim() !== "DELETE") return;
+    deleting.busy = true;
+    goBtn.disabled = true; goBtn.textContent = "Deleting client…"; $("clientDeleteCancel").disabled = true; errBox.hidden = true;
+    try {
+      const res = await api("deleteClient", { id: deleting.id, confirm: "DELETE", expectEmail: deleting.email });
+      deleting.busy = false; closeDelete();
+      if (editingClientId === res?.id) resetForm();
+      showToast(res.partial ? res.message : "Client deleted successfully.", res.partial ? "error" : "success");
+      await loadClients({ quiet: true });
+    } catch (error) {
+      deleting.busy = false;
+      if (error.silent) { closeDelete(); return; }
+      console.error("[clients] delete failed", error.code || "", error.status || "", error.message);
+      const msg = error.status === 404 ? error.message : error.code === "network" ? "Unable to delete client. No client data was removed. Check your connection and try again." : "Unable to delete client. No client data was removed.";
+      errBox.textContent = msg + (error.status && error.status !== 500 && error.status !== 404 ? ` (${error.message})` : "");
+      errBox.hidden = false;
+      goBtn.textContent = "Delete permanently"; goBtn.disabled = confirmInput.value.trim() !== "DELETE"; $("clientDeleteCancel").disabled = false;
+      showToast(msg, "error");
+      if (error.status === 404) await loadClients({ quiet: true });
+    }
+  });
 
   function exportClients() {
-    if (!clients.length) {
-      showToast("No clients to export", "error");
-      return;
-    }
+    if (!clients.length) { showToast("No clients to export", "error"); return; }
+    const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const csv = [
-      "Client ID,Name,Email,Status,XRP Holdings,TSLA Holdings,Max XRP,Max TSLA,Portfolio Value",
-      ...clients.map((client) => [
-        client.id,
-        client.name,
-        client.email,
-        client.status,
-        toNumber(client.portfolios?.xrp_holdings),
-        toNumber(client.portfolios?.tsla_holdings),
-        toNumber(client.restrictions?.max_xrp),
-        toNumber(client.restrictions?.max_tsla),
-        calculatePortfolioValue(client).toFixed(2)
-      ].join(","))
+      "Client ID,Name,Email,Status,Registered,Last activity,XRP Holdings,TSLA Holdings,Max XRP,Max TSLA,Portfolio Value",
+      ...clients.map((c) => [c.id, c.name, c.email, c.status, c.registeredAt || "", c.lastActivityAt || "", toNumber(c.portfolios?.xrp_holdings), toNumber(c.portfolios?.tsla_holdings),
+        toNumber(c.restrictions?.max_xrp), toNumber(c.restrictions?.max_tsla), calculatePortfolioValue(c).toFixed(2)].map(cell).join(","))
     ].join("\n");
-
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.download = "clients-export.csv";
-    link.click();
+    link.href = url; link.download = "clients-export.csv"; link.click();
     URL.revokeObjectURL(url);
   }
 
   table.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-action]");
     if (!button) return;
-    const action = button.dataset.action;
-    const id = button.dataset.id;
-
+    const { action, id } = button.dataset;
+    if (action === "view") viewClient(id);
     if (action === "edit") loadClientToForm(id);
     if (action === "quick") await quickEdit(id);
     if (action === "toggle") await toggleStatus(id);
-    if (action === "delete") await removeClient(id);
+    if (action === "delete") openDelete(id);
   });
+  ["clientSearch", "clientSort", "clientStatusFilter"].forEach((id) => $(id)?.addEventListener("input", renderClients));
+  $("clientRefresh")?.addEventListener("click", () => loadClients());
 
   form.addEventListener("submit", saveClient);
   cancelBtn.addEventListener("click", resetForm);
   exportBtn.addEventListener("click", exportClients);
 
-  async function loadClientsRealtime() {
-    await refreshPrices();
-    if (unsubscribeClients) unsubscribeClients();
-    unsubscribeClients = onSnapshot(collection(db, "clients"), (snapshot) => {
-      clients = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-      clients.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-      renderClients();
-    }, (error) => {
-      console.error(error);
-      const denied = error && (error.code === "permission-denied" || /permission/i.test(error.message || ""));
-      table.innerHTML = `<tr><td colspan="8" class="empty-row">${denied
-        ? "Client accounts can't be loaded: the Firestore rules only allow this for a Firebase admin sign-in. Shipments are not affected."
-        : "Client accounts could not be loaded right now. Please try again later."}</td></tr>`;
-      if (stats) stats.innerHTML = "";
-    });
-  }
+  loadClients();
 
-  loadClientsRealtime();
-
-  return {
-    refreshClients: loadClientsRealtime
-  };
+  return { refreshClients: () => loadClients({ quiet: true }) };
 }

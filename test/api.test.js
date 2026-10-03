@@ -409,3 +409,83 @@ test("couriers: server-side create, edit, duplicate checks, enable/disable/archi
   assert.equal(view.carrier.trackingUrl, "https://acme.test/track?n=AB%2012%2F3");
   assert.ok(!JSON.stringify(view).includes("docId"));
 });
+
+test("clients: admin-only list, deactivate/restore, permanent delete scoped to one uid (shipments untouched)", async () => {
+  const { getStore } = await import("../api/_lib/store/index.js");
+  const store = await getStore();
+  const before = structuredClone({ shipments: [...store.__dump().shipments.entries()], couriers: [...store.__dump().couriers.entries()] });
+
+  // 4/5/7. Unauthorized callers: no session, forged cookie, and a signed-in CLIENT's Firebase token (no admin claim).
+  for (const opts of [{ auth: false }, { auth: false, headers: { Cookie: "hx_admin=forged.value" } }, { auth: false, headers: { Authorization: "Bearer client-a-token" } }]) {
+    for (const action of ["listClients", "deleteClient", "setClientStatus", "saveClient"]) {
+      const r = await admin({ action, id: "uidClientBbbb", confirm: "DELETE", status: "inactive" }, opts);
+      assert.equal(r.status, 401, `${action} must be refused without admin`);
+    }
+  }
+  assert.ok(store.__dump().clients.has("uidClientBbbb"), "client B survives unauthorized attempts");
+
+  // 1. Admin can view registered clients (no password hashes).
+  let r = await admin({ action: "listClients" });
+  assert.equal(r.status, 200);
+  const ada = r.json.clients.find((c) => c.id === "uidClientAaaa");
+  assert.equal(ada.email, "ada@client.test"); assert.equal(ada.registeredAt, "2026-08-01T10:00:00.000Z"); assert.equal(ada.lastActivityAt, "2026-09-30T09:00:00.000Z");
+  assert.equal(ada.shipments.linked, false);
+  assert.ok(!JSON.stringify(r.json).includes("legacy-hash"), "password hashes are never returned");
+  assert.ok(r.json.deletionPolicy.keeps.some((k) => /shipments/i.test(k)));
+
+  // Deactivate blocks sign-in; restore re-enables it.
+  r = await admin({ action: "setClientStatus", id: "uidClientAaaa", status: "inactive" }); assert.equal(r.status, 200);
+  assert.equal(store.__clientSignIn("ada@client.test", "ada-pass-1").error, "auth/user-disabled");
+  r = await admin({ action: "setClientStatus", id: "uidClientAaaa", status: "active" }); assert.equal(r.status, 200);
+  assert.equal(store.__clientSignIn("ada@client.test", "ada-pass-1").uid, "uidClientAaaa");
+
+  // 3/13. Delete requires the typed confirmation.
+  r = await admin({ action: "deleteClient", id: "uidClientAaaa" });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "confirm");
+  r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "delete" });
+  assert.equal(r.status, 400);
+  assert.ok(store.__dump().clients.has("uidClientAaaa"));
+
+  // 11. A failed deletion leaves the client fully intact and able to sign in.
+  store.__fault("clientDeleteBatch");
+  r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE" });
+  store.__fault("clientDeleteBatch", false);
+  assert.equal(r.status, 500); assert.equal(r.json.message, "Unable to delete client. No client data was removed.");
+  assert.ok(store.__dump().clients.has("uidClientAaaa")); assert.equal(store.__dump().portfolioHistory.get("uidClientAaaa").size, 2);
+  assert.equal(store.__clientSignIn("ada@client.test", "ada-pass-1").uid, "uidClientAaaa", "auth account re-enabled after failure");
+
+  // Email/name are not deletion keys: unknown uid => not found, nothing removed.
+  r = await admin({ action: "deleteClient", id: "ada@client.test", confirm: "DELETE" });
+  assert.equal(r.status, 400);
+
+  // 2/6/7/8/9. Delete client A permanently.
+  r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE", expectEmail: "ada@client.test" });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.equal(r.json.message, "Client deleted successfully.");
+  const d = store.__dump();
+  assert.ok(!d.clients.has("uidClientAaaa")); assert.ok(!d.portfolioHistory.has("uidClientAaaa")); assert.ok(!d.authUsers.has("uidClientAaaa"));
+  assert.equal(store.__clientSignIn("ada@client.test", "ada-pass-1").error, "auth/user-not-found", "deleted client cannot sign in");
+  assert.ok(d.clients.has("uidClientBbbb") && d.authUsers.has("uidClientBbbb") && d.portfolioHistory.get("uidClientBbbb").size === 1, "client B untouched");
+  assert.deepEqual([...d.shipments.entries()].map(([k]) => k).sort(), before.shipments.map(([k]) => k).sort(), "no shipment removed");
+  for (const [k, v] of before.shipments) assert.deepEqual(d.shipments.get(k), v, `shipment ${k} unchanged`);
+  assert.deepEqual([...d.couriers.entries()], before.couriers, "couriers unchanged");
+  const entry = d.audit.find((a) => a.action === "client.deleted");
+  assert.equal(entry.client, "uidClientAaaa"); assert.equal(entry.email, "ada@client.test"); assert.equal(entry.result, "success"); assert.ok(entry.actor && entry.at);
+  assert.ok(d.audit.some((a) => a.action === "client.delete_failed" && a.result === "failed"));
+
+  // 10. List reflects the deletion; deleting again is a clean not-found.
+  r = await admin({ action: "listClients" });
+  assert.deepEqual(r.json.clients.map((c) => c.id), ["uidClientBbbb"]);
+  r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE" }); assert.equal(r.status, 404);
+
+  // 12/13. Tracking and admin functions still work.
+  assert.equal((await track("DHL-12345")).status, 200);
+  assert.equal((await admin({ action: "stats" })).status, 200);
+
+  // Create + edit through the server (email fixed, duplicate prevented).
+  r = await admin({ action: "saveClient", mode: "create", client: { name: "Cara", email: "cara@client.test", password: "cara-pass-1", xrp_holdings: 2 } });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.equal(r.json.message, "Client created successfully.");
+  r = await admin({ action: "saveClient", mode: "create", client: { name: "Dup", email: "ben@client.test", password: "x-pass-12" } });
+  assert.equal(r.status, 409);
+  r = await admin({ action: "saveClient", mode: "update", id: "uidClientBbbb", client: { name: "Ben C.", status: "active", xrp_holdings: 4 } });
+  assert.equal(r.status, 200); assert.equal(store.__dump().clients.get("uidClientBbbb").email, "ben@client.test");
+});

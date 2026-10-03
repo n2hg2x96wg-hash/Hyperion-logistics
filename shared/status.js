@@ -166,7 +166,7 @@ export function timeAgo(iso, now = Date.now()) {
 
 // Roles / permissions (admin side)
 export const ROLES = Object.freeze({
-  admin:    ["read", "write", "location", "event", "visibility", "archive", "delete", "settings", "migrate", "couriers"],
+  admin:    ["read", "write", "location", "event", "visibility", "archive", "delete", "settings", "migrate", "couriers", "clients"],
   operator: ["read", "write", "location", "event", "visibility", "archive"],
   viewer:   ["read"]
 });

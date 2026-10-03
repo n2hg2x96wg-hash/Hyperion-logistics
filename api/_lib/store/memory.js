@@ -13,6 +13,11 @@ export function createMemoryStore(seed = {}) {
   const audit = [];
   const notified = new Set();
   const couriers = new Map(Object.entries(seed.couriers || {}));
+  const clients = new Map(Object.entries(seed.clients || {}).map(([k, v]) => [k, clone(v)]));
+  const portfolioHistory = new Map(Object.entries(seed.portfolioHistory || {}).map(([k, v]) => [k, new Map(Object.entries(clone(v)))]));
+  const authUsers = new Map(Object.entries(seed.authUsers || {}).map(([k, v]) => [k, clone(v)]));
+  const idTokens = new Map(Object.entries(seed.idTokens || {}));
+  const faults = new Set(); // test hook: simulate failures ("clientDeleteBatch")
   const bus = new EventEmitter();
   bus.setMaxListeners(0);
 
@@ -133,7 +138,57 @@ export function createMemoryStore(seed = {}) {
       if (!couriers.has(docId)) throw Object.assign(new Error("missing"), { code: "courier_missing" });
       couriers.set(docId, { ...couriers.get(docId), ...clone(patch) }); if (auditEntry) audit.push(clone(auditEntry));
     },
-    async verifyIdToken() { return null; },
-    __dump() { return { shipments, events, locations, audit }; }
+    async addAuditEntry(entry) { audit.push(clone(entry)); },
+
+    // ---------- registered clients (same contract as the Firestore store) ----------
+    async listClientRecords() {
+      return [...clients.entries()].map(([id, c]) => { const u = authUsers.get(id); return { ...clone(c), id, auth: u ? { disabled: !!u.disabled, createdAt: u.createdAt || null, lastSignInAt: u.lastSignInAt || null, lastActiveAt: null } : null }; });
+    },
+    async getClientRecord(uid) {
+      if (!clients.has(uid)) return null;
+      const u = authUsers.get(uid);
+      return { ...clone(clients.get(uid)), id: uid, auth: u ? { disabled: !!u.disabled, admin: u.admin === true } : null };
+    },
+    async createClientAccount({ email, password }, profile, history, auditEntry) {
+      if ([...authUsers.values()].some((u) => u.email === email)) throw Object.assign(new Error("exists"), { code: "auth/email-already-exists" });
+      const uid = `uid_${crypto.randomBytes(6).toString("hex")}`;
+      authUsers.set(uid, { email, password, disabled: false, createdAt: new Date().toISOString() });
+      clients.set(uid, { ...clone(profile), created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+      if (history) { if (!portfolioHistory.has(uid)) portfolioHistory.set(uid, new Map()); portfolioHistory.get(uid).set(history.dateKey, clone(history.values)); }
+      if (auditEntry) audit.push({ ...clone(auditEntry), client: uid });
+      return uid;
+    },
+    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
+      if (!clients.has(uid)) throw Object.assign(new Error("missing"), { code: "client_missing" });
+      const u = authUsers.get(uid);
+      if (u && password) u.password = password;
+      if (u && disabled !== undefined) u.disabled = disabled;
+      const cur = clients.get(uid);
+      clients.set(uid, { ...cur, ...clone(patch), updated_at: new Date().toISOString() });
+      if (history) { if (!portfolioHistory.has(uid)) portfolioHistory.set(uid, new Map()); portfolioHistory.get(uid).set(history.dateKey, clone(history.values)); }
+      if (auditEntry) audit.push(clone(auditEntry));
+    },
+    async deleteClientPermanently(uid, { onAuditEntry } = {}) {
+      if (!clients.has(uid)) throw Object.assign(new Error("missing"), { code: "client_missing" });
+      const user = authUsers.get(uid) || null;
+      if (user?.admin === true) throw Object.assign(new Error("admin"), { code: "client_is_admin" });
+      const wasDisabled = !!user?.disabled;
+      if (user) user.disabled = true;
+      const removed = { profile: 1, history: portfolioHistory.get(uid)?.size || 0 };
+      if (faults.has("clientDeleteBatch")) { if (user && !wasDisabled) user.disabled = false; throw new Error("simulated database failure"); }
+      clients.delete(uid); portfolioHistory.delete(uid);
+      if (onAuditEntry) audit.push(onAuditEntry({ removed, result: "success" }));
+      if (user) authUsers.delete(uid);
+      return { removed, authDeleted: true, authExisted: !!user };
+    },
+    /** Test helper: sign in as a client with the in-memory auth store (mirrors Firebase Auth behaviour). */
+    __clientSignIn(email, password) {
+      for (const [uid, u] of authUsers) if (u.email === email && u.password === password) return u.disabled ? { error: "auth/user-disabled" } : { uid };
+      return { error: "auth/user-not-found" };
+    },
+    __fault(name, on = true) { if (on) faults.add(name); else faults.delete(name); },
+
+    async verifyIdToken(token) { return idTokens.get(token) || null; },
+    __dump() { return { shipments, events, locations, audit, clients, portfolioHistory, authUsers, couriers }; }
   };
 }
