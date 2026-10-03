@@ -173,3 +173,28 @@ export const ROLES = Object.freeze({
 export function can(role, permission) {
   return !!ROLES[role]?.includes(permission);
 }
+
+// ---------- location freshness ("Live" honesty) ----------
+// "Live" means the system holds a recent, recorded position with coordinates. It never means "the page is open".
+export const LOCATION_WINDOWS = Object.freeze({ liveMs: 30 * 60 * 1000, recentMs: 24 * 60 * 60 * 1000 });
+export const LOCATION_STATE_LABELS = Object.freeze({
+  live: "Live", recent: "Recently updated", last: "Last known location", none: "Location unavailable"
+});
+
+/**
+ * @returns "live" | "recent" | "last" | "none"
+ *   none   - no location name and no coordinates recorded
+ *   live   - coordinates recorded within liveMs, shipment still moving (not delivered/cancelled)
+ *   recent - any location recorded within recentMs
+ *   last   - older, undated, or the shipment has finished
+ */
+export function locationFreshness({ updatedAt, hasCoordinates = false, hasName = false, statusCode = null, now = Date.now(), liveMs = LOCATION_WINDOWS.liveMs, recentMs = LOCATION_WINDOWS.recentMs } = {}) {
+  if (!hasCoordinates && !hasName) return "none";
+  const t = Date.parse(updatedAt || "");
+  if (!Number.isFinite(t)) return "last";
+  if (TERMINAL_STATUSES.includes(statusCode)) return "last";
+  const age = Math.max(0, now - t);
+  if (hasCoordinates && age <= liveMs) return "live";
+  if (age <= recentMs) return "recent";
+  return "last";
+}

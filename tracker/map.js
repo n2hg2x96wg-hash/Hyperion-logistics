@@ -1,5 +1,6 @@
 // Live map (Leaflet + tile providers, loaded lazily). Renders only legitimately recorded coordinates.
-// No API keys live here: an optional custom tile URL (e.g. a URL-restricted Mapbox token) comes from /api/config (env).
+// No API keys live here: the tile chain (OpenStreetMap by default, or a keyed provider set via env) comes from /api/config.
+// Layers are created once and moved in place on updates, so new positions never rebuild the map.
 const LEAFLET_CSS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css";
 const LEAFLET_JS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js";
 
@@ -30,18 +31,19 @@ function loadConfig() {
 }
 
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const DEFAULT_TILES = [
+  { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: OSM_ATTR, maxZoom: 19 },
+  { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", attribution: "Tiles &copy; Esri", maxZoom: 19 }
+];
 function providers(cfg) {
-  const list = [];
-  if (cfg?.map?.tileUrl) list.push({ url: cfg.map.tileUrl, options: { attribution: cfg.map.attribution || "", maxZoom: cfg.map.maxZoom || 19 } });
-  list.push(
-    { url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", options: { attribution: `${OSM_ATTR} &copy; <a href="https://carto.com/attributions">CARTO</a>`, subdomains: "abcd", maxZoom: 19 } },
-    { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", options: { attribution: OSM_ATTR, maxZoom: 19 } },
-    { url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", options: { attribution: "Tiles &copy; Esri", maxZoom: 19 } }
-  );
-  return list;
+  const tiles = Array.isArray(cfg?.map?.tiles) && cfg.map.tiles.length ? cfg.map.tiles : DEFAULT_TILES;
+  return tiles.filter((t) => typeof t?.url === "string" && /^https:\/\//.test(t.url))
+    .map((t) => ({ url: t.url, options: { attribution: t.attribution || "", maxZoom: t.maxZoom || 19, crossOrigin: false } }));
 }
 
 const fmt = (iso) => { try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)); } catch { return iso; } };
+const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STATE_LABEL = { live: "Live", recent: "Recently updated", last: "Last known location" };
 
 function popupNode(title, lines) {
   const el = document.createElement("div"); el.className = "hx-popup";
@@ -49,28 +51,46 @@ function popupNode(title, lines) {
   for (const line of lines.filter(Boolean)) { const p = document.createElement("div"); p.textContent = line; el.appendChild(p); }
   return el;
 }
+const samePt = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
 
-/** Creates a map inside `el`. Returns { update(mapData), destroy() }. Rejects if Leaflet cannot be loaded. */
-export async function createMap(el, { onStatus } = {}) {
+/** Creates a map inside `el`. Returns { update(mapData), fit(), destroy() }. Rejects if Leaflet cannot be loaded. */
+export async function createMap(el, { onStatus, interactiveHint = true } = {}) {
   const [L, cfg] = await Promise.all([loadLeaflet(), loadConfig()]);
-  const map = L.map(el, { zoomControl: true, preferCanvas: true, worldCopyJump: true, minZoom: 2 }).setView([20, 0], 2);
-  let destroyed = false; let userMoved = false; let programmatic = 0; let layers = L.layerGroup().addTo(map);
-  let currentMarker = null; let lastBounds = null;
+  const touch = !!L.Browser.mobile;
+  // Page scrolling must win over the map: wheel zoom waits for a click, one-finger drag waits for a tap on touch screens.
+  const map = L.map(el, { zoomControl: true, preferCanvas: true, worldCopyJump: true, minZoom: 2, scrollWheelZoom: false, dragging: !touch, tap: false })
+    .setView([20, 0], 2);
+  let destroyed = false; let userMoved = false; let programmatic = 0;
+  let lastBounds = null; let lastSig = "";
+  const layers = { origin: null, dest: null, current: null, travelled: null, remaining: null, trail: L.layerGroup().addTo(map) };
 
   // tile provider fallback chain (Safari/iOS-safe pattern kept from the previous implementation)
-  const chain = providers(cfg); let idx = 0; let tileLoaded = false; let active = null; let timer = null;
+  const chain = providers(cfg); let tileLoaded = false; let active = null; let timer = null;
   function tryProvider(i) {
     if (destroyed) return;
     if (i >= chain.length) { if (!tileLoaded) { el.classList.add("hx-map-notile"); onStatus?.("tiles-unavailable"); } return; }
     if (active) { try { map.removeLayer(active); } catch { /* ignore */ } }
-    idx = i; let errors = 0; let switched = false;
+    let errors = 0; let switched = false;
     active = L.tileLayer(chain[i].url, chain[i].options).addTo(map);
     const next = () => { if (switched || tileLoaded || destroyed) return; switched = true; tryProvider(i + 1); };
-    active.on("tileload", () => { if (!tileLoaded) { tileLoaded = true; el.classList.remove("hx-map-notile"); onStatus?.("tiles-ok"); } });
+    active.on("tileload", () => { if (!tileLoaded) { tileLoaded = true; clearTimeout(timer); el.classList.remove("hx-map-notile"); onStatus?.("tiles-ok"); } });
     active.on("tileerror", () => { errors += 1; if (errors >= 3) next(); });
-    clearTimeout(timer); timer = setTimeout(next, 4500);
+    clearTimeout(timer); timer = setTimeout(next, 6000);
   }
   tryProvider(0);
+
+  // interaction gating (wheel zoom after click; drag after tap on touch devices)
+  const wake = () => {
+    if (!map.scrollWheelZoom.enabled()) map.scrollWheelZoom.enable();
+    if (touch && !map.dragging.enabled()) map.dragging.enable();
+    el.classList.add("hx-map-awake");
+  };
+  map.on("click focus", wake);
+  map.on("mouseout", () => { if (!touch) map.scrollWheelZoom.disable(); });
+  if (interactiveHint) {
+    const hint = L.DomUtil.create("div", "hx-map-hint", el);
+    hint.textContent = touch ? "Tap the map to move around" : "Click the map to zoom with the scroll wheel";
+  }
 
   const markerIcon = (cls, label) => L.divIcon({ className: "hx-marker-wrap", html: `<span class="hx-marker ${cls}" aria-label="${label}"></span>`, iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12] });
 
@@ -80,52 +100,82 @@ export async function createMap(el, { onStatus } = {}) {
     onAdd() {
       const box = L.DomUtil.create("div", "hx-map-ctl");
       const mk = (text, title, fn) => { const b = L.DomUtil.create("button", "", box); b.type = "button"; b.textContent = text; b.title = title; b.setAttribute("aria-label", title); L.DomEvent.on(b, "click", (e) => { L.DomEvent.stop(e); fn(); }); return b; };
-      mk("Fit route", "Fit entire route", () => fit());
-      mk("Locate", "Center on shipment", () => { if (currentMarker) { programmatic++; map.flyTo(currentMarker.getLatLng(), Math.max(map.getZoom(), 7), { duration: 0.6 }); setTimeout(() => programmatic--, 800); } });
+      mk("Fit route", "Fit the entire route", () => fit());
+      mk("Locate", "Center on the shipment's latest recorded position", () => locate());
       L.DomEvent.disableClickPropagation(box);
       return box;
     }
   });
   map.addControl(new Ctl());
 
+  const settle = () => setTimeout(() => { programmatic = Math.max(0, programmatic - 1); }, 700);
   function fit() {
     if (!lastBounds || !lastBounds.isValid()) return;
     programmatic++;
-    map.fitBounds(lastBounds, { padding: [36, 36], maxZoom: 9, animate: false });
-    setTimeout(() => { programmatic = Math.max(0, programmatic - 1); }, 50);
-    userMoved = false;
+    if (lastBounds.getNorthEast().equals(lastBounds.getSouthWest())) map.setView(lastBounds.getCenter(), 7, { animate: false });
+    else map.fitBounds(lastBounds, { padding: [40, 40], maxZoom: 9, animate: false });
+    settle(); userMoved = false;
+  }
+  function locate() {
+    const target = layers.current?.getLatLng() || (lastBounds?.isValid() ? lastBounds.getCenter() : null);
+    if (!target) return;
+    programmatic++;
+    if (reducedMotion()) map.setView(target, Math.max(map.getZoom(), 7), { animate: false });
+    else map.flyTo(target, Math.max(map.getZoom(), 7), { duration: 0.6 });
+    settle();
+    layers.current?.openPopup();
   }
   map.on("dragstart zoomstart", () => { if (!programmatic) userMoved = true; });
 
+  function placeMarker(key, ll, cls, label, popup, z = 0) {
+    if (!ll) { if (layers[key]) { map.removeLayer(layers[key]); layers[key] = null; } return; }
+    if (!layers[key]) layers[key] = L.marker(ll, { icon: markerIcon(cls, label), keyboard: true, title: label, zIndexOffset: z }).addTo(map);
+    else { layers[key].setLatLng(ll); layers[key].setIcon(markerIcon(cls, label)); }
+    layers[key].bindPopup(popup);
+  }
+  function placeLine(key, pts, style) {
+    if (!pts || pts.length < 2) { if (layers[key]) { map.removeLayer(layers[key]); layers[key] = null; } return; }
+    if (!layers[key]) layers[key] = L.polyline(pts, style).addTo(map);
+    else layers[key].setLatLngs(pts);
+  }
+
   function update(data) {
     if (destroyed || !data) return;
-    layers.clearLayers(); currentMarker = null;
+    const o = data.origin ? [data.origin.lat, data.origin.lng] : null;
+    const d = data.destination ? [data.destination.lat, data.destination.lng] : null;
+    const c = data.current ? [data.current.lat, data.current.lng] : null;
+    const trail = (data.trail || []).map((t) => ({ ...t, ll: [t.lat, t.lng] }));
     const pts = [];
-    const o = data.origin; const d = data.destination; const c = data.current;
-    if (o) { L.marker([o.lat, o.lng], { icon: markerIcon("hx-m-origin", "Origin"), keyboard: true, title: "Origin" }).bindPopup(popupNode("Origin", [data.originLabel])).addTo(layers); pts.push([o.lat, o.lng]); }
-    if (d) { L.marker([d.lat, d.lng], { icon: markerIcon("hx-m-dest", "Destination"), keyboard: true, title: "Destination" }).bindPopup(popupNode("Destination", [data.destinationLabel])).addTo(layers); pts.push([d.lat, d.lng]); }
+
+    placeMarker("origin", o, "hx-m-origin", "Origin", popupNode("Origin", [data.originLabel]));
+    placeMarker("dest", d, "hx-m-dest", "Destination", popupNode("Destination", [data.destinationLabel]));
+    const cur = data.current;
+    placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}`, "Current location",
+      popupNode(cur?.state === "live" ? "Current location (live)" : "Last recorded location", [
+        cur?.name, cur?.updatedAt ? `Recorded ${fmt(cur.updatedAt)}` : "Time of this position is unknown",
+        cur?.sourceLabel ? `Source: ${cur.sourceLabel}` : null, cur?.state && cur.state !== "live" ? STATE_LABEL[cur.state] : null
+      ]), 1000);
+
+    // travelled path: origin -> recorded points (in time order) -> current
     const travelled = [];
-    if (o) travelled.push([o.lat, o.lng]);
-    for (const t of data.trail || []) {
-      const ll = [t.lat, t.lng];
-      if (!travelled.length || travelled[travelled.length - 1][0] !== ll[0] || travelled[travelled.length - 1][1] !== ll[1]) travelled.push(ll);
-    }
-    if (c) {
-      const ll = [c.lat, c.lng]; const last = travelled[travelled.length - 1];
-      if (!last || last[0] !== ll[0] || last[1] !== ll[1]) travelled.push(ll);
-      pts.push(ll);
-      currentMarker = L.marker(ll, { icon: markerIcon("hx-m-current", "Current location"), zIndexOffset: 1000, keyboard: true, title: "Current location" })
-        .bindPopup(popupNode("Current location", [c.name, c.updatedAt ? `Updated ${fmt(c.updatedAt)}` : null, c.sourceLabel ? `Source: ${c.sourceLabel}` : null])).addTo(layers);
-    }
-    (data.trail || []).forEach((t) => { pts.push([t.lat, t.lng]); L.circleMarker([t.lat, t.lng], { radius: 3, color: "#3b82f6", weight: 1, fillColor: "#fff", fillOpacity: 1 }).bindPopup(popupNode(t.name || "Recorded position", [t.timestamp ? fmt(t.timestamp) : null])).addTo(layers); });
-    if (travelled.length > 1) L.polyline(travelled, { color: "#3b82f6", weight: 4, opacity: 0.9 }).addTo(layers);
-    const from = c ? [c.lat, c.lng] : (o ? [o.lat, o.lng] : null);
-    if (from && d) L.polyline([from, [d.lat, d.lng]], { color: "#94a3b8", weight: 3, opacity: 0.8, dashArray: "6 9" }).addTo(layers);
+    const push = (ll) => { if (ll && !samePt(travelled[travelled.length - 1], ll)) travelled.push(ll); };
+    push(o); trail.forEach((t) => push(t.ll)); push(c);
+    placeLine("travelled", travelled, { color: "#2563eb", weight: 4, opacity: 0.9 });
+    const from = c || (trail.length ? trail[trail.length - 1].ll : o);
+    placeLine("remaining", from && d && !samePt(from, d) ? [from, d] : null, { color: "#64748b", weight: 3, opacity: 0.85, dashArray: "6 9" });
+
+    layers.trail.clearLayers();
+    trail.forEach((t) => {
+      if (samePt(t.ll, c)) return;
+      L.circleMarker(t.ll, { radius: 4, color: "#2563eb", weight: 2, fillColor: "#fff", fillOpacity: 1 })
+        .bindPopup(popupNode(t.name || "Recorded position", [t.timestamp ? fmt(t.timestamp) : null])).addTo(layers.trail);
+    });
+
+    [o, d, c, ...trail.map((t) => t.ll)].forEach((ll) => ll && pts.push(ll));
     lastBounds = pts.length ? L.latLngBounds(pts) : null;
-    if (!userMoved && lastBounds) {
-      if (pts.length === 1) { programmatic++; map.setView(pts[0], 7, { animate: false }); setTimeout(() => { programmatic = Math.max(0, programmatic - 1); }, 50); }
-      else fit();
-    }
+    const sig = JSON.stringify([o, d, c, trail.length]);
+    if (lastBounds && sig !== lastSig && (!userMoved || !lastSig)) fit(); // never yank the view while the user is exploring
+    lastSig = sig;
     map.invalidateSize();
   }
 
@@ -137,7 +187,7 @@ export async function createMap(el, { onStatus } = {}) {
   ro?.observe(el);
 
   return {
-    update,
+    update, fit, leaflet: map,
     destroy() {
       destroyed = true; clearTimeout(timer); ro?.disconnect();
       try { map.remove(); } catch { /* ignore */ }

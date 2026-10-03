@@ -15,7 +15,7 @@ Vercel → your project → **Settings → Environment Variables** (Production):
 | `ADMIN_PASSWORD` | a new, strong admin password (the old one is in git history; don't reuse it) |
 | `SESSION_SECRET` | any random text of 32+ characters (e.g. from a password generator) |
 
-Optional: `MAP_TILE_URL` / `MAP_TILE_ATTRIBUTION` (custom map tiles), `NOTIFY_WEBHOOK_URL` (event notifications),
+Optional: map tiles (see "Map provider" below), `NOTIFY_WEBHOOK_URL` (event notifications),
 `PROVIDER_GENERIC_SECRET` (courier/GPS webhook). See `.env.example`.
 
 ## 3. Deploy
@@ -40,7 +40,17 @@ It should say `"ready": true` and `"database": "ok (firestore)"`. If not, it tel
 Firebase console → **Firestore → Rules** → replace with the contents of `firestore.rules` → **Publish**.
 Browsers can then no longer read or write shipment data directly; only the secure API can.
 
+## Map provider
+The map works with no setup: it uses OpenStreetMap standard tiles (free, no key, attribution shown).
+OpenStreetMap asks heavy/commercial sites to use a tile provider, so for production traffic:
+1. Create a free account at MapTiler (or Stadia Maps / Mapbox) and copy the **public** key.
+2. In the provider dashboard, restrict the key to your domain (e.g. `hyperion-logistics.vercel.app`).
+3. In Vercel add `MAP_PROVIDER=maptiler` and `MAP_TILE_KEY=<the key>`, then redeploy.
+4. `/api/health` shows `"map": { "provider": "MapTiler Streets", "issues": [] }`.
+If the key is wrong or blocked, the map falls back to OpenStreetMap automatically.
+
 ## Troubleshooting
 - Admin login says "not configured": `ADMIN_PASSWORD` or `SESSION_SECRET` missing → add and redeploy.
 - Tracking says "temporarily unavailable": check `/api/health` (usually `FIREBASE_SERVICE_ACCOUNT`).
-- Map shows "route markers only": the tile server was unreachable; tracking data is still correct.
+- Map says "Map background unavailable": no tile server answered; recorded positions are still shown as markers.
+- `/api/health` lists map `issues`: e.g. `MAP_PROVIDER=mapbox needs MAP_TILE_KEY`.

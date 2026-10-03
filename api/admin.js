@@ -11,6 +11,7 @@ import * as svc from "./_lib/service.js";
 import { getStore } from "./_lib/store/index.js";
 import { notificationsConfigured } from "./_lib/notifications.js";
 import { listProviders } from "./_lib/providers/index.js";
+import { resolveMapConfig } from "./_lib/map-config.js";
 
 const PERMISSION = {
   me: "read", logout: "read", stats: "read", list: "read", get: "read", preview: "read", audit: "read", settings: "read",
@@ -94,7 +95,7 @@ async function settings() {
   return {
     store: store.kind,
     session: { ttlMinutes: SESSION_TTL_MS / 60000 },
-    map: { provider: process.env.MAP_TILE_URL ? "custom tile server (env)" : "OpenStreetMap / Carto (default, Leaflet)", customTilesConfigured: !!process.env.MAP_TILE_URL },
+    map: (() => { const m = resolveMapConfig(); return { provider: `${m.label} (Leaflet)`, fallbacks: m.tiles.slice(1).map((t) => t.label), customTilesConfigured: m.primary !== "osm", keyConfigured: m.keyConfigured, issues: m.issues }; })(),
     realtime: { sse: process.env.REALTIME_SSE !== "off", fallback: "adaptive polling", pollMs: Number(process.env.CLIENT_POLL_MS) || 20000 },
     notifications: { configured: notificationsConfigured(), providers: process.env.NOTIFY_WEBHOOK_URL ? ["webhook"] : [] },
     providers: listProviders(),
