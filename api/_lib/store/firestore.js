@@ -269,40 +269,51 @@ export function createFirestoreStore() {
       await batch.commit();
     },
     /**
-     * Permanent deletion of ONE client, keyed by uid. Order keeps the system consistent:
+     * Permanent deletion of ONE client, keyed by its document ID. Order keeps the system consistent:
      *   1. disable the sign-in account (reversible) so the client cannot act mid-delete,
-     *   2. delete clients/{uid} + portfolio_history/{uid}/** in one atomic batch,
+     *   2. in ONE atomic batch: write a recovery copy to deleted_clients/{uid} (admin-only, no password data),
+     *      delete clients/{uid} + portfolio_history/{uid}/history/*, and write the audit entry,
      *   3. delete the sign-in account.
-     * If step 2 fails, step 1 is undone and nothing was removed. If step 3 fails, the account stays disabled
-     * (it cannot sign in) and the caller is told so.
+     * If step 2 fails, step 1 is undone and nothing was removed. If the sign-in account cannot be disabled or
+     * removed (e.g. missing Firebase Auth permission), the data is still removed and the caller is told exactly why.
      */
     async deleteClientPermanently(uid, { onAuditEntry } = {}) {
       const auth = getAuth(app);
       const ref = db.collection("clients").doc(uid);
       const snap = await ref.get();
       if (!snap.exists) throw Object.assign(new Error("missing"), { code: "client_missing" });
-      const user = await auth.getUser(uid).catch((err) => { if (err?.code === "auth/user-not-found") return null; throw err; });
+      const authText = (err) => [err?.code, String(err?.message || "").split("\n")[0].slice(0, 120)].filter(Boolean).join(": ");
+      let authError = null;
+      const user = await auth.getUser(uid).catch((err) => { if (err?.code !== "auth/user-not-found") authError = authText(err); return null; });
       if (user?.customClaims?.admin === true) throw Object.assign(new Error("admin"), { code: "client_is_admin" });
-      const wasDisabled = !!user?.disabled;
-      if (user && !wasDisabled) await auth.updateUser(uid, { disabled: true });
-      const historyRefs = await db.collection("portfolio_history").doc(uid).collection("history").listDocuments();
+      let disabledNow = false;
+      if (user && !user.disabled) {
+        try { await auth.updateUser(uid, { disabled: true }); disabledNow = true; } catch (err) { authError = authText(err); }
+      }
       const parent = db.collection("portfolio_history").doc(uid);
-      const removed = { profile: 1, history: historyRefs.length };
+      const historySnap = await parent.collection("history").get();
+      const removed = { profile: 1, history: historySnap.size };
       try {
-        if (historyRefs.length > 450) throw Object.assign(new Error("too many history records for one atomic delete"), { code: "client_history_too_large" });
+        if (historySnap.size > 450) throw Object.assign(new Error("too many history records for one atomic delete"), { code: "client_history_too_large" });
+        const entry = onAuditEntry ? onAuditEntry({ removed, result: "SUCCESS" }) : null;
+        const { password_hash, ...profile } = snap.data();
         const batch = db.batch();
-        historyRefs.forEach((r) => batch.delete(r));
+        batch.set(db.collection("deleted_clients").doc(uid), {
+          id: uid, profile, history: Object.fromEntries(historySnap.docs.map((d) => [d.id, d.data()])),
+          deleted_at: entry?.at || new Date().toISOString(), deleted_by: entry?.actor || null
+        });
+        historySnap.docs.forEach((d) => batch.delete(d.ref));
         batch.delete(parent);
         batch.delete(ref);
-        if (onAuditEntry) batch.set(db.collection("audit_logs").doc(), onAuditEntry({ removed, result: "success" }));
+        if (entry) batch.set(db.collection("audit_logs").doc(), entry);
         await batch.commit();
       } catch (err) {
-        if (user && !wasDisabled) await auth.updateUser(uid, { disabled: false }).catch(() => {});
+        if (disabledNow) await auth.updateUser(uid, { disabled: false }).catch(() => {});
         throw err;
       }
-      let authDeleted = !user;
-      if (user) { try { await auth.deleteUser(uid); authDeleted = true; } catch { authDeleted = false; } }
-      return { removed, authDeleted, authExisted: !!user };
+      let authDeleted = !user && !authError;
+      if (user) { try { await auth.deleteUser(uid); authDeleted = true; } catch (err) { if (err?.code === "auth/user-not-found") authDeleted = true; else authError = authText(err); } }
+      return { removed, authDeleted, authDisabled: !!user?.disabled || disabledNow, authError: authDeleted ? null : authError, authExisted: !!user };
     },
 
     async verifyIdToken(token) { return getAuth(app).verifyIdToken(token); }

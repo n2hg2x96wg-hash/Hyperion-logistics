@@ -15,12 +15,17 @@ const DEMO = {
       uidClientAaaa: { name: "Ada Client", email: "ada@client.test", status: "active", created_at: "2026-08-01T10:00:00.000Z", updated_at: "2026-09-20T10:00:00.000Z",
         portfolios: { xrp_holdings: 10, tsla_holdings: 1 }, restrictions: { max_xrp: 100, max_tsla: 5 }, password_hash: "legacy-hash-never-shown" },
       uidClientBbbb: { name: "Ben Client", email: "ben@client.test", status: "active", created_at: "2026-09-05T10:00:00.000Z",
-        portfolios: { xrp_holdings: 3, tsla_holdings: 0 }, restrictions: { max_xrp: 10, max_tsla: 1 } }
+        portfolios: { xrp_holdings: 3, tsla_holdings: 0 }, restrictions: { max_xrp: 10, max_tsla: 1 } },
+      // A profile with no sign-in account and no history (e.g. an older record), keyed by a non-uid document ID.
+      "legacy-client.07": { name: "Lee Legacy", email: "lee@client.test", status: "inactive", created_at: "2026-07-01T10:00:00.000Z" },
+      // A Firebase user with the admin claim that also has a client profile: must never be deletable here.
+      uidAdminZzzz: { name: "Ops Admin", email: "ops@hyperion.test", status: "active", created_at: "2026-06-01T10:00:00.000Z" }
     },
     portfolioHistory: { uidClientAaaa: { "2026-09-20": { total_value: 50 }, "2026-09-21": { total_value: 55 } }, uidClientBbbb: { "2026-09-21": { total_value: 9 } } },
     authUsers: {
       uidClientAaaa: { email: "ada@client.test", password: "ada-pass-1", createdAt: "2026-08-01T10:00:00.000Z", lastSignInAt: "2026-09-30T09:00:00.000Z" },
-      uidClientBbbb: { email: "ben@client.test", password: "ben-pass-1", createdAt: "2026-09-05T10:00:00.000Z" }
+      uidClientBbbb: { email: "ben@client.test", password: "ben-pass-1", createdAt: "2026-09-05T10:00:00.000Z" },
+      uidAdminZzzz: { email: "ops@hyperion.test", password: "ops-pass-1", admin: true }
     },
     idTokens: { "client-a-token": { uid: "uidClientAaaa", email: "ada@client.test" } }
 };
