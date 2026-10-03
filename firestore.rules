@@ -23,9 +23,24 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Shipments, events, locations and audit logs are accessed ONLY through the server API
+    // (api/*.js using the Firebase Admin SDK, which bypasses these rules). Browsers get no direct access,
+    // so clients cannot list shipments, read admin-only fields, or write anything.
+    // DEPLOY THESE RULES ONLY AFTER the Vercel env vars (FIREBASE_SERVICE_ACCOUNT, ADMIN_PASSWORD,
+    // SESSION_SECRET) are set and /api/track works, otherwise public tracking will stop.
     match /shipments/{shipmentId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if false;
+      match /{sub=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /audit_logs/{id} {
+      allow read, write: if false;
+    }
+
+    match /notification_log/{id} {
+      allow read, write: if false;
     }
 
     match /couriers/{courierId} {
