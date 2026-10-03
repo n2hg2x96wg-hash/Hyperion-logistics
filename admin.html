@@ -1360,11 +1360,14 @@
       generateTrackingCode: (courierId) => generateTrackingCode(courierId),
       onViewShown: (view) => {
         if (view === "couriers") loadAvailableCouriers(true);
-        if (view === "clients") clientAdminTools?.refreshClients?.();
+        if (view === "clients") {
+          // Client portfolio tool loads only when its tab is opened (it reads Firestore directly).
+          if (!clientAdminTools) clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast, collection, getDocs, doc, setDoc, deleteDoc });
+          else clientAdminTools.refreshClients?.();
+        }
       },
       afterLogin: async () => {
         await loadAvailableCouriers();
-        clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast, collection, getDocs, doc, setDoc, deleteDoc });
       }
     });
   </script>
