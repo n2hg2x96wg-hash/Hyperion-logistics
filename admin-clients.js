@@ -321,7 +321,11 @@ export function setupAdminClients({ db, firebaseConfig, showToast }) {
       renderClients();
     }, (error) => {
       console.error(error);
-      showToast("Unable to load clients", "error");
+      const denied = error && (error.code === "permission-denied" || /permission/i.test(error.message || ""));
+      table.innerHTML = `<tr><td colspan="8" class="empty-row">${denied
+        ? "Client accounts can't be loaded: the Firestore rules only allow this for a Firebase admin sign-in. Shipments are not affected."
+        : "Client accounts could not be loaded right now. Please try again later."}</td></tr>`;
+      if (stats) stats.innerHTML = "";
     });
   }
 
