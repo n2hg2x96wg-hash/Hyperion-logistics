@@ -1,49 +1,8 @@
-const FALLBACK_COURIERS = [
-  {
-    id: "2goexpress",
-    name: "2GoExpress",
-    prefix: "2GO",
-    logo: "🚢",
-    brandColor: "#0ea5e9",
-    apiEndpoint: "https://api.2goexpress.example/v1/track",
-    phone: "+63-2-877-99-222",
-    email: "support@2goexpress.example",
-    website: "https://2goexpress.example"
-  },
-  {
-    id: "fedex",
-    name: "FedEx",
-    prefix: "FEDEX",
-    logo: "✈️",
-    brandColor: "#7c3aed",
-    apiEndpoint: "https://api.fedex.example/v1/track",
-    phone: "+1-800-463-3339",
-    email: "support@fedex.example",
-    website: "https://fedex.example"
-  },
-  {
-    id: "dhl",
-    name: "DHL",
-    prefix: "DHL",
-    logo: "🚚",
-    brandColor: "#eab308",
-    apiEndpoint: "https://api.dhl.example/v1/track",
-    phone: "+1-800-225-5345",
-    email: "support@dhl.example",
-    website: "https://dhl.example"
-  },
-  {
-    id: "ups",
-    name: "UPS",
-    prefix: "UPS",
-    logo: "📦",
-    brandColor: "#92400e",
-    apiEndpoint: "https://api.ups.example/v1/track",
-    phone: "+1-800-742-5877",
-    email: "support@ups.example",
-    website: "https://ups.example"
-  }
-];
+import { mergeCarriers } from "./shared/carriers.js";
+
+// Built-in catalog (shared/carriers.js) merged with the Firestore `couriers` collection.
+// Firestore records override built-ins with the same id; nothing is written or deleted by loading.
+const FALLBACK_COURIERS = mergeCarriers([]);
 
 function normalizeCourier(courier) {
   const phone = courier.phone || courier.contact?.phone || "--";
@@ -60,7 +19,11 @@ function normalizeCourier(courier) {
     phone,
     email,
     website,
-    contact: { phone, email, website }
+    contact: { phone, email, website },
+    type: courier.type === "custom" ? "custom" : "carrier",
+    note: courier.note || "",
+    stored: !!courier.stored,
+    builtIn: !!courier.builtIn
   };
 }
 
@@ -84,16 +47,10 @@ export async function loadCouriers(options = {}) {
 
   try {
     const querySnapshot = await getDocs(collection(db, "couriers"));
-    if (!querySnapshot.empty) {
-      activeCouriers = querySnapshot.docs
-        .map((courierDoc) => normalizeCourier(courierDoc.data()))
-        .filter((courier) => courier.id);
-      if (!activeCouriers.length) {
-        activeCouriers = FALLBACK_COURIERS.map(normalizeCourier);
-      }
-    }
+    const stored = querySnapshot.docs.map((courierDoc) => ({ id: courierDoc.id, ...courierDoc.data() }));
+    activeCouriers = mergeCarriers(stored).map(normalizeCourier).filter((courier) => courier.id);
   } catch (error) {
-    console.error("Failed to load couriers from Firestore. Falling back to local config.", error);
+    console.error("Failed to load couriers from Firestore. Using the built-in carrier catalog.", error);
     activeCouriers = FALLBACK_COURIERS.map(normalizeCourier);
   }
 

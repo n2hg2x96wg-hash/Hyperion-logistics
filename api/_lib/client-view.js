@@ -4,7 +4,8 @@
 // server, not with CSS.
 import {
   STATUS, STATUS_META, EVENT_SOURCES, EXCEPTION_TYPES,
-  resolveShipmentStatus, resolveVisibility, computeProgress, progressSteps, statusLabel, statusTone
+  resolveShipmentStatus, resolveVisibility, computeProgress, progressSteps, statusLabel, statusTone,
+  locationFreshness, LOCATION_WINDOWS, LOCATION_STATE_LABELS
 } from "../../shared/status.js";
 
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -13,6 +14,15 @@ const isoOrNull = (v) => (typeof v === "string" && Number.isFinite(Date.parse(v)
 function point(lat, lng) {
   const a = num(lat); const b = num(lng);
   return a != null && b != null && Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null;
+}
+
+/** Freshness windows (env-tunable). "Live" requires a recorded position newer than liveMs. */
+export function locationWindows(env = process.env) {
+  const min = Number(env.LIVE_LOCATION_MAX_AGE_MIN); const hrs = Number(env.RECENT_LOCATION_MAX_AGE_HOURS);
+  return {
+    liveMs: Number.isFinite(min) && min > 0 ? min * 60_000 : LOCATION_WINDOWS.liveMs,
+    recentMs: Number.isFinite(hrs) && hrs > 0 ? hrs * 3_600_000 : LOCATION_WINDOWS.recentMs
+  };
 }
 
 export function shipmentVersion(s) {
@@ -76,6 +86,15 @@ export function buildClientView({ shipment, events = [], locations = [], courier
     };
   }
 
+  if (vis.location) {
+    const win = locationWindows();
+    const hasCoordinates = !!point(shipment.latitude, shipment.longitude);
+    const updatedAt = isoOrNull(shipment.locationUpdatedAt);
+    const state = locationFreshness({ updatedAt, hasCoordinates, hasName: !!shipment.location, statusCode, now: now.getTime(), ...win });
+    // Clients re-evaluate this as time passes (same rule, same windows) so "Live" decays without new data.
+    view.locationState = { state, label: LOCATION_STATE_LABELS[state], updatedAt, hasCoordinates, liveMs: win.liveMs, recentMs: win.recentMs };
+  }
+
   if (vis.location && shipment.location) {
     view.currentLocation = {
       name: String(shipment.location),
@@ -112,7 +131,9 @@ export function buildClientView({ shipment, events = [], locations = [], courier
       trackingNumber: shipment.courierTrackingNumber ? String(shipment.courierTrackingNumber).slice(0, 80) : null,
       serviceType: shipment.serviceType ? String(shipment.serviceType).slice(0, 80) : null,
       phone: courier?.phone && courier.phone !== "--" ? courier.phone : null,
-      website: courier?.website && /^https?:\/\//i.test(courier.website) ? courier.website : null
+      website: courier?.website && /^https?:\/\//i.test(courier.website) && !/\.example(\/|$)/i.test(courier.website) ? courier.website : null,
+      // Custom/internal carriers (e.g. "Tesla Transport") are labelled so they are never mistaken for an official service.
+      custom: courier?.type === "custom"
     };
   }
   if (vis.package) {
@@ -140,6 +161,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
         map.current.name = shipment.location ? String(shipment.location) : null;
         map.current.source = shipment.locationSource || "admin";
         map.current.sourceLabel = EVENT_SOURCES[map.current.source] || EVENT_SOURCES.admin;
+        map.current.state = view.locationState?.state || "last";
       }
       map.trail = locations
         .filter((l) => l.clientVisible !== false && point(l.lat, l.lng))
