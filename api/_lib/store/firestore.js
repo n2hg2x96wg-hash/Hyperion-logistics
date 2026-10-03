@@ -218,6 +218,93 @@ export function createFirestoreStore() {
       });
     },
 
+    async addAuditEntry(entry) { await db.collection("audit_logs").add(entry); },
+
+    // ---------- registered clients (portfolio accounts) ----------
+    // Schema (existing): Firebase Auth user uid  <->  clients/{uid}  (+ portfolio_history/{uid}/history/{date}).
+    // Shipments are NOT linked to client accounts (only a free-text clientRef), so client operations never touch them.
+    async listClientRecords() {
+      const snap = await db.collection("clients").get();
+      const rows = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const meta = new Map();
+      const auth = getAuth(app);
+      for (let i = 0; i < rows.length; i += 100) {
+        const res = await auth.getUsers(rows.slice(i, i + 100).map((r) => ({ uid: r.id }))).catch(() => ({ users: [] }));
+        for (const u of res.users) meta.set(u.uid, { disabled: u.disabled, createdAt: u.metadata.creationTime || null, lastSignInAt: u.metadata.lastSignInTime || null, lastActiveAt: u.metadata.lastRefreshTime || null });
+      }
+      return rows.map((r) => ({ ...r, auth: meta.get(r.id) || null }));
+    },
+    async getClientRecord(uid) {
+      const snap = await db.collection("clients").doc(uid).get();
+      if (!snap.exists) return null;
+      const user = await getAuth(app).getUser(uid).catch(() => null);
+      return { ...snap.data(), id: snap.id, auth: user ? { disabled: user.disabled, admin: user.customClaims?.admin === true } : null };
+    },
+    async createClientAccount({ email, password, displayName }, profile, history, auditEntry) {
+      const auth = getAuth(app);
+      const user = await auth.createUser({ email, password, displayName });
+      try {
+        const batch = db.batch();
+        batch.set(db.collection("clients").doc(user.uid), { ...profile, created_at: new Date(), updated_at: new Date() });
+        if (history) batch.set(db.collection("portfolio_history").doc(user.uid).collection("history").doc(history.dateKey), { ...history.values, timestamp: new Date() }, { merge: true });
+        if (auditEntry) batch.set(db.collection("audit_logs").doc(), { ...auditEntry, client: user.uid });
+        await batch.commit();
+      } catch (err) {
+        await auth.deleteUser(user.uid).catch(() => {}); // never leave a sign-in account without a profile
+        throw err;
+      }
+      return user.uid;
+    },
+    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
+      const ref = db.collection("clients").doc(uid);
+      if (!(await ref.get()).exists) throw Object.assign(new Error("missing"), { code: "client_missing" });
+      const auth = getAuth(app);
+      if (password || disabled !== undefined) {
+        await auth.updateUser(uid, { ...(password ? { password } : {}), ...(disabled !== undefined ? { disabled } : {}) }).catch((err) => { if (err?.code !== "auth/user-not-found") throw err; });
+      }
+      const batch = db.batch();
+      batch.set(ref, { ...patch, updated_at: new Date() }, { merge: true });
+      if (history) batch.set(db.collection("portfolio_history").doc(uid).collection("history").doc(history.dateKey), { ...history.values, timestamp: new Date() }, { merge: true });
+      if (auditEntry) batch.set(db.collection("audit_logs").doc(), auditEntry);
+      await batch.commit();
+    },
+    /**
+     * Permanent deletion of ONE client, keyed by uid. Order keeps the system consistent:
+     *   1. disable the sign-in account (reversible) so the client cannot act mid-delete,
+     *   2. delete clients/{uid} + portfolio_history/{uid}/** in one atomic batch,
+     *   3. delete the sign-in account.
+     * If step 2 fails, step 1 is undone and nothing was removed. If step 3 fails, the account stays disabled
+     * (it cannot sign in) and the caller is told so.
+     */
+    async deleteClientPermanently(uid, { onAuditEntry } = {}) {
+      const auth = getAuth(app);
+      const ref = db.collection("clients").doc(uid);
+      const snap = await ref.get();
+      if (!snap.exists) throw Object.assign(new Error("missing"), { code: "client_missing" });
+      const user = await auth.getUser(uid).catch((err) => { if (err?.code === "auth/user-not-found") return null; throw err; });
+      if (user?.customClaims?.admin === true) throw Object.assign(new Error("admin"), { code: "client_is_admin" });
+      const wasDisabled = !!user?.disabled;
+      if (user && !wasDisabled) await auth.updateUser(uid, { disabled: true });
+      const historyRefs = await db.collection("portfolio_history").doc(uid).collection("history").listDocuments();
+      const parent = db.collection("portfolio_history").doc(uid);
+      const removed = { profile: 1, history: historyRefs.length };
+      try {
+        if (historyRefs.length > 450) throw Object.assign(new Error("too many history records for one atomic delete"), { code: "client_history_too_large" });
+        const batch = db.batch();
+        historyRefs.forEach((r) => batch.delete(r));
+        batch.delete(parent);
+        batch.delete(ref);
+        if (onAuditEntry) batch.set(db.collection("audit_logs").doc(), onAuditEntry({ removed, result: "success" }));
+        await batch.commit();
+      } catch (err) {
+        if (user && !wasDisabled) await auth.updateUser(uid, { disabled: false }).catch(() => {});
+        throw err;
+      }
+      let authDeleted = !user;
+      if (user) { try { await auth.deleteUser(uid); authDeleted = true; } catch { authDeleted = false; } }
+      return { removed, authDeleted, authExisted: !!user };
+    },
+
     async verifyIdToken(token) { return getAuth(app).verifyIdToken(token); }
   };
 }

@@ -649,6 +649,48 @@
     .check-row small { display: block; color: #64748b; font-weight: 500; }
     .courier-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 6px; border-radius: 6px; background: #e2e8f0; color: #334155; margin-left: 6px; }
     .courier-badge.custom { background: #fef3c7; color: #92400e; }
+    /* ---------- registered clients ---------- */
+    .client-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; margin-top: 16px; }
+    .client-toolbar input, .client-toolbar select { min-height: 42px; }
+    .client-table td small { color: #64748b; display: block; }
+    .client-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+    .client-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .client-state.active { background: #dcfce7; color: #166534; } .client-state.inactive { background: #f1f5f9; color: #475569; }
+    .btn-action.btn-delete-client { background: #dc2626; color: #fff; border-color: #dc2626; font-weight: 800; }
+    .btn-action.btn-delete-client:hover { background: #b91c1c; }
+    .client-modal { max-width: 560px; }
+    .client-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; margin: 0 0 8px; font-size: 14px; }
+    .client-dl dt { color: #64748b; font-weight: 600; } .client-dl dd { margin: 0; font-weight: 600; color: #0f172a; overflow-wrap: anywhere; }
+    .delete-explain { font-size: 14px; color: #334155; line-height: 1.5; }
+    .delete-explain p { margin: 0 0 10px; }
+    .delete-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+    .delete-cols > div { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; }
+    .delete-cols > div:first-child { border-color: #fecaca; background: #fef2f2; }
+    .delete-cols h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #475569; }
+    .delete-cols > div:first-child h4 { color: #991b1b; }
+    .delete-cols ul { margin: 0; padding-left: 18px; font-size: 13px; }
+    .delete-tip { font-size: 13px; color: #64748b; }
+    .delete-label { display: block; font-size: 13px; font-weight: 600; margin: 6px 0; color: #0f172a; text-transform: none; letter-spacing: 0; }
+    #clientDeleteConfirm { width: 100%; font-weight: 700; letter-spacing: 1px; }
+    .client-delete-err { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; font-weight: 600; }
+    .btn-danger-solid { background: #dc2626; color: #fff; border: 0; }
+    .btn-danger-solid:disabled { background: #fca5a5; cursor: not-allowed; }
+    .btn-danger-solid:not(:disabled):hover { background: #b91c1c; }
+    @media (max-width: 720px) {
+      .client-toolbar { grid-template-columns: 1fr 1fr; }
+      .client-toolbar input { grid-column: 1 / -1; }
+      .delete-cols { grid-template-columns: 1fr; }
+      .client-table thead { display: none; }
+      .client-table, .client-table tbody, .client-table tr, .client-table td { display: block; width: 100%; }
+      .client-table tr { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
+      .client-table td { border: 0 !important; padding: 5px 0 !important; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+      .client-table td::before { content: attr(data-label); font-weight: 700; color: #64748b; font-size: 12px; text-align: left; flex: none; }
+      .client-table td.client-name { font-size: 15px; font-weight: 700; justify-content: flex-start; }
+      .client-table td.client-name::before, .client-table td.empty-row::before { display: none; }
+      .client-table td.empty-row { justify-content: center; text-align: center; }
+      .client-table td .courier-actions { justify-content: flex-end; }
+      .client-table .btn-action { min-height: 40px; }
+    }
     .field-hint { display: block; margin-top: 4px; font-size: 11.5px; color: #64748b; line-height: 1.4; }
     .courier-form-err { margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; font-weight: 600; }
     #courierForm .is-invalid { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
@@ -1098,17 +1140,31 @@
             <button type="button" class="btn btn-reset" id="exportClientsBtn">Export Clients</button>
           </div>
         </form>
-        <div style="overflow:auto; margin-top:16px;">
-          <table class="shipments-table">
+        <div class="client-toolbar">
+          <input id="clientSearch" type="search" placeholder="Search by name or email" aria-label="Search clients by name or email" autocomplete="off">
+          <select id="clientSort" aria-label="Sort clients">
+            <option value="registered-desc">Newest registered</option>
+            <option value="registered-asc">Oldest registered</option>
+            <option value="name-asc">Name A–Z</option>
+          </select>
+          <select id="clientStatusFilter" aria-label="Filter by status">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Deactivated</option>
+          </select>
+          <button type="button" class="btn-action" id="clientRefresh">Refresh</button>
+        </div>
+        <div style="overflow:auto; margin-top:12px;">
+          <table class="shipments-table client-table">
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Registered</th>
                 <th>Status</th>
-                <th>XRP</th>
-                <th>TSLA</th>
+                <th>Shipments</th>
+                <th>Last activity</th>
                 <th>Portfolio</th>
-                <th>Restrictions</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1117,6 +1173,35 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="clientViewModal" role="dialog" aria-modal="true" aria-labelledby="clientViewTitle">
+    <div class="modal-card client-modal">
+      <div class="card-header"><h3 id="clientViewTitle">Client</h3><p>Registered client account</p></div>
+      <dl class="client-dl" id="clientViewBody"></dl>
+      <div class="form-footer"><button type="button" class="btn btn-reset" data-close="clientViewModal">Close</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="clientDeleteModal" role="alertdialog" aria-modal="true" aria-labelledby="clientDeleteTitle" aria-describedby="clientDeleteDesc">
+    <div class="modal-card client-modal">
+      <div class="card-header"><h3 id="clientDeleteTitle">Delete this client?</h3><p id="clientDeleteWho"></p></div>
+      <div id="clientDeleteDesc" class="delete-explain">
+        <p><strong>This permanently deletes the selected client account.</strong> It cannot be undone.</p>
+        <div class="delete-cols">
+          <div><h4>Will be deleted</h4><ul id="clientDeleteRemoves"></ul></div>
+          <div><h4>Will be kept</h4><ul id="clientDeleteKeeps"></ul></div>
+        </div>
+        <p class="delete-tip">Only want to block sign-in? Use <strong>Deactivate</strong> instead; it can be restored.</p>
+      </div>
+      <label for="clientDeleteConfirm" class="delete-label">Type <strong>DELETE</strong> to permanently remove this client.</label>
+      <input id="clientDeleteConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE">
+      <div class="client-delete-err" id="clientDeleteErr" role="alert" hidden></div>
+      <div class="form-footer">
+        <button type="button" class="btn btn-reset" id="clientDeleteCancel">Cancel</button>
+        <button type="button" class="btn btn-danger-solid" id="clientDeleteGo" disabled>Delete permanently</button>
       </div>
     </div>
   </div>
@@ -1481,7 +1566,7 @@
         if (view === "couriers") loadAvailableCouriers();
         if (view === "clients") {
           // Client portfolio tool loads only when its tab is opened (it reads Firestore directly).
-          if (!clientAdminTools) clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast, collection, getDocs, doc, setDoc, deleteDoc });
+          if (!clientAdminTools) clientAdminTools = setupAdminClients({ api: center.api, showToast });
           else clientAdminTools.refreshClients?.();
         }
       },

@@ -9,7 +9,20 @@ const DEMO = {
         location: "Tokyo, Japan", latitude: 35.6762, longitude: 139.6503, fee: "$120.00", createdAt: "2026-09-28T08:00:00.000Z",
         distance: "11000", updates: [{ title: "Shipment registered", description: "Shipment accepted by DHL", location: "Manila", timestamp: "2026-09-28T08:00:00.000Z" }] },
       "LEGACY-OLD": { id: "LEGACY-OLD", status: "Under Custom review", courier: "dhl", origin: "Lagos", destination: "London", location: "Heathrow", fee: "$5", createdAt: "2026-09-01T00:00:00.000Z" }
-    }
+    },
+    // Registered clients: Firebase Auth uid <-> clients/{uid} (+ portfolio_history/{uid}). Test data only.
+    clients: {
+      uidClientAaaa: { name: "Ada Client", email: "ada@client.test", status: "active", created_at: "2026-08-01T10:00:00.000Z", updated_at: "2026-09-20T10:00:00.000Z",
+        portfolios: { xrp_holdings: 10, tsla_holdings: 1 }, restrictions: { max_xrp: 100, max_tsla: 5 }, password_hash: "legacy-hash-never-shown" },
+      uidClientBbbb: { name: "Ben Client", email: "ben@client.test", status: "active", created_at: "2026-09-05T10:00:00.000Z",
+        portfolios: { xrp_holdings: 3, tsla_holdings: 0 }, restrictions: { max_xrp: 10, max_tsla: 1 } }
+    },
+    portfolioHistory: { uidClientAaaa: { "2026-09-20": { total_value: 50 }, "2026-09-21": { total_value: 55 } }, uidClientBbbb: { "2026-09-21": { total_value: 9 } } },
+    authUsers: {
+      uidClientAaaa: { email: "ada@client.test", password: "ada-pass-1", createdAt: "2026-08-01T10:00:00.000Z", lastSignInAt: "2026-09-30T09:00:00.000Z" },
+      uidClientBbbb: { email: "ben@client.test", password: "ben-pass-1", createdAt: "2026-09-05T10:00:00.000Z" }
+    },
+    idTokens: { "client-a-token": { uid: "uidClientAaaa", email: "ada@client.test" } }
 };
 
 export async function __seedDemo() {
