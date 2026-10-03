@@ -7,7 +7,7 @@ Static site (Vercel) + serverless API (`/api`) + Firestore.
 - `api/` – `track` (public lookup), `stream` (SSE), `admin`, `provider` (courier/GPS webhook), `config`
 - `api/_lib/` – service layer, store adapters (Firestore / in-memory), client-view whitelist, auth, providers
 - `shared/status.js` – single status engine used by server and browser (incl. Live / Last known location rules)
-- `shared/carriers.js` – built-in carrier catalog; add a carrier by adding one entry (or a Firestore `couriers` doc)
+- `shared/carriers.js` – built-in carrier catalog; add a carrier by adding one entry, or in Admin → Couriers (saved through `/api/admin`, `api/_lib/couriers.js`; records are archived, never deleted)
 - `tracker/session.js` – temporary tracking session (code kept in memory only, cleared on reload/leave/idle)
 - `ui/motion.js`, `ui/motion.css`, `ui/site.css` – scroll reveal motion system and shared mobile fixes
 

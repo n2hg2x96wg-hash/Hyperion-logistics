@@ -295,7 +295,7 @@ test("carriers: built-in catalog is extensible and Tesla Transport is a custom (
   const rm = await admin({ action: "create", shipment: { origin: "London", destination: "Paris", courier: "royalmail" } });
   const pubRm = (await (await track(rm.json.shipment.id)).json()).shipment;
   assert.equal(pubRm.carrier.name, "Royal Mail"); assert.equal(pubRm.carrier.custom, false);
-  assert.equal(pubRm.locationState.state, "none", "no location recorded => Location unavailable");
+  assert.equal(pubRm.locationState.state, "none", "no location recorded => Awaiting location update");
   assert.equal(pubRm.map.current, null, "no fabricated coordinates");
 });
 
@@ -357,4 +357,55 @@ test("public tracking pages never persist the code: no storage APIs, session wip
   }
   const vercel = JSON.parse(fs.readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
   assert.ok(vercel.headers.some((h) => h.source === "/track.html" && h.headers.some((x) => x.value === "no-store")));
+});
+
+test("couriers: server-side create, edit, duplicate checks, enable/disable/archive, persistence (no deletes)", async () => {
+  // Unauthenticated writes are refused (the old browser path failed silently with "Error saving courier").
+  assert.equal((await admin({ action: "saveCourier", mode: "create", courier: { id: "x1", name: "X", prefix: "X1" } }, { auth: false })).status, 401);
+
+  let r = await admin({ action: "saveCourier", mode: "create", courier: { id: "", name: "No id", prefix: "NI" } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "id"); assert.match(r.json.message, /Courier ID is required/);
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "acme-freight", name: "", prefix: "ACM" } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "name");
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "acme-freight", name: "Acme", prefix: "ACM", trackingUrl: "https://acme.test/track" } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "trackingUrl");
+
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "Acme-Freight", name: "Acme Freight", prefix: "acm", region: "Philippines", trackingUrl: "https://acme.test/track?n={code}", phone: "" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.equal(r.json.message, "Courier created successfully.");
+  assert.equal(r.json.courier.id, "acme-freight"); assert.equal(r.json.courier.prefix, "ACM");
+
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "acme-freight", name: "Again", prefix: "AG" } });
+  assert.equal(r.status, 409); assert.match(r.json.message, /already exists/);
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "fedex", name: "FedEx copy", prefix: "FX" } });
+  assert.equal(r.status, 409); assert.match(r.json.message, /built-in/);
+  r = await admin({ action: "saveCourier", mode: "create", courier: { id: "other-co", name: "Other", prefix: "ACM" } });
+  assert.equal(r.status, 409); assert.match(r.json.message, /prefix ACM is already used by Acme Freight/);
+
+  // Edit keeps the id, changes name/prefix/region; existing seeded courier (dhl) edit keeps its other fields.
+  r = await admin({ action: "saveCourier", mode: "update", id: "acme-freight", courier: { name: "Acme Freight PH", prefix: "ACF", region: "Manila" } });
+  assert.equal(r.status, 200); assert.equal(r.json.message, "Courier updated successfully.");
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { name: "DHL Express", prefix: "DHL", phone: "+1-800-225-5345" } });
+  assert.equal(r.status, 200);
+
+  r = await admin({ action: "setCourierState", id: "acme-freight", state: "inactive" }); assert.equal(r.status, 200);
+  let list = (await admin({ action: "listCouriers" })).json.couriers;
+  let acme = list.find((c) => c.id === "acme-freight");
+  assert.equal(acme.name, "Acme Freight PH"); assert.equal(acme.prefix, "ACF"); assert.equal(acme.region, "Manila"); assert.equal(acme.active, false);
+  const dhl = list.find((c) => c.id === "dhl");
+  assert.equal(dhl.name, "DHL Express"); assert.equal(dhl.apiEndpoint, "https://secret.internal/api", "fields not in the form are kept");
+  assert.ok(list.find((c) => c.id === "correios"), "Correios is in the catalog");
+
+  r = await admin({ action: "setCourierState", id: "acme-freight", state: "archived" }); assert.equal(r.status, 200);
+  acme = (await admin({ action: "listCouriers" })).json.couriers.find((c) => c.id === "acme-freight");
+  assert.equal(acme.archived, true, "archived, not deleted");
+  r = await admin({ action: "setCourierState", id: "acme-freight", state: "active" });
+  acme = (await admin({ action: "listCouriers" })).json.couriers.find((c) => c.id === "acme-freight");
+  assert.equal(acme.active, true); assert.equal(acme.archived, false);
+
+  // Client view: carrier tracking link only when configured AND the shipment has a carrier reference.
+  const cr = await admin({ action: "create", shipment: { courier: "acme-freight", courierTrackingNumber: "AB 12/3", origin: "Manila", destination: "Cebu", statusCode: "IN_TRANSIT" } });
+  assert.equal(cr.status, 200, JSON.stringify(cr.json));
+  const view = (await (await track(cr.json.shipment.id)).json()).shipment;
+  assert.equal(view.carrier.trackingUrl, "https://acme.test/track?n=AB%2012%2F3");
+  assert.ok(!JSON.stringify(view).includes("docId"));
 });

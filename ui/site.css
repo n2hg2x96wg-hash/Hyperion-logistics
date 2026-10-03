@@ -16,39 +16,11 @@ button { touch-action: manipulation; }
   .btn-search, .btn-track { min-height: 48px; }
 }
 
-/* Customer Support contact (tracking pages). A plain mailto link: the visitor's own email app sends the message. */
-.hx-support { max-width: 1200px; margin: 0 auto; padding: 8px 24px 48px; }
-.hx-support-card {
-  display: flex; align-items: center; gap: 18px; padding: 20px 24px;
-  background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 14px;
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-}
-.hx-support-icon {
-  flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
-  color: #93c5fd; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.25);
-}
-.hx-support-text { flex: 1; min-width: 0; }
-.hx-support-text h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #f1f5f9; letter-spacing: 0; }
-.hx-support-text h2 span { margin-left: 6px; font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
-.hx-support-text p { margin: 0 0 6px; font-size: 14px; line-height: 1.5; color: #94a3b8; }
-.hx-support-email {
-  display: inline-block; padding: 4px 0; font-size: 15px; font-weight: 600; color: #93c5fd;
-  text-decoration: none; overflow-wrap: anywhere; word-break: break-word;
-}
-.hx-support-email:hover { color: #bfdbfe; text-decoration: underline; text-underline-offset: 3px; }
-.hx-support-btn {
-  flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 20px;
-  border-radius: 10px; font-size: 14px; font-weight: 700; color: #fff; text-decoration: none; white-space: nowrap;
-  background: #3b82f6; transition: background .2s ease, box-shadow .2s ease;
-}
-.hx-support-btn:hover { background: #2563eb; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3); }
-
-@media (max-width: 640px) {
-  .hx-support { padding: 0 16px 32px; }
-  .hx-support-card { flex-wrap: wrap; align-items: flex-start; gap: 14px; padding: 18px; }
-  .hx-support-text { flex-basis: calc(100% - 58px); }
-  .hx-support-btn { width: 100%; min-height: 48px; }
-}
+/* Customer Support (page-level card on the tracking pages; card styles live in tracker/tracker.css).
+   While a shipment is shown, the tracker renders its own support card, so the page-level one steps aside. */
+.hx-support { max-width: 1100px; margin: 0 auto; padding: 8px 24px 48px; }
+#results[data-phase="ready"] ~ .hx-support { display: none; }
+@media (max-width: 640px) { .hx-support { padding: 0 16px 32px; } }
 @media (max-width: 768px) {
   /* The support section follows the results; the chat-bubble clearance moves to the footer below it. */
   .results:has(+ .hx-support) { padding-bottom: 24px !important; }

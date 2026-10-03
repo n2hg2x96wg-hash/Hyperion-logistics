@@ -188,6 +188,36 @@ export function createFirestoreStore() {
       return q.empty ? null : q.docs[0].data();
     },
 
+    // Courier directory (admin-managed). Writes only add or merge fields; records are never deleted here.
+    async listCouriers() {
+      const snap = await db.collection("couriers").get();
+      return snap.docs.map((d) => ({ ...d.data(), docId: d.id }));
+    },
+    async findCourierDoc(id) {
+      if (!id) return null;
+      const key = String(id).trim();
+      const direct = await db.collection("couriers").doc(key.toLowerCase()).get();
+      if (direct.exists) return { ...direct.data(), docId: direct.id };
+      const q = await db.collection("couriers").where("id", "==", key).limit(1).get();
+      return q.empty ? null : { ...q.docs[0].data(), docId: q.docs[0].id };
+    },
+    async createCourier(docId, data, auditEntry) {
+      const ref = db.collection("couriers").doc(docId);
+      await db.runTransaction(async (tx) => {
+        if ((await tx.get(ref)).exists) throw Object.assign(new Error("exists"), { code: "courier_exists" });
+        tx.set(ref, data);
+        if (auditEntry) tx.set(db.collection("audit_logs").doc(), auditEntry);
+      });
+    },
+    async updateCourier(docId, patch, auditEntry) {
+      const ref = db.collection("couriers").doc(docId);
+      await db.runTransaction(async (tx) => {
+        if (!(await tx.get(ref)).exists) throw Object.assign(new Error("missing"), { code: "courier_missing" });
+        tx.set(ref, patch, { merge: true });
+        if (auditEntry) tx.set(db.collection("audit_logs").doc(), auditEntry);
+      });
+    },
+
     async verifyIdToken(token) { return getAuth(app).verifyIdToken(token); }
   };
 }

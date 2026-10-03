@@ -141,9 +141,9 @@ export function initControlCenter(host) {
       banner.classList.toggle("hidden", !d.needsMigration);
       if (d.needsMigration) $("migrationText").textContent = `${d.unmigrated} existing shipment(s) were created before the control center upgrade. Run the additive data migration so they are counted, searchable and filterable. No data is removed.`;
       const li = (html) => `<li>${html}</li>`;
-      const codeBtn = (c) => `<button class="code" data-open="${esc(c)}" type="button">${esc(c)}</button>`;
+      const codeBtn = (c) => (c ? `<button class="code" data-open="${esc(c)}" type="button">${esc(c)}</button>` : "");
       $("dashRecent").innerHTML = d.recentShipments.length ? d.recentShipments.map((s) => li(`<span>${codeBtn(s.id)} ${s.status ? pill(s.status) : ""}<br><small>${esc(s.origin || "")} → ${esc(s.destination || "")}</small></span><small>${esc(timeAgo(s.updatedAt) || "")}</small>`)).join("") : li("<small>No shipments yet.</small>");
-      const act = (a) => li(`<span>${codeBtn(a.shipment)} <strong>${esc(a.action)}</strong><br><small>by ${esc(a.actor)}</small></span><small>${esc(timeAgo(a.at) || "")}</small>`);
+      const act = (a) => li(`<span>${a.shipment ? codeBtn(a.shipment) : a.courier ? `<code>${esc(a.courier)}</code>` : ""} <strong>${esc(a.action)}</strong><br><small>by ${esc(a.actor)}</small></span><small>${esc(timeAgo(a.at) || "")}</small>`);
       $("dashActivity").innerHTML = d.recentActivity.length ? d.recentActivity.map(act).join("") : li("<small>No activity recorded yet.</small>");
       $("dashLocations").innerHTML = d.recentLocationUpdates.length ? d.recentLocationUpdates.map((a) => li(`<span>${codeBtn(a.shipment)} → ${esc(a.next?.location || "coordinates")}<br><small>${esc(a.next?.source || "admin")}</small></span><small>${esc(timeAgo(a.at) || "")}</small>`)).join("") : li("<small>No recent location updates.</small>");
       $("dashEvents").innerHTML = d.recentTrackingEvents.length ? d.recentTrackingEvents.map((a) => li(`<span>${codeBtn(a.shipment)} ${esc(a.action === "event.added" ? `event: ${a.next?.status || ""}` : `status → ${a.next?.status || ""}`)}</span><small>${esc(timeAgo(a.at) || "")}</small>`)).join("") : li("<small>No recent events.</small>");
@@ -259,6 +259,9 @@ export function initControlCenter(host) {
       const full = await api("get", { code }); const s = full.shipment; editing = s;
       const set = (id, v) => { $(id).value = v ?? ""; };
       set("shipmentIdInput", s.id); $("shipmentStatusInput").innerHTML = statusOptions(s.statusCode); set("shipmentServiceInput", s.serviceType); set("shipmentClientRefInput", s.clientRef);
+      // Keep the shipment's courier selectable even if it is now inactive/archived (or a legacy id), so saving never clears it.
+      const cSel = $("shipmentCourierInput");
+      if (s.courier && cSel && ![...cSel.options].some((o) => o.value === s.courier)) cSel.add(new Option(`${host.findCourier?.(s.courier)?.name || s.courier} (inactive)`, s.courier));
       set("shipmentCourierInput", s.courier); set("shipmentCourierTrackingNumberInput", s.courierTrackingNumber); set("shipmentOriginInput", s.origin);
       set("shipmentDestinationInput", s.destination); set("shipmentLocationInput", s.location); set("shipmentDistanceInput", s.distance);
       set("shipmentLatitudeInput", s.latitude); set("shipmentLongitudeInput", s.longitude); set("shipmentFeeInput", s.fee);
@@ -512,7 +515,7 @@ export function initControlCenter(host) {
       const { items } = await api("audit", { limit: 150, code: code || undefined });
       const diff = (a) => { const f = (o) => (o ? Object.entries(o).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join("\n") : "—"); return `<div class="audit-diff">${esc(f(a.previous))}\n→\n${esc(f(a.next))}</div>`; };
       $("auditContainer").innerHTML = items.length ? `<table class="shipments-table responsive"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Shipment</th><th>Change</th></tr></thead><tbody>${items.map((a) =>
-        `<tr><td data-label="When">${esc(fmt(a.at))}</td><td data-label="Admin">${esc(a.actor)}<br><small>${esc(a.role || "")}${a.via && a.via !== "admin" ? ` · ${esc(a.via)}` : ""}</small></td><td data-label="Action"><strong>${esc(a.action)}</strong></td><td data-label="Shipment">${esc(a.shipment || "—")}</td><td data-label="Change">${diff(a)}</td></tr>`).join("")}</tbody></table>`
+        `<tr><td data-label="When">${esc(fmt(a.at))}</td><td data-label="Admin">${esc(a.actor)}<br><small>${esc(a.role || "")}${a.via && a.via !== "admin" ? ` · ${esc(a.via)}` : ""}</small></td><td data-label="Action"><strong>${esc(a.action)}</strong></td><td data-label="Shipment">${esc(a.shipment || (a.courier ? `courier: ${a.courier}` : "—"))}</td><td data-label="Change">${diff(a)}</td></tr>`).join("")}</tbody></table>`
         : '<div class="empty-state"><div class="empty-icon">🛡️</div><h3>No activity recorded</h3><p>Actions will appear here as soon as shipments are created or changed.</p></div>';
     });
   }

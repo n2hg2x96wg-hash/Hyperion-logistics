@@ -41,7 +41,7 @@
 .hx-eta-na { font-size: 14px; font-weight: 600; color: #cbd5e1; }
 .hx-tag { display: inline-block; vertical-align: middle; font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; background: rgba(148,163,184,.18); color: #cbd5e1; margin-left: 4px; }
 
-/* location freshness: Live / Recently updated / Last known location / Location unavailable */
+/* location freshness: Live / Recently updated / Last known location / Awaiting location update */
 .hx-loc-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; background: rgba(148,163,184,.14); color: #cbd5e1; }
 .hx-loc-badge i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 .hx-loc-badge.is-live { background: rgba(34,197,94,.16); color: #86efac; } .hx-loc-badge.is-live i { animation: hx-pulse 2s infinite; }
@@ -149,3 +149,105 @@ html.hx-motion [data-reveal]:not(.is-visible) .hx-progress-bar span { transform:
 }
 @media (max-width: 380px) { .hx-facts { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .hx-tracker *, .hx-tracker *::before { animation: none !important; transition: none !important; } }
+
+/* ---------- action bar: connection state + Refresh + Support ---------- */
+.hx-meta { padding-top: 12px; border-top: 1px solid var(--hx-line); }
+.hx-meta-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.hx-checked { color: var(--hx-muted); font-size: 12px; }
+.hx-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hx-btn-sec { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 14px; border-radius: 10px;
+  border: 1px solid rgba(148,163,184,.3); background: rgba(15,23,42,.55); color: #e2e8f0; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; }
+.hx-btn-sec:hover { border-color: rgba(147,197,253,.6); color: #fff; }
+.hx-btn-sec:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.hx-btn-sec.is-busy span { display: inline-block; animation: hx-spin .8s linear infinite; }
+@keyframes hx-spin { to { transform: rotate(360deg); } }
+.hx-conn { color: #cbd5e1; }
+.hx-conn.ok i { animation: hx-soft-pulse 2.4s ease-in-out infinite; }
+@keyframes hx-soft-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.75); } }
+
+/* status pill: a small live dot while the shipment is still moving */
+.hx-pill { gap: 8px; }
+.hx-pill i { display: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.hx-pill.is-active i { display: block; animation: hx-soft-pulse 2.4s ease-in-out infinite; }
+.hx-loc-time { display: inline-block; margin-left: 4px; }
+
+/* progress: stage counter + bar fill + step dots that light up in order */
+.hx-progress-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #cbd5e1; margin-bottom: 8px; }
+.hx-progress-head strong { color: #fff; font-variant-numeric: tabular-nums; }
+.hx-step-dot { transition: transform .35s cubic-bezier(.2,.7,.2,1), background-color .3s ease; }
+html.hx-motion [data-reveal]:not(.is-visible) .hx-step-dot { transform: scale(0); }
+.hx-step:nth-child(2) .hx-step-dot { transition-delay: .08s; } .hx-step:nth-child(3) .hx-step-dot { transition-delay: .16s; }
+.hx-step:nth-child(4) .hx-step-dot { transition-delay: .24s; } .hx-step:nth-child(5) .hx-step-dot { transition-delay: .32s; }
+.hx-step:nth-child(6) .hx-step-dot { transition-delay: .4s; } .hx-step:nth-child(7) .hx-step-dot { transition-delay: .48s; }
+.hx-progress-bar span { transition-delay: .15s; }
+.hx-step.current .hx-step-dot { animation: hx-step-ring 2.6s ease-out infinite; }
+@keyframes hx-step-ring { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.5); } 70%, 100% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+
+/* timeline: the line draws down and dots pop in as entries scroll into view */
+.hx-tl::before { transform-origin: top; transition: transform .6s cubic-bezier(.2,.7,.2,1) .1s; }
+html.hx-motion .hx-tl[data-reveal]:not(.is-visible)::before { transform: scaleY(0); }
+.hx-tl-dot { transition: transform .35s cubic-bezier(.2,.7,.2,1) .05s; }
+html.hx-motion .hx-tl[data-reveal]:not(.is-visible) .hx-tl-dot { transform: scale(0); }
+.hx-tl.latest .hx-tl-dot { box-shadow: 0 0 0 4px rgba(59,130,246,.25); }
+
+/* map card enters with a gentle settle; ETA card a touch of emphasis */
+html.hx-motion .hx-mapcard[data-reveal]:not(.is-visible) { transform: scale(.985); }
+.hx-fact-eta { box-shadow: 0 10px 24px rgba(37,99,235,.25); }
+
+/* map unavailable: never a blank map */
+.hx-map-fallback { position: absolute; inset: 0; z-index: 1100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 20px; text-align: center; background: linear-gradient(135deg, #1e293b, #0f172a); color: #e2e8f0; }
+.hx-map-fallback-ico { font-size: 30px; }
+.hx-map-fallback strong { font-size: 16px; }
+.hx-map-fallback dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 6px 0 0; font-size: 13px; text-align: left; max-width: 420px; }
+.hx-map-fallback dt { color: var(--hx-muted); font-weight: 600; } .hx-map-fallback dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.hx-map.hx-map-empty .hx-map-fallback { position: static; height: 100%; }
+.hx-map-msg strong { color: #e2e8f0; font-size: 15px; }
+.hx-popup strong { display: block; margin-bottom: 2px; }
+
+/* ---------- Customer Support card (tracker + tracking pages) ---------- */
+.hx-support-card {
+  display: flex; align-items: center; gap: 18px; padding: 20px 24px; color: #e2e8f0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: linear-gradient(135deg, rgba(30,58,138,.35), rgba(30,41,59,.62)); border: 1px solid rgba(96,165,250,.3); border-radius: 16px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); scroll-margin: 90px;
+}
+.hx-support-icon {
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+  color: #bfdbfe; background: rgba(59,130,246,.2); border: 1px solid rgba(96,165,250,.35);
+}
+.hx-support-text { flex: 1; min-width: 0; }
+.hx-support-text h2, .hx-support-text h3 { margin: 0 0 4px; font-size: 17px; font-weight: 800; color: #f8fafc; letter-spacing: 0; }
+.hx-support-text h2 span, .hx-support-text h3 span { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; color: #cbd5e1; text-transform: none; letter-spacing: 0; }
+.hx-support-text p { margin: 0 0 6px; font-size: 14px; line-height: 1.5; color: #cbd5e1; }
+.hx-support-email {
+  display: inline-block; padding: 4px 0; font-size: 15px; font-weight: 700; color: #93c5fd;
+  text-decoration: none; overflow-wrap: anywhere; word-break: break-word; user-select: all; -webkit-user-select: all;
+}
+.hx-support-email:hover { color: #bfdbfe; text-decoration: underline; text-underline-offset: 3px; }
+.hx-support-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 11px 20px;
+  border-radius: 11px; font-size: 14px; font-weight: 800; color: #fff; text-decoration: none; white-space: nowrap;
+  background: #3b82f6; box-shadow: 0 8px 18px rgba(59,130,246,.3); transition: background .2s ease, box-shadow .2s ease, transform .15s ease;
+}
+.hx-support-btn:hover { background: #2563eb; box-shadow: 0 10px 22px rgba(59,130,246,.4); }
+.hx-support-btn:focus-visible, .hx-support-email:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; border-radius: 8px; }
+@media (max-width: 640px) {
+  .hx-support-card { flex-wrap: wrap; align-items: flex-start; gap: 14px; padding: 18px; }
+  .hx-support-text { flex-basis: calc(100% - 60px); }
+  .hx-support-btn { width: 100%; min-height: 50px; white-space: normal; }
+}
+
+/* readable contrast for secondary text */
+.hx-tracker { --hx-muted: #a5b4c8; }
+.hx-info-label, .hx-fact-label { color: #a5b4c8; }
+
+@media (max-width: 720px) {
+  .hx-meta { flex-direction: column; align-items: stretch; }
+  .hx-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .hx-btn-sec { min-height: 44px; }
+  .hx-progress-head { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-support-card, .hx-support-btn { transition: none !important; }
+  html.hx-motion [data-reveal] .hx-step-dot, html.hx-motion .hx-tl[data-reveal]::before, html.hx-motion .hx-tl[data-reveal] .hx-tl-dot { transform: none !important; }
+}

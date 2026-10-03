@@ -191,13 +191,13 @@ export function computeChange(current, patch, ctx) {
   if (!creating && locChanged && hasLocationPayload) {
     const lat = next.latitude ?? null; const lng = next.longitude ?? null;
     events.push({ ...eventBase, id: `ev_${sha(`${code}|loc|${lat}|${lng}|${where}|${rev}`)}`, kind: "location", statusCode: null, title: "Location Updated",
-      description: where ? `Shipment location updated to ${where}.` : "Shipment location updated.", location: where, lat, lng, timestamp: occurredAt, seq: rev * 10 + 2 });
+      description: (!statusChanged && cleanNote(ctx.statusNote)) || (where ? `Shipment location updated to ${where}.` : "Shipment location updated."), location: where, lat, lng, timestamp: occurredAt, seq: rev * 10 + 2 });
   }
   if (locChanged && hasLocationPayload) {
     const lat = next.latitude ?? null; const lng = next.longitude ?? null;
     next.locationUpdatedAt = occurredAt; next.locationSource = isManualSource ? "admin" : source;
     locations.push({ id: `loc_${sha(`${code}|${lat}|${lng}|${where}|${rev}`)}`, lat, lng, name: where, timestamp: occurredAt,
-      source: next.locationSource, statusCode: next.statusCode || null, actor, clientVisible: true });
+      source: next.locationSource, statusCode: next.statusCode || null, note: cleanNote(ctx.statusNote) || null, actor, clientVisible: true });
   }
 
   // audit entries (admin-only)

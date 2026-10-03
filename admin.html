@@ -649,6 +649,29 @@
     .check-row small { display: block; color: #64748b; font-weight: 500; }
     .courier-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 6px; border-radius: 6px; background: #e2e8f0; color: #334155; margin-left: 6px; }
     .courier-badge.custom { background: #fef3c7; color: #92400e; }
+    .field-hint { display: block; margin-top: 4px; font-size: 11.5px; color: #64748b; line-height: 1.4; }
+    .courier-form-err { margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; font-weight: 600; }
+    #courierForm .is-invalid { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
+    .courier-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+    .courier-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .courier-state.active { background: #dcfce7; color: #166534; }
+    .courier-state.inactive { background: #f1f5f9; color: #475569; }
+    .courier-state.archived { background: #fee2e2; color: #991b1b; }
+    .courier-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .courier-filter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; margin-left: auto; }
+    tr.is-archived td { opacity: .65; }
+    @media (max-width: 720px) {
+      /* Courier table becomes stacked cards on phones: no sideways scrolling. */
+      .courier-table thead { display: none; }
+      .courier-table, .courier-table tbody, .courier-table tr, .courier-table td { display: block; width: 100%; }
+      .courier-table tr { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
+      .courier-table td { border: 0 !important; padding: 5px 0 !important; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+      .courier-table td::before { content: attr(data-label); font-weight: 700; color: #64748b; font-size: 12px; text-align: left; }
+      .courier-table td.courier-name { font-size: 15px; font-weight: 700; justify-content: flex-start; text-align: left; }
+      .courier-table td.courier-name::before { display: none; }
+      .courier-table td .courier-actions { justify-content: flex-end; }
+      .courier-actions .btn-action { min-height: 40px; }
+    }
     .admin-map .hx-map-hint { bottom: 10px; }
     .admin-map.picking { cursor: crosshair; }
     @media (max-width: 1000px) { .trk-layout { grid-template-columns: 1fr; } .trk-layout .admin-map { height: 320px; } }
@@ -914,7 +937,7 @@
               <p class="hint" id="mapPickHint">Tip: click the map to fill in the coordinates of a new position.</p>
             </div>
             <form class="panel panel-primary" id="locForm" novalidate data-reveal>
-              <h4>📍 Update shipment location</h4>
+              <h4>📍 Tracking Location</h4>
               <div class="form-group" style="margin-bottom:12px;"><label for="locName">Current location</label><input id="locName" type="text" placeholder="e.g., Dubai, UAE" maxlength="160" required autocomplete="off"></div>
               <fieldset class="coord-group">
                 <legend>Coordinates <small>(paste “25.2048, 55.2708” into Latitude to fill both)</small></legend>
@@ -1031,10 +1054,11 @@
       <div class="shipments-card" id="view-couriers">
         <div class="card-header">
           <h3>Manage Couriers</h3>
-          <p>Add, edit, and remove courier support details</p>
+          <p>Add, edit, enable/disable and archive couriers. Changes are saved to the database.</p>
         </div>
         <div class="form-footer" style="margin-top:0;margin-bottom:16px;">
           <button type="button" class="btn btn-save" onclick="openCourierModal()">+ Add New Courier</button>
+          <label class="courier-filter"><input type="checkbox" id="courierShowArchived" onchange="renderCouriersTable()"> Show archived</label>
         </div>
         <div id="couriersContainer">
           <div class="empty-state">
@@ -1103,35 +1127,22 @@
         <h3 id="courierModalTitle">Add New Courier</h3>
         <p>Fields marked with * are required</p>
       </div>
-      <form id="courierForm">
+      <form id="courierForm" novalidate>
+        <div class="courier-form-err" id="courierFormErr" role="alert" hidden></div>
         <div class="form-grid">
           <div class="form-group">
             <label for="courierIdInput">Courier ID *</label>
-            <input id="courierIdInput" type="text" placeholder="e.g., 2go" required>
+            <input id="courierIdInput" type="text" placeholder="e.g., my-carrier" autocomplete="off" autocapitalize="none" spellcheck="false">
+            <small class="field-hint" id="courierIdHint">Lowercase letters, numbers and dashes. Permanent once created.</small>
           </div>
           <div class="form-group">
             <label for="courierNameInput">Name *</label>
-            <input id="courierNameInput" type="text" placeholder="Courier display name" required>
+            <input id="courierNameInput" type="text" placeholder="Courier display name" maxlength="60">
           </div>
           <div class="form-group">
-            <label for="courierPrefixInput">Prefix *</label>
-            <input id="courierPrefixInput" type="text" placeholder="e.g., 2GO" required>
-          </div>
-          <div class="form-group">
-            <label for="courierBrandColorInput">Brand Color *</label>
-            <input id="courierBrandColorInput" type="text" placeholder="#0ea5e9" required>
-          </div>
-          <div class="form-group">
-            <label for="courierPhoneInput">Phone</label>
-            <input id="courierPhoneInput" type="text" placeholder="+1-800-000-0000">
-          </div>
-          <div class="form-group">
-            <label for="courierEmailInput">Email</label>
-            <input id="courierEmailInput" type="email" placeholder="support@courier.com">
-          </div>
-          <div class="form-group">
-            <label for="courierWebsiteInput">Website</label>
-            <input id="courierWebsiteInput" type="url" placeholder="https://courier.com">
+            <label for="courierPrefixInput">Tracking prefix (code) *</label>
+            <input id="courierPrefixInput" type="text" placeholder="e.g., 2GO" maxlength="8" autocapitalize="characters">
+            <small class="field-hint">Used when generating tracking numbers, e.g. 2GO-XXXXX.</small>
           </div>
           <div class="form-group">
             <label for="courierTypeInput">Type</label>
@@ -1141,16 +1152,44 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="courierLogoInput">Logo</label>
-            <input id="courierLogoInput" type="text" placeholder="🚚 or logo URL">
+            <label for="courierRegionInput">Country / region</label>
+            <input id="courierRegionInput" type="text" placeholder="e.g., Philippines" maxlength="60">
+          </div>
+          <div class="form-group">
+            <label for="courierPhoneInput">Phone</label>
+            <input id="courierPhoneInput" type="tel" placeholder="+1-800-000-0000" maxlength="40">
+          </div>
+          <div class="form-group">
+            <label for="courierEmailInput">Email</label>
+            <input id="courierEmailInput" type="email" placeholder="support@courier.com" maxlength="120">
+          </div>
+          <div class="form-group">
+            <label for="courierWebsiteInput">Website</label>
+            <input id="courierWebsiteInput" type="url" placeholder="https://courier.com">
           </div>
           <div class="form-group" style="grid-column: 1 / -1;">
-            <label for="courierApiEndpointInput">API Endpoint</label>
+            <label for="courierTrackingUrlInput">Tracking URL</label>
+            <input id="courierTrackingUrlInput" type="url" placeholder="https://courier.com/track?number={code}">
+            <small class="field-hint">Optional. {code} is replaced with the shipment's carrier reference. Clients only see this link when both are set.</small>
+          </div>
+          <div class="form-group">
+            <label for="courierLogoInput">Logo / badge</label>
+            <input id="courierLogoInput" type="text" placeholder="🚚 or https:// image">
+          </div>
+          <div class="form-group">
+            <label for="courierBrandColorInput">Brand color</label>
+            <input id="courierBrandColorInput" type="text" placeholder="#0ea5e9" maxlength="7">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="courierApiEndpointInput">API endpoint</label>
             <input id="courierApiEndpointInput" type="url" placeholder="https://api.courier.com/v1/track">
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label class="check-row"><input id="courierActiveInput" type="checkbox" checked> Active (available for new shipments)</label>
           </div>
         </div>
         <div class="form-footer">
-          <button type="submit" class="btn btn-save">Save Courier</button>
+          <button type="submit" class="btn btn-save" id="courierSaveBtn">Save Courier</button>
           <button type="button" class="btn btn-reset" onclick="closeCourierModal()">Cancel</button>
         </div>
       </form>
@@ -1215,7 +1254,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { loadCouriers, generateTrackingCode, mapGenericStatusToCourier, buildDefaultCourierUpdates } from "./courier-config.js";
+    import { loadCouriers, setCouriers, generateTrackingCode, mapGenericStatusToCourier, buildDefaultCourierUpdates } from "./courier-config.js";
     import { setupAdminClients } from "./admin-clients.js";
     import { initControlCenter } from "./admin/center.js";
 
@@ -1243,17 +1282,23 @@
       return activeCouriers.find((courier) => courier.id === courierId) || activeCouriers[0];
     }
 
-    async function loadAvailableCouriers(forceReload = false) {
+    // Couriers are read and written through the authenticated server API (/api/admin), never directly from the
+    // browser: the browser has no Firebase sign-in, so direct Firestore writes were rejected ("Error saving courier").
+    let allCouriers = [];
+    async function loadAvailableCouriers() {
       try {
-        activeCouriers = await loadCouriers({ db, collection, getDocs, forceReload });
-        console.log("✅ Couriers loaded:", activeCouriers);
-        populateCourierOptions();
-        renderCouriersTable();
-        return activeCouriers;
+        const res = await center.api("listCouriers");
+        allCouriers = res.couriers || [];
       } catch (error) {
-        console.error("❌ Error loading couriers:", error);
-        showToast("Error loading couriers", "error");
+        if (error.silent) return activeCouriers;
+        showToast(`Couldn't load couriers from the server: ${error.message}. Showing the built-in list.`, "error");
+        if (!allCouriers.length) allCouriers = await loadCouriers();
       }
+      // Pickers offer active couriers only; the table shows everything.
+      activeCouriers = setCouriers(allCouriers.filter((c) => c.active !== false));
+      populateCourierOptions();
+      renderCouriersTable();
+      return activeCouriers;
     }
 
     function populateCourierOptions() {
@@ -1299,55 +1344,64 @@
       }
     };
 
-    async function renderCouriersTable() {
-      if (!activeCouriers || activeCouriers.length === 0) {
-        document.getElementById("couriersContainer").innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">🚚</div>
-            <h3>No Couriers Yet</h3>
-            <p>Add your first courier to start managing support details</p>
-          </div>
-        `;
+    function renderCouriersTable() {
+      const container = document.getElementById("couriersContainer");
+      const showArchived = document.getElementById("courierShowArchived")?.checked;
+      const rows = allCouriers.filter((c) => showArchived || !c.archived);
+      if (!rows.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">🚚</div><h3>No Couriers Yet</h3><p>Add your first courier to start managing support details</p></div>`;
         return;
       }
-
-      const html = `
+      const stateOf = (c) => (c.archived ? "archived" : c.active === false ? "inactive" : "active");
+      const stateLabel = { active: "Active", inactive: "Inactive", archived: "Archived" };
+      container.innerHTML = `
         <div style="overflow:auto;">
-          <table class="shipments-table">
-            <thead>
-              <tr>
-                <th>Courier</th>
-                <th>Prefix</th>
-                <th>Contact</th>
-                <th>Website</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+          <table class="shipments-table courier-table">
+            <thead><tr><th>Courier</th><th>ID</th><th>Prefix</th><th>Region</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
-              ${activeCouriers.map((courier) => `
-                <tr>
-                  <td>${escapeHtml(courier.name)}${courier.type === "custom" ? '<span class="courier-badge custom" title="Internal/custom carrier option, not an official carrier service">custom</span>' : ""}${courier.builtIn && !courier.stored ? '<span class="courier-badge" title="From the built-in carrier catalog. Edit to save your own details.">built-in</span>' : ""}</td>
-                  <td><span class="courier-chip" style="background: ${escapeHtml(courier.brandColor)}33; color: ${escapeHtml(courier.brandColor)};">${escapeHtml(courier.prefix)}</span></td>
-                  <td>${escapeHtml(courier.phone)}</td>
-                  <td>${/^https?:\/\//.test(courier.website) ? `<a href="${escapeHtml(courier.website)}" target="_blank" rel="noopener noreferrer" style="color: #3b82f6;">Visit</a>` : "—"}</td>
-                  <td>
-                    <button class="btn-action" onclick="editCourier('${escapeHtml(courier.id)}')">Edit</button>
-                    ${courier.stored ? `<button class="btn-action btn-danger" onclick="deleteCourier('${escapeHtml(courier.id)}')">${courier.builtIn ? "Reset" : "Delete"}</button>` : ""}
-                  </td>
-                </tr>
-              `).join("")}
+              ${rows.map((c) => { const st = stateOf(c); const id = escapeHtml(c.id); return `
+                <tr class="${st === "archived" ? "is-archived" : ""}">
+                  <td class="courier-name" data-label="Courier"><span>${escapeHtml(c.logo && c.logo.length <= 8 ? c.logo : "🚚")} ${escapeHtml(c.name)}${c.type === "custom" ? '<span class="courier-badge custom" title="Internal/custom carrier option, not an official carrier service">custom</span>' : ""}${c.builtIn ? '<span class="courier-badge" title="Part of the built-in carrier catalog">built-in</span>' : ""}</span></td>
+                  <td data-label="ID"><code>${id}</code></td>
+                  <td data-label="Prefix"><span class="courier-chip" style="background: ${escapeHtml(c.brandColor)}33; color: ${escapeHtml(c.brandColor)};">${escapeHtml(c.prefix)}</span></td>
+                  <td data-label="Region">${escapeHtml(c.region) || "—"}</td>
+                  <td data-label="Contact">${escapeHtml(c.phone) || (/^https?:\/\//.test(c.website) ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;">Website</a>` : "—")}</td>
+                  <td data-label="Status"><span class="courier-state ${st}">${stateLabel[st]}</span></td>
+                  <td data-label="Actions"><div class="courier-actions">
+                    <button type="button" class="btn-action" onclick="editCourier('${id}')">Edit</button>
+                    ${st === "active" ? `<button type="button" class="btn-action" onclick="setCourierState('${id}','inactive')">Disable</button>` : `<button type="button" class="btn-action" onclick="setCourierState('${id}','active')">${st === "archived" ? "Restore" : "Enable"}</button>`}
+                    ${st !== "archived" ? `<button type="button" class="btn-action btn-danger" onclick="setCourierState('${id}','archived')">Archive</button>` : ""}
+                  </div></td>
+                </tr>`; }).join("")}
             </tbody>
           </table>
-        </div>
-      `;
-      document.getElementById("couriersContainer").innerHTML = html;
+        </div>`;
+    }
+    window.renderCouriersTable = renderCouriersTable;
+
+    const CF = {
+      id: "courierIdInput", name: "courierNameInput", prefix: "courierPrefixInput", type: "courierTypeInput", region: "courierRegionInput",
+      phone: "courierPhoneInput", email: "courierEmailInput", website: "courierWebsiteInput", trackingUrl: "courierTrackingUrlInput",
+      logo: "courierLogoInput", brandColor: "courierBrandColorInput", apiEndpoint: "courierApiEndpointInput"
+    };
+    const $c = (k) => document.getElementById(CF[k]);
+    function courierFormError(message, field) {
+      const box = document.getElementById("courierFormErr");
+      document.querySelectorAll("#courierForm .is-invalid").forEach((el) => el.classList.remove("is-invalid"));
+      box.hidden = !message; box.textContent = message || "";
+      if (field && CF[field]) { $c(field).classList.add("is-invalid"); $c(field).focus(); }
     }
 
     window.openCourierModal = function() {
       editingCourierId = null;
       document.getElementById("courierForm").reset();
+      courierFormError("");
+      $c("id").readOnly = false;
+      document.getElementById("courierIdHint").textContent = "Lowercase letters, numbers and dashes. Permanent once created.";
+      document.getElementById("courierActiveInput").checked = true;
       document.getElementById("courierModalTitle").innerText = "Add New Courier";
       document.getElementById("courierModal").classList.add("show");
+      $c("id").focus();
     };
 
     window.closeCourierModal = function() {
@@ -1355,61 +1409,55 @@
     };
 
     window.editCourier = function(courierId) {
-      const courier = activeCouriers.find((c) => c.id === courierId);
-      if (!courier) return;
-
+      const courier = allCouriers.find((c) => c.id === courierId);
+      if (!courier) { showToast("This courier is no longer in the list. Refreshing…", "error"); loadAvailableCouriers(); return; }
       editingCourierId = courierId;
-      document.getElementById("courierIdInput").value = courier.id;
-      document.getElementById("courierNameInput").value = courier.name;
-      document.getElementById("courierPrefixInput").value = courier.prefix;
-      document.getElementById("courierBrandColorInput").value = courier.brandColor;
-      const real = (v) => (v && v !== "--" ? v : "");
-      document.getElementById("courierPhoneInput").value = real(courier.phone);
-      document.getElementById("courierEmailInput").value = real(courier.email);
-      document.getElementById("courierWebsiteInput").value = real(courier.website);
-      document.getElementById("courierTypeInput").value = courier.type === "custom" ? "custom" : "carrier";
-      document.getElementById("courierLogoInput").value = courier.logo || "";
-      document.getElementById("courierApiEndpointInput").value = courier.apiEndpoint || "";
-      document.getElementById("courierModalTitle").innerText = "Edit Courier";
+      courierFormError("");
+      for (const k of Object.keys(CF)) $c(k).value = courier[k] && courier[k] !== "--" ? courier[k] : "";
+      $c("type").value = courier.type === "custom" ? "custom" : "carrier";
+      $c("id").readOnly = true;
+      document.getElementById("courierIdHint").textContent = "The ID is permanent because existing shipments refer to it.";
+      document.getElementById("courierActiveInput").checked = courier.active !== false && !courier.archived;
+      document.getElementById("courierModalTitle").innerText = `Edit Courier: ${courier.name}`;
       document.getElementById("courierModal").classList.add("show");
+      $c("name").focus();
     };
 
-    window.deleteCourier = function(courierId) {
-      const c = activeCouriers.find((x) => x.id === courierId);
-      if (confirm(c?.builtIn ? "Remove your saved details for this courier? It stays available with its built-in details." : "Are you sure you want to delete this courier?")) {
-        deleteDoc(doc(db, "couriers", courierId)).then(() => {
-          showToast("Courier deleted successfully", "success");
-          loadAvailableCouriers(true);
-        }).catch((err) => {
-          showToast("Error deleting courier", "error");
-          console.error(err);
-        });
+    window.setCourierState = async function(courierId, state) {
+      const c = allCouriers.find((x) => x.id === courierId);
+      if (state === "archived" && !confirm(`Archive ${c?.name || courierId}? It will be hidden from new shipments. Existing shipments keep it, and you can restore it any time.`)) return;
+      try {
+        const res = await center.api("setCourierState", { id: courierId, state });
+        showToast(res.message || "Courier updated.", "success");
+        await loadAvailableCouriers();
+      } catch (err) {
+        if (!err.silent) showToast(err.code === "network" ? "Network error: the change was not saved. Check your connection and try again." : `Couldn't update courier: ${err.message}`, "error");
       }
     };
 
     document.getElementById("courierForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const courierData = {
-        id: document.getElementById("courierIdInput").value,
-        name: document.getElementById("courierNameInput").value,
-        prefix: document.getElementById("courierPrefixInput").value,
-        brandColor: document.getElementById("courierBrandColorInput").value,
-        phone: document.getElementById("courierPhoneInput").value,
-        email: document.getElementById("courierEmailInput").value,
-        website: document.getElementById("courierWebsiteInput").value,
-        logo: document.getElementById("courierLogoInput").value,
-        apiEndpoint: document.getElementById("courierApiEndpointInput").value,
-        type: document.getElementById("courierTypeInput").value === "custom" ? "custom" : "carrier"
-      };
-
+      const courier = Object.fromEntries(Object.keys(CF).map((k) => [k, $c(k).value.trim()]));
+      courier.active = document.getElementById("courierActiveInput").checked;
+      // Quick checks before the server validates everything again.
+      if (!editingCourierId && !courier.id) return courierFormError("Courier ID is required.", "id");
+      if (!courier.name) return courierFormError("Name is required.", "name");
+      if (!courier.prefix) return courierFormError("Tracking prefix is required.", "prefix");
+      const btn = document.getElementById("courierSaveBtn");
+      btn.disabled = true; btn.textContent = "Saving…";
       try {
-        await setDoc(doc(db, "couriers", courierData.id), courierData);
-        showToast("Courier saved successfully", "success");
+        const res = await center.api("saveCourier", editingCourierId ? { mode: "update", id: editingCourierId, courier } : { mode: "create", courier });
+        courierFormError("");
+        showToast(res.message || (editingCourierId ? "Courier updated successfully." : "Courier created successfully."), "success");
         closeCourierModal();
-        loadAvailableCouriers(true);
+        await loadAvailableCouriers();
       } catch (err) {
-        showToast("Error saving courier", "error");
-        console.error(err);
+        if (err.silent) return;
+        const msg = err.code === "network" ? "Network error: the courier was not saved. Check your connection and try again." : err.message;
+        courierFormError(msg, err.field);
+        showToast(`Couldn't save courier: ${msg}`, "error");
+      } finally {
+        btn.disabled = false; btn.textContent = "Save Courier";
       }
     });
 
@@ -1430,7 +1478,7 @@
       findCourier: (id) => activeCouriers.find((c) => c.id === id) || null,
       generateTrackingCode: (courierId) => generateTrackingCode(courierId),
       onViewShown: (view) => {
-        if (view === "couriers") loadAvailableCouriers(true);
+        if (view === "couriers") loadAvailableCouriers();
         if (view === "clients") {
           // Client portfolio tool loads only when its tab is opened (it reads Firestore directly).
           if (!clientAdminTools) clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast, collection, getDocs, doc, setDoc, deleteDoc });
