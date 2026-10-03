@@ -1,0 +1,17 @@
+/* Shared mobile-first fixes for the public Hyperion pages (loaded after each page's own styles). */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { min-height: 100vh; min-height: 100dvh; overflow-x: hidden; }
+/* iOS Safari zooms into inputs smaller than 16px; keep tracking inputs at 16px+. */
+input, select, textarea { font-size: max(16px, 1em); }
+button { touch-action: manipulation; }
+:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+
+@media (max-width: 768px) {
+  /* Leave room for the floating support chat bubble so it never covers results or buttons. */
+  .results, .tracker-results { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  footer { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important; }
+  .nav-container { gap: 12px; flex-wrap: wrap; }
+  .nav-links { gap: 16px !important; flex-wrap: wrap; }
+  .search-group input, .track-form input { min-width: 0 !important; width: 100%; }
+  .btn-search, .btn-track { min-height: 48px; }
+}
