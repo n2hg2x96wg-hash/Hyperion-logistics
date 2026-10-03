@@ -12,6 +12,7 @@ const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const dtf = (() => { try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }); } catch { return null; } })();
 const fmtDateTime = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : (dtf ? dtf.format(d) : d.toLocaleString()); };
+const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 const fmtDate = (ymd, style = "full") => { const d = new Date(`${ymd}T00:00:00Z`); return Number.isNaN(+d) ? ymd : new Intl.DateTimeFormat(undefined, { dateStyle: style, timeZone: "UTC" }).format(d); };
 
 export function normalizeCode(input) {
@@ -20,6 +21,22 @@ export function normalizeCode(input) {
 }
 
 const ICON = { pin: "📍", box: "📦", route: "🧭", truck: "🚚", note: "📝", money: "💳", clock: "⏱️", flag: "🏁", warn: "⚠️" };
+
+// Customer Support: a direct email contact (opens the visitor's own email app). Shown with every shipment view,
+// including the homepage tracker and the admin "Client View" preview, so clients can always find it.
+export const SUPPORT_EMAIL = "hyperionlogistics.com@gmail.com";
+const SUPPORT_SUBJECT = "Hyperion Logistics — Customer Inquiry";
+export const supportHref = (code) => `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(SUPPORT_SUBJECT)}${code ? `&body=${encodeURIComponent(`Tracking number: ${code}\n\n`)}` : ""}`;
+const MAIL_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg>';
+export function supportCardHtml(code, attrs = "") {
+  const href = esc(supportHref(code));
+  return `<section class="hx-support-card hx-support-inline" id="hx-support" aria-labelledby="hxSupportH" ${attrs}>
+    <span class="hx-support-icon">${MAIL_SVG}</span>
+    <div class="hx-support-text"><h3 id="hxSupportH">Customer Support <span>Need help with your shipment?</span></h3>
+      <p>Email our support team${code ? " — your tracking number is added to the message for you" : " and include your tracking number"}.</p>
+      <a class="hx-support-email" href="${href}">${SUPPORT_EMAIL}</a></div>
+    <a class="hx-support-btn hx-press" href="${href}">Contact Customer Support</a></section>`;
+}
 
 /**
  * @param {HTMLElement} root
@@ -197,7 +214,8 @@ export function createTracker(root, opts = {}) {
       return `<li class="hx-step ${cls}" ${i === cur ? 'aria-current="step"' : ""}><span class="hx-step-dot"></span><span class="hx-step-label">${esc(s.label)}</span></li>`;
     }).join("");
     const now = cur >= 0 ? `<div class="hx-stage-now">${esc(p.steps[cur].label)}</div>` : "";
-    return `<div class="hx-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="--hx-p:${pct / 100}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
+    const count = cur >= 0 ? `<div class="hx-progress-head"><span>Stage <strong data-count="${cur + 1}">${cur + 1}</strong> of ${p.steps.length}</span><span><strong data-count="${Math.round(pct)}">${Math.round(pct)}</strong>% of the journey</span></div>` : "";
+    return `${count}<div class="hx-progress-bar" role="progressbar" aria-label="Shipment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="--hx-p:${pct / 100}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
@@ -212,15 +230,15 @@ export function createTracker(root, opts = {}) {
     return `<div class="hx-fact hx-fact-eta ${cls}"><div class="hx-fact-label">${ICON.clock} ${label}</div><div class="hx-fact-value">${main}</div>${sub ? `<div class="hx-fact-sub">${esc(sub)}</div>` : ""}</div>`;
   }
 
-  function infoItem(icon, label, value, extra = "") {
+  function infoItem(icon, label, value, extra = "", attrs = "") {
     if (!value) return "";
-    return `<div class="hx-info"><div class="hx-info-label">${icon} ${esc(label)}</div><div class="hx-info-value">${value}</div>${extra}</div>`;
+    return `<div class="hx-info" ${attrs}><div class="hx-info-label">${icon} ${esc(label)}</div><div class="hx-info-value">${value}</div>${extra}</div>`;
   }
 
   function timelineHtml(items, reveal) {
     if (!items) return "";
     if (!items.length) return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline</h3><p class="hx-muted">No tracking events have been recorded yet.</p></section>`;
-    return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline <small class="hx-h-sub">Latest first</small></h3><ol class="hx-timeline" ${reveal ? "data-reveal-stagger" : ""}>${items.map((t, i) => `
+    return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline <small class="hx-h-sub"><span data-count="${items.length}">${items.length}</span> update${items.length === 1 ? "" : "s"} · latest first</small></h3><ol class="hx-timeline" ${reveal ? "data-reveal-stagger" : ""}>${items.map((t, i) => `
       <li class="hx-tl tone-${esc(t.tone)} ${i === 0 ? "latest" : ""}" ${reveal ? "data-reveal" : ""}><span class="hx-tl-dot"></span>
         <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${i === 0 ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
         ${t.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(t.location)}</div>` : ""}
@@ -236,7 +254,7 @@ export function createTracker(root, opts = {}) {
     const carrier = v.carrier;
     const carrierName = carrier ? `${esc(carrier.name)}${carrier.custom ? ' <span class="hx-tag" title="Custom/internal carrier arrangement, not an official carrier service">Custom carrier</span>' : ""}` : "";
     const carrierBits = carrier ? [esc(carrier.name), carrier.serviceType ? esc(carrier.serviceType) : null].filter(Boolean).join(" · ") : "";
-    const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `Carrier ref: ${esc(carrier.trackingNumber)}` : "", carrier.phone ? esc(carrier.phone) : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : "", carrier.custom ? "Custom carrier arrangement" : ""].filter(Boolean).join(" · ")}</div>` : "";
+    const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `Carrier ref: ${esc(carrier.trackingNumber)}` : "", carrier.phone ? esc(carrier.phone) : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : "", carrier.trackingUrl ? `<a href="${esc(carrier.trackingUrl)}" target="_blank" rel="noopener noreferrer">Track on carrier site</a>` : "", carrier.custom ? "Custom carrier arrangement" : ""].filter(Boolean).join(" · ")}</div>` : "";
     const loc = v.currentLocation; const ls = locState(v);
     const ago = v.lastUpdated ? timeAgo(v.lastUpdated, Date.now() + serverOffset) : null;
 
@@ -249,10 +267,10 @@ export function createTracker(root, opts = {}) {
       <section class="hx-card hx-header" ${R()}>
         <div class="hx-header-top">
           <div class="hx-id"><div class="hx-kicker">Tracking number</div><h2 class="hx-code">${esc(v.trackingCode)}</h2></div>
-          <div class="hx-status"><div class="hx-kicker">Current status</div><span class="hx-pill tone-${esc(v.status.tone)}">${esc(v.status.label)}</span></div>
+          <div class="hx-status"><div class="hx-kicker">Current status</div><span class="hx-pill tone-${esc(v.status.tone)}${v.status.code && !["DELIVERED", "CANCELLED"].includes(v.status.code) ? " is-active" : ""}"><i aria-hidden="true"></i>${esc(v.status.label)}</span></div>
         </div>
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
-          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} Current location</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Not recorded yet</span>'}</div><div class="hx-fact-sub">${badge(ls)}</div></div>` : ""}
+          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div><div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time">Recorded <time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time></span>` : ls.state !== "none" ? ' <span class="hx-loc-time">Recorded time not available</span>' : ""}</div></div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
           <div class="hx-fact" ${R()}><div class="hx-fact-label">🕒 Last updated</div><div class="hx-fact-value" data-ago="${esc(v.lastUpdated || "")}">${ago ? esc(ago[0].toUpperCase() + ago.slice(1)) : "Unavailable"}</div>${v.lastUpdated ? `<div class="hx-fact-sub"><time datetime="${esc(v.lastUpdated)}">${esc(fmtDateTime(v.lastUpdated))}</time></div>` : ""}</div>
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
@@ -262,24 +280,41 @@ export function createTracker(root, opts = {}) {
         ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
       </section>
       ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div><div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div><div class="hx-map-foot"><div class="hx-legend"><span><i class="hx-lg hx-m-origin"></i>Origin</span><span><i class="hx-lg hx-m-current"></i>Shipment</span><span><i class="hx-lg hx-m-dest"></i>Destination</span><span><i class="hx-lg-line"></i>Recorded route</span><span><i class="hx-lg-line dashed"></i>Remaining</span></div><div class="hx-map-note" data-slot="mapnote"></div></div></section>` : ""}
+      ${timelineHtml(v.timeline, reveal)}
       <section class="hx-card hx-details" ${R()}>
         <h3 class="hx-h">Shipment details</h3>
-        <div class="hx-infos">
-          ${infoItem(ICON.flag, "Origin", v.origin ? esc(v.origin) : "")}
-          ${infoItem(ICON.route, "Destination", v.destination ? esc(v.destination) : "")}
-          ${infoItem(ICON.truck, "Carrier", carrierBits, carrierExtra)}
-          ${infoItem(ICON.box, "Package", pkgText, pkg?.distance ? `<div class="hx-info-sub">Distance: ${esc(pkg.distance)} km</div>` : "")}
-          ${infoItem(ICON.money, "Shipping fee", v.fee ? esc(v.fee) : "")}
+        <div class="hx-infos" ${reveal ? "data-reveal-stagger" : ""}>
+          ${infoItem(ICON.flag, "Origin", v.origin ? esc(v.origin) : "", "", R())}
+          ${infoItem(ICON.route, "Destination", v.destination ? esc(v.destination) : "", "", R())}
+          ${infoItem(ICON.truck, "Carrier", carrierBits, carrierExtra, R())}
+          ${infoItem(ICON.box, "Package", pkgText, pkg?.distance ? `<div class="hx-info-sub">Distance: ${esc(pkg.distance)} km</div>` : "", R())}
+          ${infoItem(ICON.money, "Shipping fee", v.fee ? esc(v.fee) : "", "", R())}
         </div>
       </section>
       ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} Shipment notes</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
-      ${timelineHtml(v.timeline, reveal)}`;
+      ${supportCardHtml(v.trackingCode, R())}`;
     renderedCode = v.trackingCode;
     if (keepMap) root.querySelector('[data-slot="map"]')?.replaceWith(keepMap);
     renderMeta();
+    if (reveal) animateCounters();
     if (v.map) mountMap(v.map);
     else destroyMap();
     if (isUpdate) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
+  }
+
+  /** Counts numbers up once when they scroll into view (bounded ~700ms, then stops). Final values are in the HTML already. */
+  let counterIO = null;
+  function animateCounters() {
+    if (reducedMotion() || typeof IntersectionObserver === "undefined" || !document.documentElement.classList.contains("hx-motion")) return;
+    counterIO?.disconnect();
+    counterIO = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting) return; counterIO.unobserve(e.target);
+      const el = e.target; const to = Number(el.dataset.count); if (!Number.isFinite(to) || to <= 0) return;
+      const start = performance.now(); const dur = 700;
+      const step = (t) => { const k = Math.min(1, (t - start) / dur); el.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1 && el.isConnected) requestAnimationFrame(step); };
+      el.textContent = "0"; requestAnimationFrame(step);
+    }), { threshold: 0.4 });
+    root.querySelectorAll("[data-count]").forEach((el) => counterIO.observe(el));
   }
 
   function renderMeta() {
@@ -288,10 +323,11 @@ export function createTracker(root, opts = {}) {
     const t = state.transport;
     const secs = Math.round((pollDelay || cfg.pollMs || 20000) / 1000);
     // Connection state only. Whether the SHIPMENT is live is the location badge's job, based on recorded data.
-    const conn = preview ? "" : t === "live" ? '<span class="hx-conn ok"><i></i>Auto-updating</span>'
-      : t === "polling" ? `<span class="hx-conn poll"><i></i>Checking for updates every ${secs}s</span>`
-      : t === "offline" ? '<span class="hx-conn off"><i></i>Offline — showing last known update</span>' : "";
-    slot.innerHTML = `${conn}${preview ? "" : '<button type="button" class="hx-link" data-act="refresh">Refresh now</button>'}`;
+    const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : t === "live" ? '<span class="hx-conn ok"><i></i>Auto-updating</span>'
+      : t === "polling" ? `<span class="hx-conn poll"><i></i>Auto-updating · checks every ${secs}s</span>`
+      : t === "offline" ? '<span class="hx-conn off"><i></i>Offline — showing last known update</span>' : '<span class="hx-conn poll"><i></i>Connecting for updates…</span>';
+    const checked = state.lastCheckedAt ? `<small class="hx-checked">Checked ${esc(new Date(state.lastCheckedAt + serverOffset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</small>` : "";
+    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Refresh tracking now"><span aria-hidden="true">↻</span> Refresh</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div>`;
   }
 
   /** Re-evaluate "Live" / "Recently updated" / "Last known" as time passes without new data. */
@@ -327,22 +363,42 @@ export function createTracker(root, opts = {}) {
     const ls = locState();
     mapNote(data, ls);
     const hasAny = data.current || data.origin || data.destination || data.trail?.length;
-    if (!hasAny) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = '<div class="hx-map-msg">Location unavailable — no coordinates have been recorded for this shipment yet.</div>'; return; }
-    if (map && map.el === el) { map.api.update(withState(data, ls)); return; }
+    if (!hasAny) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = '<div class="hx-map-msg"><strong>Awaiting location update</strong><br>No coordinates have been recorded for this shipment yet. The map will appear as soon as a location is recorded.</div>'; return; }
+    if (map && map.el === el) { map.api.update(withState(data, ls)); if (el.querySelector(".hx-map-fallback")) showMapUnavailable(el, data); return; }
     destroyMap();
     if (mapFailed) { fallbackMap(el, data); return; }
     const token = ++mapToken;
     try {
       mapMod = mapMod || await import("./map.js");
-      const api = await mapMod.createMap(el, { onStatus: (s) => { const n = root.querySelector('[data-slot="mapnote"]'); if (s === "tiles-unavailable" && n) n.textContent = "Map background unavailable right now. Recorded positions are still shown as markers."; } });
+      const api = await mapMod.createMap(el, { onStatus: (s) => {
+        // No tiles from any provider: never leave a blank map. Show a clear panel with the recorded facts instead.
+        if (s === "tiles-unavailable") showMapUnavailable(el, state.view?.map || data);
+        if (s === "tiles-ok") el.querySelector(".hx-map-fallback")?.remove();
+      } });
       if (destroyed || token !== mapToken || !el.isConnected) { api.destroy(); return; }
       map = { el, api }; api.update(withState(state.view?.map || data, locState()));
     } catch { mapFailed = true; fallbackMap(el, data); }
   }
+  function mapFallbackHtml(data) {
+    const v = state.view; const ls = locState(v); const c = data?.current;
+    const rows = [
+      ["Last known location", c ? (c.name || `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`) : (v?.currentLocation?.name || "Awaiting location update")],
+      c ? ["Coordinates", `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`] : null,
+      ["Recorded", c?.updatedAt ? fmtDateTime(c.updatedAt) : (ls?.updatedAt ? fmtDateTime(ls.updatedAt) : "Time not available")],
+      ["Status", v?.status?.label || ""],
+      data?.originLabel ? ["Origin", data.originLabel] : null,
+      data?.destinationLabel ? ["Destination", data.destinationLabel] : null
+    ].filter((r) => r && r[1]);
+    return `<div class="hx-map-fallback" role="status"><div class="hx-map-fallback-ico" aria-hidden="true">🗺️</div><strong>Map location temporarily unavailable.</strong><dl>${rows.map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl></div>`;
+  }
+  function showMapUnavailable(el, data) {
+    if (!el.isConnected) return;
+    el.querySelector(".hx-map-fallback")?.remove();
+    el.insertAdjacentHTML("beforeend", mapFallbackHtml(data));
+  }
   function fallbackMap(el, data) {
     el.classList.add("hx-map-empty");
-    const bits = [data.current && `Last recorded position: ${data.current.name || `${data.current.lat.toFixed(3)}, ${data.current.lng.toFixed(3)}`}`, data.originLabel && `Origin: ${data.originLabel}`, data.destinationLabel && `Destination: ${data.destinationLabel}`].filter(Boolean);
-    el.innerHTML = `<div class="hx-map-msg">The interactive map is temporarily unavailable.<br>${bits.map(esc).join("<br>")}</div>`;
+    el.innerHTML = mapFallbackHtml(data);
   }
   function destroyMap() { mapToken++; if (map) { map.api.destroy(); map = null; } }
 
@@ -356,7 +412,8 @@ export function createTracker(root, opts = {}) {
   // ---------- events ----------
   root.addEventListener("click", (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
-    if (act === "refresh") refresh();
+    if (act === "refresh") { const b = e.target.closest("[data-act]"); b.classList.add("is-busy"); Promise.resolve(refresh()).finally(() => { renderMeta(); }); }
+    if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
     if (act === "retry" && state.code) { const c = state.code; state.code = null; inflightCode = null; track(c); }
   });
   tick = setInterval(refreshFreshness, 30000);
@@ -369,7 +426,7 @@ export function createTracker(root, opts = {}) {
     /** Same as clear(), but tells the client why the shipment disappeared. */
     expire() { const had = !!state.code; reset(); if (had) { setPhase("expired"); renderMessage("expired"); } else { root.innerHTML = ""; setPhase("idle"); } },
     destroy() {
-      destroyed = true; reset(); clearInterval(tick);
+      destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect();
       document.removeEventListener("visibilitychange", visibilityHandler); root.innerHTML = "";
     }
   };
