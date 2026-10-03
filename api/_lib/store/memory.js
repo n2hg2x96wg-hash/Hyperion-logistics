@@ -17,6 +17,7 @@ export function createMemoryStore(seed = {}) {
   const portfolioHistory = new Map(Object.entries(seed.portfolioHistory || {}).map(([k, v]) => [k, new Map(Object.entries(clone(v)))]));
   const authUsers = new Map(Object.entries(seed.authUsers || {}).map(([k, v]) => [k, clone(v)]));
   const idTokens = new Map(Object.entries(seed.idTokens || {}));
+  const deletedClients = new Map(); // recovery copies of permanently deleted clients (admin-only)
   const faults = new Set(); // test hook: simulate failures ("clientDeleteBatch")
   const bus = new EventEmitter();
   bus.setMaxListeners(0);
@@ -172,14 +173,19 @@ export function createMemoryStore(seed = {}) {
       if (!clients.has(uid)) throw Object.assign(new Error("missing"), { code: "client_missing" });
       const user = authUsers.get(uid) || null;
       if (user?.admin === true) throw Object.assign(new Error("admin"), { code: "client_is_admin" });
-      const wasDisabled = !!user?.disabled;
-      if (user) user.disabled = true;
+      const authBroken = faults.has("clientAuthUnavailable");
+      let disabledNow = false;
+      if (user && !user.disabled && !authBroken) { user.disabled = true; disabledNow = true; }
       const removed = { profile: 1, history: portfolioHistory.get(uid)?.size || 0 };
-      if (faults.has("clientDeleteBatch")) { if (user && !wasDisabled) user.disabled = false; throw new Error("simulated database failure"); }
+      if (faults.has("clientDeleteBatch")) { if (disabledNow) user.disabled = false; throw new Error("simulated database failure"); }
+      const entry = onAuditEntry ? onAuditEntry({ removed, result: "SUCCESS" }) : null;
+      const { password_hash, ...profile } = clone(clients.get(uid));
+      deletedClients.set(uid, { id: uid, profile, history: Object.fromEntries(portfolioHistory.get(uid) || []), deleted_at: entry?.at || new Date().toISOString(), deleted_by: entry?.actor || null });
       clients.delete(uid); portfolioHistory.delete(uid);
-      if (onAuditEntry) audit.push(onAuditEntry({ removed, result: "success" }));
+      if (entry) audit.push(entry);
+      if (user && authBroken) return { removed, authDeleted: false, authDisabled: !!user.disabled, authError: "auth/insufficient-permission: simulated", authExisted: true };
       if (user) authUsers.delete(uid);
-      return { removed, authDeleted: true, authExisted: !!user };
+      return { removed, authDeleted: true, authDisabled: true, authError: null, authExisted: !!user };
     },
     /** Test helper: sign in as a client with the in-memory auth store (mirrors Firebase Auth behaviour). */
     __clientSignIn(email, password) {
@@ -189,6 +195,6 @@ export function createMemoryStore(seed = {}) {
     __fault(name, on = true) { if (on) faults.add(name); else faults.delete(name); },
 
     async verifyIdToken(token) { return idTokens.get(token) || null; },
-    __dump() { return { shipments, events, locations, audit, clients, portfolioHistory, authUsers, couriers }; }
+    __dump() { return { shipments, events, locations, audit, clients, portfolioHistory, authUsers, couriers, deletedClients }; }
   };
 }

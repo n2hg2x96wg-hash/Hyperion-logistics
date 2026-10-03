@@ -91,7 +91,7 @@ export function setupAdminClients({ api, showToast }) {
               <button type="button" class="btn-action" data-action="edit" data-id="${id}">Edit</button>
               <button type="button" class="btn-action" data-action="quick" data-id="${id}">Quick Edit</button>
               <button type="button" class="btn-action" data-action="toggle" data-id="${id}">${active ? "Deactivate" : "Restore"}</button>
-              <button type="button" class="btn-action btn-delete-client" data-action="delete" data-id="${id}">Delete client</button>
+              <button type="button" class="btn-action btn-delete-client" data-action="delete" data-id="${id}">Delete Client</button>
             </div>
           </td>
         </tr>`;
@@ -248,41 +248,57 @@ export function setupAdminClients({ api, showToast }) {
     const c = clients.find((x) => x.id === clientId);
     if (!c) return;
     deleting = { id: c.id, email: c.email, busy: false };
-    $("clientDeleteWho").textContent = `${c.name || "Unnamed client"} · ${c.email}`;
+    $("clientDeleteWho").textContent = `${c.name || "Unnamed client"} · ${c.email || "no email"}`;
     const p = policy || { removes: ["The client's sign-in account", "The client profile", "The client's portfolio history"], keeps: ["All shipments and tracking records"] };
     $("clientDeleteRemoves").innerHTML = p.removes.map((x) => `<li>${safeText(x)}</li>`).join("");
     $("clientDeleteKeeps").innerHTML = p.keeps.map((x) => `<li>${safeText(x)}</li>`).join("");
-    confirmInput.value = ""; goBtn.disabled = true; goBtn.textContent = "Delete permanently"; errBox.hidden = true;
+    confirmInput.value = ""; goBtn.disabled = true; goBtn.textContent = "Delete Client"; errBox.hidden = true; $("clientDeleteHint").hidden = false;
     $("clientDeleteCancel").disabled = false;
     openModal("clientDeleteModal");
     setTimeout(() => confirmInput.focus(), 50);
   }
   function closeDelete() { if (deleting?.busy) return; deleting = null; closeModal("clientDeleteModal"); }
-  confirmInput.addEventListener("input", () => { goBtn.disabled = confirmInput.value.trim() !== "DELETE" || !!deleting?.busy; });
+  // Case-insensitive so phone keyboards that auto-capitalise or auto-correct "DELETE" still work.
+  const typed = () => confirmInput.value.trim().toUpperCase() === "DELETE";
+  confirmInput.addEventListener("input", () => { goBtn.disabled = !typed() || !!deleting?.busy; $("clientDeleteHint").hidden = typed(); });
+  confirmInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && typed()) goBtn.click(); });
   $("clientDeleteCancel").addEventListener("click", closeDelete);
   $("clientDeleteModal").addEventListener("click", (e) => { if (e.target.id === "clientDeleteModal") closeDelete(); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("clientDeleteModal").classList.contains("show")) closeDelete(); });
 
   goBtn.addEventListener("click", async () => {
-    if (!deleting || deleting.busy || confirmInput.value.trim() !== "DELETE") return;
+    if (!deleting || deleting.busy || !typed()) return;
     deleting.busy = true;
+    const target = deleting;
     goBtn.disabled = true; goBtn.textContent = "Deleting client…"; $("clientDeleteCancel").disabled = true; errBox.hidden = true;
     try {
-      const res = await api("deleteClient", { id: deleting.id, confirm: "DELETE", expectEmail: deleting.email });
-      deleting.busy = false; closeDelete();
-      if (editingClientId === res?.id) resetForm();
+      const res = await api("deleteClient", { id: target.id, confirm: "DELETE", expectEmail: target.email });
+      target.busy = false; closeDelete();
+      if (editingClientId === target.id) resetForm();
+      // Drop the client from the list and counters right away; then re-read the database (the source of truth).
+      clients = clients.filter((c) => c.id !== target.id);
+      renderClients();
       showToast(res.partial ? res.message : "Client deleted successfully.", res.partial ? "error" : "success");
       await loadClients({ quiet: true });
     } catch (error) {
-      deleting.busy = false;
+      target.busy = false;
       if (error.silent) { closeDelete(); return; }
       console.error("[clients] delete failed", error.code || "", error.status || "", error.message);
-      const msg = error.status === 404 ? error.message : error.code === "network" ? "Unable to delete client. No client data was removed. Check your connection and try again." : "Unable to delete client. No client data was removed.";
-      errBox.textContent = msg + (error.status && error.status !== 500 && error.status !== 404 ? ` (${error.message})` : "");
+      if (error.status === 404) {
+        // Already deleted (another tab or a double submit): say so and refresh instead of failing.
+        closeDelete();
+        showToast("This client no longer exists. The list has been refreshed.", "error");
+        await loadClients({ quiet: true });
+        return;
+      }
+      // Show the server's actual reason. Every failure path on the server removes nothing.
+      const msg = error.code === "network" ? "Unable to delete client. No client data was removed. Check your connection and try again."
+        : /^Unable to delete client/.test(error.message) ? error.message
+        : `Unable to delete client. No client data was removed. ${error.message}${error.status ? ` (HTTP ${error.status})` : ""}`;
+      errBox.textContent = msg;
       errBox.hidden = false;
-      goBtn.textContent = "Delete permanently"; goBtn.disabled = confirmInput.value.trim() !== "DELETE"; $("clientDeleteCancel").disabled = false;
+      goBtn.textContent = "Delete Client"; goBtn.disabled = !typed(); $("clientDeleteCancel").disabled = false;
       showToast(msg, "error");
-      if (error.status === 404) await loadClients({ quiet: true });
     }
   });
 

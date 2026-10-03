@@ -450,13 +450,16 @@ test("clients: admin-only list, deactivate/restore, permanent delete scoped to o
   store.__fault("clientDeleteBatch");
   r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE" });
   store.__fault("clientDeleteBatch", false);
-  assert.equal(r.status, 500); assert.equal(r.json.message, "Unable to delete client. No client data was removed.");
+  assert.equal(r.status, 500); assert.match(r.json.message, /^Unable to delete client\. No client data was removed\. Reason: simulated database failure/);
   assert.ok(store.__dump().clients.has("uidClientAaaa")); assert.equal(store.__dump().portfolioHistory.get("uidClientAaaa").size, 2);
   assert.equal(store.__clientSignIn("ada@client.test", "ada-pass-1").uid, "uidClientAaaa", "auth account re-enabled after failure");
 
-  // Email/name are not deletion keys: unknown uid => not found, nothing removed.
-  r = await admin({ action: "deleteClient", id: "ada@client.test", confirm: "DELETE" });
-  assert.equal(r.status, 400);
+  // Email/name are not deletion keys: they never locate a client, so nothing is removed.
+  for (const id of ["ada@client.test", "Ada Client"]) {
+    r = await admin({ action: "deleteClient", id, confirm: "DELETE" });
+    assert.equal(r.status, 404, id); assert.ok(store.__dump().clients.has("uidClientAaaa"));
+  }
+  for (const id of ["", "a/b", "..", "__name__"]) { r = await admin({ action: "deleteClient", id, confirm: "DELETE" }); assert.equal(r.status, 400, `invalid id ${id}`); }
 
   // 2/6/7/8/9. Delete client A permanently.
   r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE", expectEmail: "ada@client.test" });
@@ -468,13 +471,17 @@ test("clients: admin-only list, deactivate/restore, permanent delete scoped to o
   assert.deepEqual([...d.shipments.entries()].map(([k]) => k).sort(), before.shipments.map(([k]) => k).sort(), "no shipment removed");
   for (const [k, v] of before.shipments) assert.deepEqual(d.shipments.get(k), v, `shipment ${k} unchanged`);
   assert.deepEqual([...d.couriers.entries()], before.couriers, "couriers unchanged");
-  const entry = d.audit.find((a) => a.action === "client.deleted");
-  assert.equal(entry.client, "uidClientAaaa"); assert.equal(entry.email, "ada@client.test"); assert.equal(entry.result, "success"); assert.ok(entry.actor && entry.at);
-  assert.ok(d.audit.some((a) => a.action === "client.delete_failed" && a.result === "failed"));
+  const entry = d.audit.find((a) => a.action === "CLIENT_DELETED" && a.result === "SUCCESS");
+  assert.equal(entry.client, "uidClientAaaa"); assert.equal(entry.email, "ada@client.test"); assert.equal(entry.name, "Ada Client"); assert.ok(entry.actor && entry.at);
+  assert.ok(d.audit.some((a) => a.action === "CLIENT_DELETED" && a.result === "FAILED" && a.error), "failed attempt audited with its reason");
+  assert.ok(!JSON.stringify(d.audit).includes("ada-pass-1") && !JSON.stringify(d.audit).includes("legacy-hash"), "no credentials in the audit log");
+  // Recovery copy (admin-only) without password data.
+  const copy = d.deletedClients.get("uidClientAaaa");
+  assert.equal(copy.profile.email, "ada@client.test"); assert.equal(Object.keys(copy.history).length, 2); assert.ok(!("password_hash" in copy.profile));
 
   // 10. List reflects the deletion; deleting again is a clean not-found.
   r = await admin({ action: "listClients" });
-  assert.deepEqual(r.json.clients.map((c) => c.id), ["uidClientBbbb"]);
+  assert.deepEqual(r.json.clients.map((c) => c.id).sort(), ["legacy-client.07", "uidAdminZzzz", "uidClientBbbb"]);
   r = await admin({ action: "deleteClient", id: "uidClientAaaa", confirm: "DELETE" }); assert.equal(r.status, 404);
 
   // 12/13. Tracking and admin functions still work.
@@ -488,4 +495,46 @@ test("clients: admin-only list, deactivate/restore, permanent delete scoped to o
   assert.equal(r.status, 409);
   r = await admin({ action: "saveClient", mode: "update", id: "uidClientBbbb", client: { name: "Ben C.", status: "active", xrp_holdings: 4 } });
   assert.equal(r.status, 200); assert.equal(store.__dump().clients.get("uidClientBbbb").email, "ben@client.test");
+});
+
+test("clients: delete edge cases (no sign-in account, legacy IDs, admin accounts, sign-in service down, duplicate requests)", async () => {
+  const { getStore } = await import("../api/_lib/store/index.js");
+  const store = await getStore();
+  const shipmentsBefore = JSON.stringify([...store.__dump().shipments.entries()]);
+
+  // A client with no sign-in account and no history, stored under a non-uid document ID.
+  let r = await admin({ action: "deleteClient", id: "legacy-client.07", confirm: "DELETE", expectEmail: "lee@client.test" });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.ok(!r.json.partial); assert.ok(!store.__dump().clients.has("legacy-client.07"));
+
+  // Accounts with the admin claim are refused and untouched.
+  r = await admin({ action: "deleteClient", id: "uidAdminZzzz", confirm: "DELETE" });
+  assert.equal(r.status, 403); assert.ok(store.__dump().clients.has("uidAdminZzzz") && store.__dump().authUsers.has("uidAdminZzzz"));
+
+  // A client with several related records (history entries) created through the API.
+  r = await admin({ action: "saveClient", mode: "create", client: { name: "Dee", email: "dee@client.test", password: "dee-pass-1", xrp_holdings: 5 }, history: { xrp_value: 5, tsla_value: 0 } });
+  const dee = (await admin({ action: "listClients" })).json.clients.find((c) => c.email === "dee@client.test").id;
+  store.__dump().portfolioHistory.get(dee).set("2026-01-01", { total_value: 1 });
+
+  // Duplicate requests (double click / two tabs): exactly one succeeds, the other is a clean "no longer exists".
+  const both = await Promise.all([1, 2].map(() => admin({ action: "deleteClient", id: dee, confirm: "DELETE" })));
+  assert.deepEqual(both.map((x) => x.status).sort(), [200, 404], JSON.stringify(both.map((x) => x.json)));
+  assert.match(both.find((x) => x.status === 404).json.message, /no longer exists/);
+  assert.ok(!store.__dump().clients.has(dee) && !store.__dump().portfolioHistory.has(dee) && !store.__dump().authUsers.has(dee));
+
+  // The sign-in service is unavailable: the profile and history are still removed atomically, and the admin is
+  // told exactly what could not be done (the leftover sign-in account cannot open the portal without a profile).
+  r = await admin({ action: "saveClient", mode: "create", client: { name: "Eve", email: "eve@client.test", password: "eve-pass-1" } });
+  const eve = (await admin({ action: "listClients" })).json.clients.find((c) => c.email === "eve@client.test").id;
+  store.__fault("clientAuthUnavailable");
+  r = await admin({ action: "deleteClient", id: eve, confirm: "DELETE" });
+  store.__fault("clientAuthUnavailable", false);
+  assert.equal(r.status, 200); assert.equal(r.json.partial, true); assert.match(r.json.message, /sign-in account could not be removed \(auth\/insufficient-permission/);
+  assert.ok(!store.__dump().clients.has(eve));
+  assert.ok(store.__dump().audit.some((a) => a.action === "CLIENT_SIGNIN_REMOVAL_PENDING" && a.client === eve && a.result === "PARTIAL"));
+
+  // A normal client's own token can never reach the admin delete action.
+  r = await admin({ action: "deleteClient", id: "uidClientBbbb", confirm: "DELETE" }, { auth: false, headers: { Authorization: "Bearer client-a-token" } });
+  assert.equal(r.status, 401); assert.ok(store.__dump().clients.has("uidClientBbbb"));
+
+  assert.equal(JSON.stringify([...store.__dump().shipments.entries()]), shipmentsBefore, "shipments unchanged");
 });

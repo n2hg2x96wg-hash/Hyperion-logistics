@@ -674,6 +674,9 @@
     #clientDeleteConfirm { width: 100%; font-weight: 700; letter-spacing: 1px; }
     .client-delete-err { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; font-weight: 600; }
     .btn-danger-solid { background: #dc2626; color: #fff; border: 0; }
+    #clientDeleteModal .modal-card { max-height: 90vh; max-height: 90dvh; }
+    .client-delete-actions { position: sticky; bottom: -24px; background: #fff; padding: 12px 0 4px; margin-bottom: 0; z-index: 1; }
+    .delete-hint { margin: 6px 0 0; font-size: 12px; color: #64748b; text-align: right; }
     .btn-danger-solid:disabled { background: #fca5a5; cursor: not-allowed; }
     .btn-danger-solid:not(:disabled):hover { background: #b91c1c; }
     @media (max-width: 720px) {
@@ -1187,9 +1190,9 @@
 
   <div class="modal-overlay" id="clientDeleteModal" role="alertdialog" aria-modal="true" aria-labelledby="clientDeleteTitle" aria-describedby="clientDeleteDesc">
     <div class="modal-card client-modal">
-      <div class="card-header"><h3 id="clientDeleteTitle">Delete this client?</h3><p id="clientDeleteWho"></p></div>
+      <div class="card-header"><h3 id="clientDeleteTitle">Delete this client?</h3><p>Client: <strong id="clientDeleteWho"></strong></p></div>
       <div id="clientDeleteDesc" class="delete-explain">
-        <p><strong>This permanently deletes the selected client account.</strong> It cannot be undone.</p>
+        <p><strong>This action will remove the client's account and associated data according to the retention rules below.</strong> The client will no longer appear in the client list.</p>
         <div class="delete-cols">
           <div><h4>Will be deleted</h4><ul id="clientDeleteRemoves"></ul></div>
           <div><h4>Will be kept</h4><ul id="clientDeleteKeeps"></ul></div>
@@ -1197,12 +1200,13 @@
         <p class="delete-tip">Only want to block sign-in? Use <strong>Deactivate</strong> instead; it can be restored.</p>
       </div>
       <label for="clientDeleteConfirm" class="delete-label">Type <strong>DELETE</strong> to permanently remove this client.</label>
-      <input id="clientDeleteConfirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="DELETE">
+      <input id="clientDeleteConfirm" type="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" placeholder="DELETE">
       <div class="client-delete-err" id="clientDeleteErr" role="alert" hidden></div>
-      <div class="form-footer">
+      <div class="form-footer client-delete-actions">
         <button type="button" class="btn btn-reset" id="clientDeleteCancel">Cancel</button>
-        <button type="button" class="btn btn-danger-solid" id="clientDeleteGo" disabled>Delete permanently</button>
+        <button type="button" class="btn btn-danger-solid" id="clientDeleteGo" disabled>Delete Client</button>
       </div>
+      <p class="delete-hint" id="clientDeleteHint">Type DELETE above to enable the Delete Client button.</p>
     </div>
   </div>
 

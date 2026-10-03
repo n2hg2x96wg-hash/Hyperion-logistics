@@ -15,7 +15,9 @@ import { ServiceError } from "./service.js";
 import { getStore } from "./store/index.js";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const UID_RE = /^[A-Za-z0-9_-]{6,128}$/;
+// A client is located by its database document ID (the Firebase Auth uid for every client this app creates).
+// Firestore IDs cannot contain "/" and cannot be "." / ".." or "__name__"-style reserved IDs.
+const isDocId = (s) => s.length > 0 && Buffer.byteLength(s) <= 1500 && !s.includes("/") && s !== "." && s !== ".." && !/^__.*__$/.test(s);
 
 const num = (v, field, label) => {
   if (v === undefined || v === null || v === "") return 0;
@@ -36,7 +38,7 @@ const latest = (...vals) => vals.map(iso).filter(Boolean).sort().pop() || null;
 
 function parseUid(v) {
   const uid = String(v ?? "").trim();
-  if (!UID_RE.test(uid)) throw new ValidationError("Client ID is missing or invalid.", "id");
+  if (!isDocId(uid)) throw new ValidationError("Client ID is missing or invalid.", "id");
   return uid;
 }
 
@@ -142,39 +144,58 @@ export async function setClientStatus(identity, input = {}) {
 export function deletionPolicy() {
   return {
     removes: ["The client's sign-in account (Firebase Authentication)", "The client profile (name, email, status, holdings, limits)", "The client's portfolio history"],
-    keeps: ["All shipments and tracking records (they are not linked to client accounts)", "Other clients", "Couriers, admin access and site settings", "The activity log"]
+    keeps: ["All shipments and tracking records (they are not linked to client accounts)", "Other clients", "Couriers, admin access and site settings", "The activity log",
+      "A private recovery copy of the profile and history (not visible anywhere in the app; no password data)"]
   };
 }
 
-/** Permanent, irreversible deletion of one client by uid. Requires the typed confirmation "DELETE". */
+/**
+ * Permanent deletion of one client, located by its document ID (never by name or email). Requires the typed
+ * confirmation "DELETE". Audit entries use action CLIENT_DELETED with result SUCCESS / PARTIAL / FAILED.
+ */
 export async function deleteClient(identity, input = {}) {
   const store = await getStore();
   const uid = parseUid(input.id);
-  if (input.confirm !== "DELETE") throw new ValidationError('Type DELETE to confirm permanent deletion.', "confirm");
+  if (input.confirm !== "DELETE") throw new ValidationError("Type DELETE to confirm permanent deletion.", "confirm");
+  const reason = input.reason ? String(input.reason).trim().slice(0, 200) : null;
   const existing = await store.getClientRecord(uid);
   if (!existing) throw new ServiceError("not_found", "This client no longer exists. The list has been refreshed.", 404);
   if (existing.auth?.admin) throw new ServiceError("forbidden", "This account has admin access and cannot be deleted here.", 403);
   if (input.expectEmail && String(existing.email || "").toLowerCase() !== String(input.expectEmail).toLowerCase()) {
     throw new ServiceError("conflict", "This client changed since the list was loaded. Refresh and try again.", 409);
   }
-  const base = { email: existing.email || null };
+  const base = { email: existing.email || null, name: existing.name || null, ...(reason ? { reason } : {}) };
+  let result;
   try {
-    const result = await store.deleteClientPermanently(uid, {
-      onAuditEntry: ({ removed, result: r }) => audit(identity, "client.deleted", uid, { ...base, result: r, removed })
+    result = await store.deleteClientPermanently(uid, {
+      onAuditEntry: ({ removed, result: r }) => audit(identity, "CLIENT_DELETED", uid, { ...base, result: r, removed })
     });
-    if (!result.authDeleted) {
-      // Data is gone and the sign-in account is disabled, so it cannot sign in; record that removal must be retried.
-      await writeFailureAudit(store, audit(identity, "client.auth_removal_pending", uid, { ...base, result: "sign-in account disabled, not removed" }));
-      return { ok: true, partial: true, message: "Client deleted. Their sign-in account is disabled but could not be removed; it cannot be used to sign in." };
-    }
-    return { ok: true, removed: result.removed, message: "Client deleted successfully." };
   } catch (err) {
     if (err?.code === "client_missing") throw new ServiceError("not_found", "This client no longer exists. The list has been refreshed.", 404);
     if (err?.code === "client_is_admin") throw new ServiceError("forbidden", "This account has admin access and cannot be deleted here.", 403);
-    console.error("[clients] delete failed", uid, err?.code || "", err?.message);
-    await writeFailureAudit(store, audit(identity, "client.delete_failed", uid, { ...base, result: "failed", reason: String(err?.code || "error").slice(0, 60) }));
-    throw new ServiceError("delete_failed", "Unable to delete client. No client data was removed.", 500);
+    const detail = describeError(err);
+    console.error("[clients] delete failed", uid, detail);
+    await writeFailureAudit(store, audit(identity, "CLIENT_DELETED", uid, { ...base, result: "FAILED", error: detail }));
+    const e = new ServiceError("delete_failed", `Unable to delete client. No client data was removed. Reason: ${detail}`, 500);
+    throw e;
   }
+  if (!result.authDeleted) {
+    // Profile and history are gone. The sign-in account could not be removed; the client portal signs out any
+    // account without a profile, so it cannot be used, but it still exists in Firebase Authentication.
+    const detail = result.authError || "unknown";
+    await writeFailureAudit(store, audit(identity, "CLIENT_SIGNIN_REMOVAL_PENDING", uid, { ...base, result: "PARTIAL", error: detail }));
+    return { ok: true, partial: true, id: uid, removed: result.removed,
+      message: `Client deleted. Their sign-in account could not be removed (${detail})${result.authDisabled ? " but it is disabled" : ""}; without a profile it cannot open the client portal.` };
+  }
+  return { ok: true, id: uid, removed: result.removed, message: "Client deleted successfully." };
+}
+
+/** A short, non-sensitive description of a backend failure (error code plus the first line of its message). */
+function describeError(err) {
+  const code = err?.code != null ? String(err.code) : "";
+  const msg = String(err?.message || "").split("\n")[0].replace(/\s+/g, " ").slice(0, 160);
+  const known = code === "7" || /PERMISSION_DENIED/i.test(code) ? "database permission denied" : code === "client_history_too_large" ? "too many portfolio history records to delete in one step" : "";
+  return [known || code, known ? "" : msg].filter(Boolean).join(": ") || "unknown error";
 }
 
 async function writeFailureAudit(store, entry) {
