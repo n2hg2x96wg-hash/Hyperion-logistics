@@ -1,3 +1,15 @@
 {
-  "version": 2
+  "version": 2,
+  "functions": {
+    "api/stream.js": { "maxDuration": 60 }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
 }

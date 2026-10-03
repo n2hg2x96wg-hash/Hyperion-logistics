@@ -1,0 +1,17 @@
+{
+  "name": "hyperion-logistics",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hyperion Logistics - static frontend with Vercel serverless API",
+  "scripts": {
+    "dev": "STORE=memory node dev-server.js",
+    "test": "node --test test/api.test.js",
+    "test:emulator": "STORE=firestore-emulator node --test test/api.test.js",
+    "dev:emulator": "STORE=firestore-emulator node dev-server.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

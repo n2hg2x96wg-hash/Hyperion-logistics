@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
+  <link rel="stylesheet" href="tracker/tracker.css">
   <!-- Smartsupp Live Chat script -->
   <script type="text/javascript">
   var _smartsupp = _smartsupp || {};
@@ -69,6 +69,8 @@
     .track-form input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); transform: translateY(-2px); }
     .btn-track { padding: 14px 32px; background: linear-gradient(135deg, #3b82f6, #1e40af); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
     .btn-track:hover { transform: translateY(-2px); box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4); }
+    .tracker-results { padding: 0 20px 60px; max-width: 1140px; margin: -40px auto 40px; position: relative; z-index: 1; }
+    .tracker-results:has(#trackerRoot:empty) { display: none; }
     .error-message { display: none; padding: 14px 16px; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; color: #991b1b; font-size: 14px; font-weight: 500; animation: shake 0.3s ease-out; }
     .error-message.show { display: block; }
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
@@ -227,9 +229,8 @@
   <nav><div class="nav-container"><div class="logo"><span>📦</span><span>Hyperion</span></div><ul class="nav-links"><li><a href="#activity">Live Activity</a></li><li><a href="#partners">Partners</a></li><li><a href="#features">Features</a></li><li><a href="#how">How It Works</a></li></ul></div></nav>
   <section class="hero"><div class="hero-badge">🚀 Enterprise-Grade Global Logistics Network</div><h1>Real-Time Shipment Tracking Across 150+ Countries</h1><p>Track packages in motion right now. Enterprise-grade logistics intelligence at your fingertips.</p></section>
   <section class="live-activity" id="activity"><div class="activity-header"><div class="live-dot"></div><h3>🌍 Live Active Shipments Right Now</h3><div class="live-dot"></div></div><div class="active-shipments"><div class="shipment-card"><div class="shipment-route"><span>🇨🇳 Shanghai</span><div class="route-line"></div><span>🇺🇸 New York</span></div><div class="shipment-info"><span>HL-2847391</span><span class="shipment-status">In Transit</span></div></div><div class="shipment-card"><div class="shipment-route"><span>🇩🇪 Berlin</span><div class="route-line"></div><span>🇬🇧 London</span></div><div class="shipment-info"><span>HL-9183726</span><span class="shipment-status">Customs</span></div></div><div class="shipment-card"><div class="shipment-route"><span>🇯🇵 Tokyo</span><div class="route-line"></div><span>🇦🇺 Sydney</span></div><div class="shipment-info"><span>HL-5647281</span><span class="shipment-status">Delivered</span></div></div></div><div class="global-ticker"><div class="ticker-content"><div class="ticker-item">🌐 2,847 active shipments • 47 countries connected • 99.9% on-time delivery • Real-time GPS tracking enabled</div></div></div></section>
-  <section class="quick-track" id="track"><h2>Track Your Shipment</h2><p class="quick-track-subtitle">Enter your tracking code below to get real-time updates</p><div class="track-form"><input id="trackingInput" type="text" placeholder="Enter tracking code (e.g. HL-123456)" /><button class="btn-track" onclick="track()"><span id="btn-text">Track</span></button></div><div id="error" class="error-message"></div><div id="resultContainer" class="result-section"><div class="result-card"><div class="result-header"><span class="result-title">Shipment Details</span><span id="statusBadge" class="status-badge"></span></div>  <div class="result-row"><span class="result-label">SHIPMENT LOCATION</span><span id="locationValue" class="result-value"></span></div><div class="result-row"><span class="result-label">STATUS</span><span id="statusValue" class="result-value"></span></div><div class="result-row"><span class="result-label">DELIVERY FEE</span><span id="feeValue" class="result-value"></span></div></div><div class="eta-card" id="etaCard" style="display:none;"><div class="eta-label">ESTIMATED DELIVERY</div><div class="eta-date" id="etaValue">TBD</div></div>  <div id="routeSummary" class="route-summary" style="display:none;"></div>
-  <div id="mapLegend" class="map-legend" style="display:none;"></div>
-  <div class="result-map" id="shipmentMap" style="display:none;"></div></div></section>
+  <section class="quick-track" id="track"><h2>Track Your Shipment</h2><p class="quick-track-subtitle">Enter your tracking code below to get real-time updates</p><div class="track-form"><input id="trackingInput" type="text" placeholder="Enter tracking code (e.g. HL-123456)" /><button class="btn-track" type="button" onclick="track()"><span id="btn-text">Track</span></button></div><div id="error" class="error-message"></div></section>
+  <section class="tracker-results" id="results-section" aria-label="Tracking results"><div id="trackerRoot"></div></section>
   <section class="partners-section" id="partners"><div class="partners-container"><div class="partners-header"><h2 class="partners-title">Our Global Courier Partners</h2><p class="partners-subtitle">Trusted by the world's leading logistics networks</p></div><div class="partners-grid">
     <div class="partner-card"><div class="partner-logo">🚚</div><div class="partner-name">DHL Express</div><div class="partner-coverage">220+ Countries</div><div class="partner-badge">PREMIUM</div></div>
     <div class="partner-card"><div class="partner-logo">✈️</div><div class="partner-name">FedEx</div><div class="partner-coverage">220+ Countries</div><div class="partner-badge">PREMIUM</div></div>
@@ -245,361 +246,28 @@
   <section class="stats-section"><div class="stats-grid"><div class="stat"><div class="stat-number">10M+</div><div class="stat-label">Packages Tracked</div></div><div class="stat"><div class="stat-number">150+</div><div class="stat-label">Countries Covered</div></div><div class="stat"><div class="stat-number">99.9%</div><div class="stat-label">Uptime Guarantee</div></div><div class="stat"><div class="stat-number">2.4s</div><div class="stat-label">Avg Track Time</div></div></div></section>
   <footer>&copy; 2024 Hyperion Logistics. All rights reserved. | Premium Global Shipment Tracking</footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { createTracker } from "./tracker/tracker.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-      authDomain: "hyperion-logistics.firebaseapp.com",
-      projectId: "hyperion-logistics",
-      storageBucket: "hyperion-logistics.firebasestorage.app",
-      messagingSenderId: "481927084665",
-      appId: "1:481927084665:web:6c067752a922890e44f2a8"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    window.track = async function() {
-      const trackingId = document.getElementById("trackingInput").value.trim();
-      const errorDiv = document.getElementById("error");
-      const resultDiv = document.getElementById("resultContainer");
-      const btnText = document.getElementById("btn-text");
-
-      // Clear previous errors
-      errorDiv.classList.remove("show");
-      errorDiv.innerText = "";
-
-      if (!trackingId) {
-        errorDiv.innerText = "Please enter a tracking code";
-        errorDiv.classList.add("show");
-        resultDiv.style.display = "none";
-        return;
-      }
-
-      // Show loading state
-      btnText.innerHTML = '<span class="spinner"></span>Tracking...';
-      
-      try {
-        // Fetch shipment from Firebase
-        const shipmentRef = doc(db, "shipments", trackingId);
-        const shipmentSnap = await getDoc(shipmentRef);
-
-        if (!shipmentSnap.exists()) {
-          errorDiv.innerText = `No shipment found with tracking code "${trackingId}". Please check and try again.`;
-          errorDiv.classList.add("show");
-          resultDiv.style.display = "none";
-          btnText.innerHTML = "Track";
-          return;
-        }
-
-        const shipment = shipmentSnap.data();
-
-        // Determine status badge class
-        const statusClass = `status-${shipment.status.toLowerCase().replace(/\s+/g, '-')}`;
-
-        // Display results
-        document.getElementById("statusBadge").className = `status-badge ${statusClass}`;
-        document.getElementById("statusBadge").innerText = shipment.status;
-        document.getElementById("locationValue").innerText = shipment.location || shipment.currentLocation || "N/A";
-        document.getElementById("statusValue").innerText = shipment.status || "N/A";
-        document.getElementById("feeValue").innerText = shipment.fee || "N/A";
-
-        resultDiv.style.display = "block";
-
-        // ETA card
-        const etaCard = document.getElementById("etaCard");
-        const etaValue = document.getElementById("etaValue");
-        if (shipment.eta) {
-          etaValue.innerText = shipment.eta;
-          etaCard.style.display = "block";
-        } else {
-          etaCard.style.display = "none";
-        }
-
-        // Live map
-        const mapContainer = document.getElementById("shipmentMap");
-        const lat = typeof shipment.latitude === 'number' ? shipment.latitude : 14.5995;
-        const lng = typeof shipment.longitude === 'number' ? shipment.longitude : 120.9842;
-        const currentLoc = shipment.currentLocation || shipment.location || 'Unknown';
-
-        // Guard optional summary/legend elements
-        const summaryEl = document.getElementById("routeSummary");
-        const legendEl = document.getElementById("mapLegend");
-        if (summaryEl) summaryEl.style.display = "none";
-        if (legendEl) legendEl.style.display = "none";
-
-        // Clear pending async map work from previous lookups
-        if (window._hyperionMapInitTimer) {
-          clearTimeout(window._hyperionMapInitTimer);
-          window._hyperionMapInitTimer = null;
-        }
-
-        // Destroy existing Leaflet instance BEFORE clearing innerHTML
-        if (window._hyperionMap) {
-          try { window._hyperionMap.remove(); } catch (e) {}
-          window._hyperionMap = null;
-        }
-
-        mapContainer.innerHTML = '<div id="shipmentMapCanvas" style="width:100%;height:100%;"></div>';
-        mapContainer.style.display = "block";
-
-        // Initialise map after a short delay so the container has real dimensions
-        window._hyperionMapInitTimer = setTimeout(async () => {
-          const mapRoot = document.getElementById('shipmentMapCanvas');
-          if (!mapRoot) {
-            window._hyperionMapInitTimer = null;
-            return;
-          }
-
-          const map = L.map(mapRoot, { zoomControl: true, preferCanvas: true }).setView([lat, lng], 8);
-          window._hyperionMap = map;
-          window._hyperionMapInitTimer = null;
-
-          // Tile providers in priority order
-          const providers = [
-            {
-              url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-              options: {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-              }
-            },
-            {
-              url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              options: {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                maxZoom: 19
-              }
-            },
-            {
-              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-              options: {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
-                maxZoom: 19
-              }
-            }
-          ];
-
-          function addMapNotice(text, tone) {
-            const notice = L.control({ position: 'topright' });
-            notice.onAdd = function () {
-              const el = L.DomUtil.create('div');
-              const isWarning = tone === 'warning';
-              el.style.cssText = `background:${isWarning ? 'rgba(15,23,42,0.78)' : 'rgba(255,255,255,0.92)'};color:${isWarning ? '#f8fafc' : '#334155'};padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;box-shadow:0 1px 6px rgba(15,23,42,0.18);pointer-events:none;`;
-              el.textContent = text;
-              return el;
-            };
-            notice.addTo(map);
-            return notice;
-          }
-
-          function enableRouteOverviewFallback() {
-            if (map._routeOverviewEnabled) return;
-            map._routeOverviewEnabled = true;
-            if (activeLayer) {
-              try { map.removeLayer(activeLayer); } catch (e) {}
-            }
-
-            const fallbackLayer = L.layerGroup();
-            fallbackLayer.addTo(map);
-
-            L.rectangle([[-85, -180], [85, 180]], {
-              stroke: false,
-              fill: true,
-              fillColor: '#e2e8f0',
-              fillOpacity: 0.85
-            }).addTo(fallbackLayer);
-
-            for (let latitude = -60; latitude <= 60; latitude += 20) {
-              L.polyline([[latitude, -180], [latitude, 180]], {
-                color: '#cbd5e1',
-                weight: 1,
-                opacity: 0.75
-              }).addTo(fallbackLayer);
-            }
-            for (let longitude = -150; longitude <= 150; longitude += 30) {
-              L.polyline([[-85, longitude], [85, longitude]], {
-                color: '#cbd5e1',
-                weight: 1,
-                opacity: 0.75
-              }).addTo(fallbackLayer);
-            }
-
-            const routeOverviewLabel = L.control({ position: 'topleft' });
-            routeOverviewLabel.onAdd = function () {
-              const el = L.DomUtil.create('div');
-              el.style.cssText = 'background:rgba(37,99,235,0.88);color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:0.2px;';
-              el.textContent = 'Route overview';
-              return el;
-            };
-            routeOverviewLabel.addTo(map);
-
-            addMapNotice('Map background unavailable. Showing route overview.', 'warning');
-          }
-
-          let currentProviderIdx = 0;
-          let tileLoaded = false;
-          let activeLayer = null;
-          let providerSwitchScheduled = false;
-          const loadingNotice = addMapNotice('🗺️ Loading map…', 'loading');
-
-          function finalizeMapBackgroundFailure() {
-            if (tileLoaded) return;
-            if (loadingNotice) { try { map.removeControl(loadingNotice); } catch (e) {} }
-            enableRouteOverviewFallback();
-          }
-
-          function tryProvider(idx) {
-            if (idx >= providers.length) {
-              finalizeMapBackgroundFailure();
-              return;
-            }
-            if (activeLayer) { try { map.removeLayer(activeLayer); } catch (e) {} }
-            providerSwitchScheduled = false;
-            activeLayer = L.tileLayer(providers[idx].url, providers[idx].options);
-            activeLayer.addTo(map);
-            let tileErrorCount = 0;
-            activeLayer.on('tileload', () => {
-              if (!tileLoaded) {
-                tileLoaded = true;
-                if (loadingNotice) { try { map.removeControl(loadingNotice); } catch (e) {} }
-              }
-            });
-            activeLayer.on('tileerror', () => {
-              tileErrorCount++;
-              if (tileErrorCount >= 3 && !tileLoaded && !providerSwitchScheduled) {
-                providerSwitchScheduled = true;
-                currentProviderIdx++;
-                tryProvider(currentProviderIdx);
-              }
-            });
-            // Timeout fallback: if no tile loads within 4.5 s, try next provider
-            setTimeout(() => {
-              if (!tileLoaded && currentProviderIdx === idx && !providerSwitchScheduled) {
-                providerSwitchScheduled = true;
-                currentProviderIdx++;
-                tryProvider(currentProviderIdx);
-              }
-            }, 4500);
-          }
-
-          tryProvider(0);
-
-          // invalidateSize chain to fix iOS Safari blank-map sizing issue
-          map.invalidateSize();
-          setTimeout(() => { map.invalidateSize(); }, 200);
-          setTimeout(() => { map.invalidateSize(); }, 600);
-
-          const pulseIcon = L.divIcon({
-            className: '',
-            html: `<div style="width:20px;height:20px;background:#3b82f6;border:3px solid white;border-radius:50%;animation:mapPulse 1.8s infinite;"></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-          L.marker([lat, lng], { icon: pulseIcon })
-            .addTo(map)
-            .bindPopup(`<b>📦 Current Location</b><br>${currentLoc}`)
-            .openPopup();
-
-          async function geocode(locationText) {
-            try {
-              const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`;
-              const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-              const data = await res.json();
-              if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-            } catch (e) {}
-            return null;
-          }
-
-          const originCoords = (typeof shipment.originLat === 'number' && typeof shipment.originLng === 'number')
-            ? [shipment.originLat, shipment.originLng]
-            : await geocode(shipment.origin);
-
-          const destCoords = (typeof shipment.destinationLat === 'number' && typeof shipment.destinationLng === 'number')
-            ? [shipment.destinationLat, shipment.destinationLng]
-            : await geocode(shipment.destination);
-
-          const currentCoords = [lat, lng];
-
-          if (originCoords && destCoords) {
-            // Completed segment: origin → current (solid blue)
-            L.polyline([originCoords, currentCoords], {
-              color: '#3b82f6',
-              weight: 4,
-              opacity: 0.85
-            }).addTo(map);
-
-            // Remaining segment: current → destination (dashed grey)
-            L.polyline([currentCoords, destCoords], {
-              color: '#94a3b8',
-              weight: 3,
-              opacity: 0.7,
-              dashArray: '8, 8'
-            }).addTo(map);
-
-            const originIcon = L.divIcon({
-              className: '',
-              html: `<div style="width:14px;height:14px;background:#22c55e;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-              iconSize: [14, 14],
-              iconAnchor: [7, 7]
-            });
-            L.marker(originCoords, { icon: originIcon }).addTo(map).bindPopup(`<b>🟢 Origin</b><br>${shipment.origin || 'Origin'}`);
-
-            const destIcon = L.divIcon({
-              className: '',
-              html: `<div style="width:14px;height:14px;background:#ef4444;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-              iconSize: [14, 14],
-              iconAnchor: [7, 7]
-            });
-            L.marker(destCoords, { icon: destIcon }).addTo(map).bindPopup(`<b>🔴 Destination</b><br>${shipment.destination || 'Destination'}`);
-
-            map.fitBounds(L.latLngBounds([originCoords, currentCoords, destCoords]), { padding: [40, 40] });
-
-            // Route summary (guard: element may be absent)
-            if (summaryEl) {
-              summaryEl.innerHTML =
-                `<span class="rs-label">Route:</span> ${shipment.origin || '—'} → <span style="color:#3b82f6;font-weight:600;">${currentLoc}</span> → ${shipment.destination || '—'}` +
-                (shipment.status ? ` &nbsp;·&nbsp; <span class="rs-label">Status:</span> ${shipment.status}` : '');
-              summaryEl.style.display = "flex";
-            }
-
-            // Map legend (guard: element may be absent)
-            if (legendEl) {
-              legendEl.innerHTML =
-                `<span class="legend-item"><span class="legend-dot" style="background:#22c55e;"></span> Origin</span>` +
-                `<span class="legend-item"><span class="legend-dot" style="background:#3b82f6;"></span> Current location</span>` +
-                `<span class="legend-item"><span class="legend-dot" style="background:#ef4444;"></span> Destination</span>` +
-                `<span class="legend-item"><span class="legend-line" style="background:#3b82f6;"></span> Completed</span>` +
-                `<span class="legend-item"><span class="legend-line" style="background:#94a3b8;border-top:3px dashed #94a3b8;height:0;"></span> Remaining</span>`;
-              legendEl.style.display = "flex";
-            }
-          } else {
-            // No origin/dest: just fit around current location marker
-            map.setView(currentCoords, 10);
-          }
-        }, 180);
-
-        errorDiv.classList.remove("show");
-        btnText.innerHTML = "Track";
-      } catch (error) {
-        console.error("Tracking error:", error);
-        errorDiv.innerText = `Error: ${error.message}. Please try again.`;
-        errorDiv.classList.add("show");
-        resultDiv.style.display = "none";
-        btnText.innerHTML = "Track";
-      }
-    };
-
-    // Allow Enter key to trigger tracking
-    document.getElementById("trackingInput").addEventListener("keypress", function(event) {
-      if (event.key === "Enter") {
-        track();
+    const input = document.getElementById("trackingInput");
+    const button = document.querySelector(".btn-track");
+    const tracker = createTracker(document.getElementById("trackerRoot"), {
+      syncUrl: true,
+      onState: (s) => {
+        if (button) button.disabled = s.phase === "loading";
+        const err = document.getElementById("error");
+        if (err) { err.classList.remove("show"); err.textContent = ""; }
+        if (s.phase === "ready" && !window.__hxScrolled) { window.__hxScrolled = true; document.getElementById("results-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
       }
     });
+
+    // Public entry point kept for existing inline handlers (onclick="track()")
+    window.track = (id) => tracker.track(id !== undefined ? id : input.value);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); window.track(); } });
+    input.setAttribute("autocapitalize", "characters"); input.setAttribute("autocomplete", "off"); input.setAttribute("spellcheck", "false"); input.setAttribute("enterkeyhint", "search");
+
+    const initial = new URLSearchParams(location.search).get("code");
+    if (initial) { input.value = initial.toUpperCase(); tracker.track(initial, { push: false }); }
   </script>
 </body>
 </html>

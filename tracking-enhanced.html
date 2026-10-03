@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" />
+  <link rel="stylesheet" href="tracker/tracker.css">
   <style>
     * {
       margin: 0;
@@ -278,181 +278,30 @@
     <h1>Advanced Shipment Tracking</h1>
     <p>Real-time tracking with detailed logistics insights</p>
     <div class="search-group">
-      <input type="text" id="trackingInput" placeholder="Enter Tracking ID" oninput="this.value = this.value.toUpperCase()">
+      <input type="text" id="trackingInput" aria-label="Tracking number" placeholder="Enter Tracking ID (e.g., HY-123456)" oninput="this.value = this.value.toUpperCase()">
       <button class="btn-search" onclick="track()">Track</button>
     </div>
   </div>
 
   <div class="results" id="results"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
   <script type="module">
-    import { initializeApp, getApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { createTracker } from "./tracker/tracker.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
-      authDomain: "hyperion-logistics.firebaseapp.com",
-      projectId: "hyperion-logistics",
-      storageBucket: "hyperion-logistics.firebasestorage.app",
-      messagingSenderId: "481927084665",
-      appId: "1:481927084665:web:6c067752a922890e44f2a8"
-    };
-
-    let app;
-    try { app = initializeApp(firebaseConfig); } catch (e) { app = getApp(); }
-    const db = getFirestore(app);
-
-    window.track = async (trackId) => {
-      const id = (trackId !== undefined) ? String(trackId) : document.getElementById('trackingInput').value.trim();
-      const resultsDiv = document.getElementById('results');
-
-      if (!id) {
-        resultsDiv.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 20px;">Please enter a tracking ID</div>';
-        return;
-      }
-
-      resultsDiv.innerHTML = `
-        <div class="skeleton-card">
-          <div class="skeleton skeleton-badge"></div>
-          <div class="skeleton skeleton-title"></div>
-          <div class="skeleton-grid">
-            <div class="skeleton skeleton-item"></div>
-            <div class="skeleton skeleton-item"></div>
-            <div class="skeleton skeleton-item"></div>
-            <div class="skeleton skeleton-item"></div>
-          </div>
-        </div>
-      `;
-
-      try {
-        const snap = await getDoc(doc(db, "shipments", id.toUpperCase()));
-        if (!snap.exists()) throw new Error('Shipment not found');
-
-        const shipment = snap.data();
-        const currentLoc = shipment.currentLocation || shipment.location || 'Unknown';
-        const statusClass = shipment.status ? shipment.status.toLowerCase().replace(/\s+/g, '-') : '';
-        const lat = typeof shipment.latitude  === 'number' ? shipment.latitude  : 14.5995;
-        const lng = typeof shipment.longitude === 'number' ? shipment.longitude : 120.9842;
-
-        resultsDiv.innerHTML = `
-          <div class="result-card">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
-              <span class="status ${statusClass}">${shipment.status || 'Unknown'}</span>
-              <button class="btn-refresh" onclick="track('${id.toUpperCase()}')">🔄 Refresh</button>
-            </div>
-            <h3 style="margin: 12px 0;">${shipment.id || id.toUpperCase()}</h3>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Origin</div>
-                <div class="info-value">${shipment.origin || 'N/A'}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Destination</div>
-                <div class="info-value">${shipment.destination || 'N/A'}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Current Location</div>
-                <div class="info-value">${currentLoc}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Shipping Fee</div>
-                <div class="info-value">${shipment.fee || 'N/A'}</div>
-              </div>
-              ${shipment.distance ? `<div class="info-item">
-                <div class="info-label">Distance</div>
-                <div class="info-value">${shipment.distance}</div>
-              </div>` : ''}
-            </div>
-            <div class="eta-card">
-              <div class="eta-label">ESTIMATED DELIVERY</div>
-              <div class="eta-date">${shipment.eta || 'TBD'}</div>
-            </div>
-            <div class="map-card" id="map"></div>
-          </div>
-        `;
-
-        setTimeout(async () => {
-          const map = L.map('map').setView([lat, lng], 8);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-          }).addTo(map);
-
-          const pulseIcon = L.divIcon({
-            className: '',
-            html: `<div style="width:20px;height:20px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 0 0 rgba(59,130,246,0.7);animation:mapPulse 1.8s infinite;"></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-
-          L.marker([lat, lng], { icon: pulseIcon })
-            .addTo(map)
-            .bindPopup(`<b>📦 Package Location</b><br>${currentLoc}`)
-            .openPopup();
-
-          async function geocode(locationText) {
-            try {
-              const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationText)}&format=json&limit=1`;
-              const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-              const data = await res.json();
-              if (data && data[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-            } catch (e) {}
-            return null;
-          }
-
-          const originCoords = (typeof shipment.originLat === 'number' && typeof shipment.originLng === 'number')
-            ? [shipment.originLat, shipment.originLng]
-            : await geocode(shipment.origin);
-
-          const destCoords = (typeof shipment.destinationLat === 'number' && typeof shipment.destinationLng === 'number')
-            ? [shipment.destinationLat, shipment.destinationLng]
-            : await geocode(shipment.destination);
-
-          const currentCoords = [lat, lng];
-
-          if (originCoords && destCoords) {
-            L.polyline([originCoords, currentCoords], {
-              color: '#3b82f6',
-              weight: 3,
-              opacity: 0.6,
-              dashArray: '8, 6'
-            }).addTo(map);
-
-            L.polyline([currentCoords, destCoords], {
-              color: '#94a3b8',
-              weight: 3,
-              opacity: 0.5,
-              dashArray: '6, 8'
-            }).addTo(map);
-
-            const originIcon = L.divIcon({
-              className: '',
-              html: `<div style="width:14px;height:14px;background:#22c55e;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-              iconSize: [14, 14],
-              iconAnchor: [7, 7]
-            });
-            L.marker(originCoords, { icon: originIcon }).addTo(map).bindPopup(`<b>📦 Origin</b><br>${shipment.origin}`);
-
-            const destIcon = L.divIcon({
-              className: '',
-              html: `<div style="width:14px;height:14px;background:#ef4444;border:2px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-              iconSize: [14, 14],
-              iconAnchor: [7, 7]
-            });
-            L.marker(destCoords, { icon: destIcon }).addTo(map).bindPopup(`<b>🏁 Destination</b><br>${shipment.destination}`);
-
-            map.fitBounds(L.latLngBounds([originCoords, currentCoords, destCoords]), { padding: [40, 40] });
-          }
-        }, 100);
-      } catch (err) {
-        resultsDiv.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px;">Error: ${err.message}</div>`;
-      }
-    };
-
-    document.getElementById("trackingInput").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") track();
+    const input = document.getElementById("trackingInput");
+    const button = document.querySelector(".btn-search");
+    const tracker = createTracker(document.getElementById("results"), {
+      syncUrl: true,
+      onState: (s) => { if (button) button.disabled = s.phase === "loading"; }
     });
+
+    // Public entry point kept for existing inline handlers (onclick="track()")
+    window.track = (id) => tracker.track(id !== undefined ? id : input.value);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); window.track(); } });
+    input.setAttribute("autocapitalize", "characters"); input.setAttribute("autocomplete", "off"); input.setAttribute("spellcheck", "false"); input.setAttribute("enterkeyhint", "search");
+
+    const initial = new URLSearchParams(location.search).get("code");
+    if (initial) { input.value = initial.toUpperCase(); tracker.track(initial, { push: false }); }
   </script>
 
   <footer>

@@ -563,7 +563,83 @@
       .toast { left: 20px; right: 20px; }
       .shipment-tools { grid-template-columns: 1fr; }
     }
+
+    /* ===== Control Center additions ===== */
+    input[type="checkbox"] { width: auto; padding: 0; margin: 0 8px 0 0; accent-color: #3b82f6; }
+    textarea { min-height: 84px; resize: vertical; }
+    .container { max-width: 1280px; }
+    .view-toggle { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+    .toggle-btn { white-space: nowrap; flex: 0 0 auto; }
+    .hidden { display: none !important; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .kpi { background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; }
+    .kpi .kpi-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+    .kpi .kpi-value { font-size: 30px; font-weight: 800; color: #1e293b; margin-top: 6px; }
+    .kpi.warn .kpi-value { color: #b45309; } .kpi.bad .kpi-value { color: #b91c1c; } .kpi.good .kpi-value { color: #15803d; }
+    .dash-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .dash-cols h4, .panel h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #64748b; margin: 0 0 10px; }
+    .feed { list-style: none; margin: 0 0 20px; padding: 0; }
+    .feed li { padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #1e293b; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .feed li small { color: #64748b; }
+    .feed .code { font-weight: 700; color: #2563eb; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; text-decoration: underline; }
+    .banner { padding: 12px 16px; border-radius: 12px; font-size: 13px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .banner.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; } .banner.warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .sys-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+    .sys-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #f1f5f9; font-size: 12px; font-weight: 700; color: #334155; }
+    .sys-chip i { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; } .sys-chip.off i { background: #94a3b8; } .sys-chip.bad i { background: #ef4444; }
+    .tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .tool-grid .span2 { grid-column: span 2; } @media (max-width: 560px) { .tool-grid .span2 { grid-column: auto; } }
+    .tool-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .tool-actions .btn, .ws-bar .btn-action, .panel .btn { flex: 0 0 auto; width: auto; }
+    .ws-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; background: rgba(255,255,255,.95); border-radius: 16px; padding: 14px 18px; margin-bottom: 24px; }
+    .ws-bar input { flex: 1 1 220px; max-width: 360px; }
+    .ws-bar .ws-current { font-size: 13px; color: #334155; font-weight: 600; }
+    .panel { border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; margin-bottom: 18px; background: #fff; }
+    .panel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; align-items: start; }
+    @media (max-width: 420px) { .panel-grid { grid-template-columns: 1fr; } }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .summary-grid > div { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; min-width: 0; overflow-wrap: anywhere; }
+    .summary-grid small { display: block; font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; margin-bottom: 4px; }
+    .admin-map { height: 340px; border-radius: 12px; overflow: hidden; margin-bottom: 18px; background: #e2e8f0; position: relative; z-index: 0; }
+    .admin-map .hx-map-msg { color: #475569; }
+    .vis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 16px; margin-bottom: 14px; }
+    .vis-grid label { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 13px; margin: 0; display: flex; align-items: flex-start; }
+    .vis-grid small { display: block; color: #64748b; font-weight: 500; }
+    .hint { font-size: 12px; color: #64748b; margin: 6px 0 0; }
+    .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; background: #e2e8f0; color: #334155; white-space: nowrap; }
+    .pill.info { background: #dbeafe; color: #1e40af; } .pill.success { background: #dcfce7; color: #166534; } .pill.warn { background: #fef3c7; color: #92400e; }
+    .pill.danger { background: #fee2e2; color: #991b1b; } .pill.neutral { background: #e2e8f0; color: #334155; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .row-actions .btn-action { padding: 6px 10px; font-size: 12px; }
+    .login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a, #1a1f3a); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+    .login-box { background: #fff; border-radius: 18px; padding: 32px; width: min(400px, 100%); box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+    .login-box h2 { margin: 0 0 4px; color: #1e293b; } .login-box p { margin: 0 0 18px; color: #64748b; font-size: 13px; }
+    .login-box .btn { margin-top: 12px; width: 100%; } .login-err { color: #b91c1c; font-size: 13px; min-height: 18px; margin-top: 10px; font-weight: 600; }
+    .audit-diff { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #475569; max-width: 360px; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .ev-list { list-style: none; margin: 0; padding: 0; } .ev-list li { padding: 12px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .ev-list .meta { color: #64748b; font-size: 12px; margin-top: 4px; }
+    .preview-wrap { background: linear-gradient(135deg, #0f172a, #1a1f3a); border-radius: 16px; padding: 20px; }
+    .btn.inline { flex: 0 0 auto; width: auto; }
+    .btn-primary { background: linear-gradient(135deg, #3b82f6, #1e40af); color: #fff; box-shadow: 0 8px 20px rgba(59,130,246,.3); }
+    .btn-warn { background: #fff7ed; color: #9a3412; border: 2px solid #fed7aa; }
+    .status-created, .status-registered { background: #e2e8f0; color: #334155; } .status-in-transit { background: #dbeafe; color: #1e40af; }
+    .status-out-for-delivery { background: #e0e7ff; color: #3730a3; } .status-delayed, .status-at-facility { background: #fef3c7; color: #92400e; }
+    .status-exception, .status-cancelled { background: #fee2e2; color: #991b1b; } .status-customs-inspection { background: #fed7aa; color: #92400e; }
+    @media (max-width: 760px) {
+      body { padding: 12px; }
+      .form-card, .stats-card, .shipments-card, .clients-card { padding: 18px; border-radius: 16px; }
+      .header-top { flex-wrap: wrap; gap: 12px; }
+      .shipments-table.responsive thead { display: none; }
+      .shipments-table.responsive, .shipments-table.responsive tbody, .shipments-table.responsive tr, .shipments-table.responsive td { display: block; width: 100%; }
+      .shipments-table.responsive tr { border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 12px; padding: 8px 4px; }
+      .shipments-table.responsive td { border: 0; padding: 6px 12px; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+      .shipments-table.responsive td::before { content: attr(data-label); font-weight: 700; color: #64748b; font-size: 11px; text-transform: uppercase; text-align: left; flex: 0 0 auto; }
+      .shipment-tools { grid-template-columns: 1fr; }
+      .admin-map { height: 260px; }
+    }
   </style>
+  <link rel="stylesheet" href="tracker/tracker.css">
   <!-- Smartsupp Live Chat script -->
   <script type="text/javascript">
   var _smartsupp = _smartsupp || {};
@@ -577,67 +653,80 @@
   </script>
 </head>
 <body>
-  <div class="container">
+  <div class="login-overlay" id="loginOverlay">
+    <form class="login-box" id="loginForm" autocomplete="off">
+      <h2>Hyperion Admin</h2>
+      <p>Sign in to the logistics control center.</p>
+      <label for="loginPassword">Admin password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
+      <button class="btn btn-primary" type="submit" id="loginBtn">Sign in</button>
+      <div class="login-err" id="loginErr" role="alert"></div>
+    </form>
+  </div>
+
+  <div class="container hidden" id="appRoot">
     <div class="header">
       <div class="header-top">
         <div>
           <div class="logo">
             <div class="logo-icon">⚙️</div>
             <div class="logo-text">
-              <h2>Admin Panel</h2>
-              <p>Advanced Shipment Management</p>
+              <h2>Admin Control Center</h2>
+              <p>Logistics operations &amp; shipment management</p>
             </div>
           </div>
-          <div class="breadcrumb">Dashboard > <span id="breadcrumb-view">Create</span></div>
+          <div class="breadcrumb">Dashboard > <span id="breadcrumb-view">Dashboard</span> · <span id="whoami">--</span></div>
         </div>
         <button class="btn-logout" onclick="logout()">Logout</button>
       </div>
 
-      <div class="view-toggle">
+      <div class="view-toggle" role="tablist">
         <button class="toggle-btn active" id="btn-dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
+        <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">📋 Shipments</button>
         <button class="toggle-btn" id="btn-create" onclick="switchView('create')">➕ Create Shipment</button>
-        <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">📋 View Shipments</button>
+        <button class="toggle-btn" id="btn-tracking" onclick="switchView('tracking')">📍 Live Tracking</button>
+        <button class="toggle-btn" id="btn-events" onclick="switchView('events')">🧾 Tracking Events</button>
+        <button class="toggle-btn" id="btn-preview" onclick="switchView('preview')">👁️ Client View</button>
+        <button class="toggle-btn" id="btn-audit" onclick="switchView('audit')">🛡️ Activity Logs</button>
         <button class="toggle-btn" id="btn-couriers" onclick="switchView('couriers')">🚚 Manage Couriers</button>
         <button class="toggle-btn" id="btn-clients" onclick="switchView('clients')">👥 Clients</button>
+        <button class="toggle-btn" id="btn-settings" onclick="switchView('settings')">⚙️ Settings</button>
       </div>
+    </div>
+
+    <div class="ws-bar hidden" id="workspaceBar">
+      <label for="wsCode" style="margin:0;">Shipment</label>
+      <input id="wsCode" type="text" placeholder="Tracking code, e.g. HY-123456" autocomplete="off" spellcheck="false" list="wsCodes">
+      <datalist id="wsCodes"></datalist>
+      <button class="btn-action" type="button" id="wsLoad">Load shipment</button>
+      <span class="ws-current" id="wsCurrent"></span>
     </div>
 
     <div class="content" id="content">
       <!-- Dashboard -->
       <div class="stats-card active" id="view-dashboard">
         <div class="card-header">
-          <h3>Quick Stats</h3>
-          <p>System overview</p>
+          <h3>Operations Dashboard</h3>
+          <p>Live figures from the shipment database · <span id="lastUpdated">--</span></p>
         </div>
-
-        <div class="stat-item">
-          <div class="stat-label">📦 Total Shipments</div>
-          <div class="stat-value" id="totalShipments">--</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-label">✓ Last Updated</div>
-          <div class="stat-value" id="lastUpdated" style="font-size: 16px;">--</div>
-        </div>
-
-        <div class="stat-item">
-          <div class="stat-label">🔄 System Status</div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="display: inline-block; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite;"></span>
-            <span style="font-weight: 600; color: #22c55e;">Operational</span>
+        <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><button class="btn-action" id="migrateBtn" type="button">Run data migration</button></div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="dash-cols">
+          <div>
+            <h4>Recent shipment activity</h4><ul class="feed" id="dashRecent"></ul>
+            <h4>Recent activity log</h4><ul class="feed" id="dashActivity"></ul>
+          </div>
+          <div>
+            <h4>Recent location updates</h4><ul class="feed" id="dashLocations"></ul>
+            <h4>Recent tracking events &amp; status changes</h4><ul class="feed" id="dashEvents"></ul>
           </div>
         </div>
-
-        <div class="stat-item">
-          <div class="stat-label">🚚 Shipments by Courier</div>
-          <div class="courier-stats-grid" id="courierStats">
-            <div class="courier-stat"><span>Loading...</span><strong>--</strong></div>
-          </div>
-        </div>
-
+        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">System status</h4>
+        <div class="sys-row" id="sysStatus"></div>
         <div class="quick-actions">
           <h4>Quick Actions</h4>
-          <div class="action-buttons">
+          <div class="action-buttons" style="flex-direction:row;flex-wrap:wrap;">
+            <button class="btn-action" onclick="switchView('create')">➕ New shipment</button>
             <button class="btn-action" onclick="switchView('shipments')">📋 View All Shipments</button>
             <button class="btn-action" onclick="exportData()">💾 Export Data</button>
             <button class="btn-action" onclick="goHome()">🏠 Back to Home</button>
@@ -648,31 +737,28 @@
       <!-- Create Shipment -->
       <div class="form-card" id="view-create">
         <div class="card-header">
-          <h3>Create Advanced Shipment</h3>
-          <p>Add complete shipment information with real-time tracking</p>
+          <h3>Create Shipment</h3>
+          <p>Registers the shipment, generates the first tracking event and records the action in the activity log</p>
         </div>
-
-        <form onsubmit="saveData(event)">
-          <!-- Basic Info -->
+        <form id="createForm">
           <div class="section-label">📦 Basic Information</div>
           <div class="form-grid">
             <div class="form-group">
-              <label for="id">Tracking ID *</label>
-              <input id="id" type="text" placeholder="Auto-generated when courier is selected" spellcheck="false" disabled>
+              <label for="id">Tracking ID</label>
+              <input id="id" type="text" placeholder="Auto-generated when courier is selected (or type your own)" spellcheck="false" maxlength="40">
               <div class="courier-prefix-hint" id="courierPrefixHint">Tracking prefix: --</div>
             </div>
             <div class="form-group">
-              <label for="status">Status *</label>
-              <input id="status" type="text" placeholder="e.g., Under Custom review" required list="status-list">
-              <datalist id="status-list">
-                <option value="Under Custom review">
-                <option value="Shipped">
-                <option value="In Transit">
-                <option value="Out for Delivery">
-                <option value="Delivered">
-                <option value="Processing">
-                <option value="Pending">
-              </datalist>
+              <label for="status">Initial status *</label>
+              <select id="status" required></select>
+            </div>
+            <div class="form-group">
+              <label for="serviceType">Service type</label>
+              <input id="serviceType" type="text" placeholder="e.g., Express, Freight, Economy" maxlength="80">
+            </div>
+            <div class="form-group">
+              <label for="clientRef">Client / account reference</label>
+              <input id="clientRef" type="text" placeholder="Internal only - never shown to clients" maxlength="120">
             </div>
           </div>
 
@@ -690,7 +776,6 @@
             </div>
           </div>
 
-          <!-- Location Info -->
           <div class="section-label">📍 Location Information</div>
           <div class="form-grid">
             <div class="form-group">
@@ -702,8 +787,8 @@
               <input id="destination" type="text" placeholder="e.g., United States, Alabama" required>
             </div>
             <div class="form-group">
-              <label for="location">Current Location *</label>
-              <input id="location" type="text" placeholder="e.g., Japan, Tokyo" required>
+              <label for="location">Current Location</label>
+              <input id="location" type="text" placeholder="e.g., Japan, Tokyo">
             </div>
             <div class="form-group">
               <label for="distance">Distance (km)</label>
@@ -711,54 +796,179 @@
             </div>
           </div>
 
-          <!-- Coordinates -->
-          <div class="section-label">🗺️ Map Coordinates</div>
+          <div class="section-label">🗺️ Map Coordinates (optional)</div>
           <div class="form-grid">
-            <div class="form-group">
-              <label for="latitude">Latitude</label>
-              <input id="latitude" type="number" step="0.0001" placeholder="e.g., 35.6762" required>
-            </div>
-            <div class="form-group">
-              <label for="longitude">Longitude</label>
-              <input id="longitude" type="number" step="0.0001" placeholder="e.g., 139.6503" required>
-            </div>
+            <div class="form-group"><label for="latitude">Current latitude</label><input id="latitude" type="number" step="any" placeholder="e.g., 35.6762"></div>
+            <div class="form-group"><label for="longitude">Current longitude</label><input id="longitude" type="number" step="any" placeholder="e.g., 139.6503"></div>
+          </div>
+          <p class="hint">Origin and destination are placed on the map automatically (geocoded server-side) unless you set exact points in Live Tracking.</p>
+
+          <div class="section-label">🕒 Estimated Delivery</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="etaDate">Estimated delivery date</label><input id="etaDate" type="date"></div>
+            <div class="form-group"><p class="hint" style="margin-top:28px;">Leave empty if unknown — clients will see "Delivery estimate unavailable."</p></div>
           </div>
 
-          <!-- Shipping Info -->
+          <div class="section-label">📦 Package &amp; Notes</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="pkgDescription">Package description</label><input id="pkgDescription" type="text" maxlength="300"></div>
+            <div class="form-group"><label for="pkgWeight">Weight</label><input id="pkgWeight" type="text" maxlength="40" placeholder="e.g., 12 kg"></div>
+            <div class="form-group"><label for="pkgDimensions">Dimensions</label><input id="pkgDimensions" type="text" maxlength="60" placeholder="e.g., 40x30x20 cm"></div>
+            <div class="form-group"><label for="pkgPieces">Pieces</label><input id="pkgPieces" type="text" maxlength="10"></div>
+            <div class="form-group"><label for="notes">Shipment notes (visible to client if enabled)</label><textarea id="notes" maxlength="1000"></textarea></div>
+            <div class="form-group"><label for="internalNotes">Internal notes (admin only)</label><textarea id="internalNotes" maxlength="2000"></textarea></div>
+          </div>
+
           <div class="section-label">💵 Shipping Information</div>
           <div class="form-grid">
             <div class="form-group">
-              <label for="fee">Shipping Fee *</label>
-              <input id="fee" type="text" placeholder="e.g., ₱39,719.00" required>
+              <label for="fee">Shipping Fee</label>
+              <input id="fee" type="text" placeholder="e.g., ₱39,719.00">
             </div>
           </div>
 
           <div class="form-footer">
-            <button type="submit" class="btn btn-save">
-              <span id="save-btn-text">Save Shipment</span>
-            </button>
+            <button type="submit" class="btn btn-save"><span id="save-btn-text">Save Shipment</span></button>
             <button type="reset" class="btn btn-reset">Clear</button>
           </div>
         </form>
       </div>
 
-      <!-- View Shipments -->
+      <!-- Shipments -->
       <div class="shipments-card" id="view-shipments">
         <div class="card-header">
-          <h3>All Shipments</h3>
-          <p>Manage and monitor shipments</p>
+          <h3>Shipment Management</h3>
+          <p>Search, filter and manage shipments (server-side queries, paginated)</p>
         </div>
-        <div class="shipment-tools">
-          <input id="shipmentSearch" type="text" placeholder="Search by tracking code or courier">
-          <select id="courierFilter"></select>
+        <form class="tool-grid" id="shipmentFilters">
+          <input id="fCode" type="text" placeholder="Tracking code / ID" aria-label="Tracking code">
+          <select id="fStatus" aria-label="Status"></select>
+          <input id="fDestination" type="text" placeholder="Destination" aria-label="Destination">
+          <input id="fLocation" type="text" placeholder="Current location" aria-label="Current location">
+          <input id="fClient" type="text" placeholder="Client / account" aria-label="Client or account">
+          <label style="display:flex;align-items:center;margin:0;text-transform:none;letter-spacing:0;"><input id="fArchived" type="checkbox">Show archived</label>
+        </form>
+        <div class="tool-actions">
+          <button class="btn btn-primary inline" type="button" id="fSearch">Search</button>
+          <button class="btn btn-reset inline" type="button" id="fReset">Reset</button>
+          <span class="hint" id="listInfo"></span>
         </div>
         <div id="shipmentsContainer">
-          <div class="empty-state">
-            <div class="empty-icon">📦</div>
-            <h3>No Shipments Yet</h3>
-            <p>Start by creating your first shipment</p>
+          <div class="empty-state"><div class="empty-icon">📦</div><h3>Loading…</h3></div>
+        </div>
+        <div class="tool-actions" style="margin-top:14px;"><button class="btn btn-reset inline hidden" type="button" id="loadMore">Load more</button></div>
+      </div>
+
+      <!-- Live Tracking -->
+      <div class="shipments-card" id="view-tracking">
+        <div class="card-header">
+          <h3>Live Tracking Control</h3>
+          <p>Update location, status, ETA and what the client can see. Every change is saved to the database, pushed to clients and written to the activity log.</p>
+        </div>
+        <div id="trkEmpty" class="empty-state"><div class="empty-icon">📍</div><h3>Select a shipment</h3><p>Enter a tracking code above and press “Load shipment”.</p></div>
+        <div id="trkBody" class="hidden">
+          <div class="summary-grid" id="trkSummary"></div>
+          <div class="admin-map" id="adminMap"></div>
+          <div class="panel-grid">
+            <form class="panel" id="locForm">
+              <h4>Update live location</h4>
+              <div class="form-group" style="margin-bottom:12px;"><label for="locName">Current location</label><input id="locName" type="text" placeholder="e.g., Lagos, Nigeria" maxlength="160" required></div>
+              <div class="tool-grid" style="margin-bottom:12px;">
+                <div><label for="locLat">Latitude</label><input id="locLat" type="number" step="any" placeholder="6.5244"></div>
+                <div><label for="locLng">Longitude</label><input id="locLng" type="number" step="any" placeholder="3.3792"></div>
+              </div>
+              <div class="form-group" style="margin-bottom:12px;"><label for="locStatus">Status</label><select id="locStatus"></select></div>
+              <div class="form-group" style="margin-bottom:12px;"><label for="locNote">Note for timeline (optional)</label><input id="locNote" type="text" maxlength="600"></div>
+              <button class="btn btn-primary inline" type="submit" id="locBtn">UPDATE LOCATION</button>
+              <p class="hint">Saved as an <strong>operations update</strong>. Only a connected carrier/GPS provider can label a position as carrier or GPS data.</p>
+            </form>
+
+            <form class="panel" id="statusForm">
+              <h4>Status &amp; exceptions</h4>
+              <div class="form-group" style="margin-bottom:12px;"><label for="stStatus">Shipment status</label><select id="stStatus"></select></div>
+              <div class="form-group" style="margin-bottom:12px;"><label for="exType">Exception (only if one actually occurred)</label><select id="exType"></select></div>
+              <div class="form-group" style="margin-bottom:12px;"><label for="exNote">Exception note</label><input id="exNote" type="text" maxlength="500" placeholder="Shown to the client when visible"></div>
+              <label style="text-transform:none;letter-spacing:0;display:flex;align-items:center;margin-bottom:12px;"><input type="checkbox" id="exVisible" checked>Show exception to client</label>
+              <button class="btn btn-primary inline" type="submit">Save status</button>
+            </form>
+
+            <form class="panel" id="etaForm">
+              <h4>Estimated delivery</h4>
+              <div class="form-group" style="margin-bottom:12px;"><label for="etaDateInput">Estimated date</label><input id="etaDateInput" type="date"></div>
+              <div class="tool-grid" style="margin-bottom:12px;">
+                <div><label for="etaStart">Window start</label><input id="etaStart" type="datetime-local"></div>
+                <div><label for="etaEnd">Window end</label><input id="etaEnd" type="datetime-local"></div>
+              </div>
+              <div class="tool-actions" style="margin:0;"><button class="btn btn-primary inline" type="submit">Save ETA</button><button class="btn btn-reset inline" type="button" id="etaClear">Clear ETA</button></div>
+              <p class="hint">A window takes priority over a single date. No ETA = “Delivery estimate unavailable.”</p>
+            </form>
+
+            <form class="panel" id="routeForm">
+              <h4>Route points (origin / destination)</h4>
+              <div class="tool-grid" style="margin-bottom:12px;">
+                <div><label for="oLat">Origin lat</label><input id="oLat" type="number" step="any"></div>
+                <div><label for="oLng">Origin lng</label><input id="oLng" type="number" step="any"></div>
+                <div><label for="dLat">Dest. lat</label><input id="dLat" type="number" step="any"></div>
+                <div><label for="dLng">Dest. lng</label><input id="dLng" type="number" step="any"></div>
+              </div>
+              <button class="btn btn-primary inline" type="submit">Save route points</button>
+              <p class="hint" id="routeHint"></p>
+            </form>
+
+            <form class="panel" id="visForm" style="grid-column:1/-1;">
+              <h4>Client visibility</h4>
+              <div class="vis-grid" id="visGrid"></div>
+              <button class="btn btn-primary inline" type="submit">Save visibility</button>
+              <p class="hint">Enforced by the server: hidden data is never sent to the client browser. Use “Client View” to verify.</p>
+            </form>
           </div>
         </div>
+      </div>
+
+      <!-- Tracking events -->
+      <div class="shipments-card" id="view-events">
+        <div class="card-header"><h3>Tracking Event Manager</h3><p>Add events to a shipment timeline. Identical submissions are de-duplicated.</p></div>
+        <div id="evEmpty" class="empty-state"><div class="empty-icon">🧾</div><h3>Select a shipment</h3><p>Enter a tracking code above and press “Load shipment”.</p></div>
+        <div id="evBody" class="hidden">
+          <form class="panel" id="eventForm">
+            <h4>Add tracking event</h4>
+            <div class="tool-grid">
+              <div><label for="evStatus">Status</label><select id="evStatus" required></select></div>
+              <div><label for="evLocation">Location</label><input id="evLocation" type="text" maxlength="160" placeholder="Lagos, Nigeria"></div>
+              <div><label for="evDate">Date</label><input id="evDate" type="date" required></div>
+              <div><label for="evTime">Time</label><input id="evTime" type="time" required></div>
+              <div class="span2"><label for="evDesc">Description</label><input id="evDesc" type="text" maxlength="600" required placeholder="Shipment departed from processing facility."></div>
+            </div>
+            <label style="text-transform:none;letter-spacing:0;display:flex;align-items:center;margin-bottom:12px;"><input type="checkbox" id="evVisible" checked>Visible to client</label>
+            <button class="btn btn-primary inline" type="submit">ADD TRACKING EVENT</button>
+            <p class="hint">Date and time use your browser’s local time zone. Future-dated events are rejected.</p>
+          </form>
+          <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">Event history</h4>
+          <ul class="ev-list" id="evList"></ul>
+        </div>
+      </div>
+
+      <!-- Client preview -->
+      <div class="shipments-card" id="view-preview">
+        <div class="card-header"><h3>Client View Preview</h3><p>The same component and data the public tracking page uses, filtered by this shipment’s visibility settings.</p></div>
+        <div id="pvEmpty" class="empty-state"><div class="empty-icon">👁️</div><h3>Select a shipment</h3><p>Enter a tracking code above and press “Load shipment”.</p></div>
+        <div id="pvBody" class="hidden">
+          <div class="tool-actions"><button class="btn btn-primary inline" type="button" id="pvRefresh">PREVIEW CLIENT VIEW</button><a class="btn-action" id="pvOpen" target="_blank" rel="noopener" style="text-decoration:none;">Open public page ↗</a></div>
+          <div class="preview-wrap"><div id="previewRoot"></div></div>
+        </div>
+      </div>
+
+      <!-- Activity log -->
+      <div class="shipments-card" id="view-audit">
+        <div class="card-header"><h3>Activity Log</h3><p>Admin-only audit trail of every operational change.</p></div>
+        <div class="tool-actions"><input id="auditCode" type="text" placeholder="Filter by tracking code" style="max-width:260px;" aria-label="Filter audit by tracking code"><button class="btn btn-primary inline" type="button" id="auditLoad">Filter</button><button class="btn btn-reset inline" type="button" id="auditReset">Reset</button></div>
+        <div class="table-wrap" id="auditContainer"></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="shipments-card" id="view-settings">
+        <div class="card-header"><h3>Settings &amp; Integrations</h3><p>Read-only view of server configuration. Secrets are never displayed.</p></div>
+        <div id="settingsBody"></div>
       </div>
 
       <!-- Manage Couriers -->
@@ -888,73 +1098,46 @@
     <div class="modal-card">
       <div class="card-header">
         <h3>Edit Shipment</h3>
-        <p>Update shipment details</p>
+        <p>Changes are validated, saved to the database and recorded in the activity log</p>
       </div>
       <form id="shipmentForm">
         <div class="section-label">📦 Basic Information</div>
         <div class="form-grid">
-          <div class="form-group">
-            <label for="shipmentIdInput">Tracking ID *</label>
-            <input id="shipmentIdInput" type="text" readonly required>
-          </div>
-          <div class="form-group">
-            <label for="shipmentStatusInput">Status *</label>
-            <input id="shipmentStatusInput" type="text" placeholder="e.g., Under Custom review" required list="status-list">
-          </div>
+          <div class="form-group"><label for="shipmentIdInput">Tracking ID</label><input id="shipmentIdInput" type="text" readonly required></div>
+          <div class="form-group"><label for="shipmentStatusInput">Status *</label><select id="shipmentStatusInput" required></select></div>
+          <div class="form-group"><label for="shipmentServiceInput">Service type</label><input id="shipmentServiceInput" type="text" maxlength="80"></div>
+          <div class="form-group"><label for="shipmentClientRefInput">Client / account reference</label><input id="shipmentClientRefInput" type="text" maxlength="120"></div>
         </div>
 
         <div class="section-label">🚚 Courier Information</div>
         <div class="form-grid">
-          <div class="form-group">
-            <label for="shipmentCourierInput">Courier *</label>
-            <select id="shipmentCourierInput" required>
-              <option value="">-- Select a Courier --</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="shipmentCourierTrackingNumberInput">Courier Tracking Number</label>
-            <input id="shipmentCourierTrackingNumberInput" type="text" placeholder="Carrier-provided tracking number">
-          </div>
+          <div class="form-group"><label for="shipmentCourierInput">Courier</label><select id="shipmentCourierInput"><option value="">-- Select a Courier --</option></select></div>
+          <div class="form-group"><label for="shipmentCourierTrackingNumberInput">Courier Tracking Number</label><input id="shipmentCourierTrackingNumberInput" type="text" placeholder="Carrier-provided tracking number"></div>
         </div>
 
         <div class="section-label">📍 Location Information</div>
         <div class="form-grid">
-          <div class="form-group">
-            <label for="shipmentOriginInput">Origin Location *</label>
-            <input id="shipmentOriginInput" type="text" placeholder="e.g., Philippines, Manila" required>
-          </div>
-          <div class="form-group">
-            <label for="shipmentDestinationInput">Destination Location *</label>
-            <input id="shipmentDestinationInput" type="text" placeholder="e.g., United States, Alabama" required>
-          </div>
-          <div class="form-group">
-            <label for="shipmentLocationInput">Current Location *</label>
-            <input id="shipmentLocationInput" type="text" placeholder="e.g., Japan, Tokyo" required>
-          </div>
-          <div class="form-group">
-            <label for="shipmentDistanceInput">Distance (km)</label>
-            <input id="shipmentDistanceInput" type="text" placeholder="e.g., 5240">
-          </div>
+          <div class="form-group"><label for="shipmentOriginInput">Origin Location *</label><input id="shipmentOriginInput" type="text" required></div>
+          <div class="form-group"><label for="shipmentDestinationInput">Destination Location *</label><input id="shipmentDestinationInput" type="text" required></div>
+          <div class="form-group"><label for="shipmentLocationInput">Current Location</label><input id="shipmentLocationInput" type="text"></div>
+          <div class="form-group"><label for="shipmentDistanceInput">Distance (km)</label><input id="shipmentDistanceInput" type="text"></div>
+          <div class="form-group"><label for="shipmentLatitudeInput">Current latitude</label><input id="shipmentLatitudeInput" type="number" step="any"></div>
+          <div class="form-group"><label for="shipmentLongitudeInput">Current longitude</label><input id="shipmentLongitudeInput" type="number" step="any"></div>
         </div>
 
-        <div class="section-label">🗺️ Map Coordinates</div>
+        <div class="section-label">📦 Package &amp; Notes</div>
         <div class="form-grid">
-          <div class="form-group">
-            <label for="shipmentLatitudeInput">Latitude</label>
-            <input id="shipmentLatitudeInput" type="number" step="0.0001" placeholder="e.g., 35.6762" required>
-          </div>
-          <div class="form-group">
-            <label for="shipmentLongitudeInput">Longitude</label>
-            <input id="shipmentLongitudeInput" type="number" step="0.0001" placeholder="e.g., 139.6503" required>
-          </div>
+          <div class="form-group"><label for="shipmentPkgDescription">Package description</label><input id="shipmentPkgDescription" type="text" maxlength="300"></div>
+          <div class="form-group"><label for="shipmentPkgWeight">Weight</label><input id="shipmentPkgWeight" type="text" maxlength="40"></div>
+          <div class="form-group"><label for="shipmentPkgDimensions">Dimensions</label><input id="shipmentPkgDimensions" type="text" maxlength="60"></div>
+          <div class="form-group"><label for="shipmentPkgPieces">Pieces</label><input id="shipmentPkgPieces" type="text" maxlength="10"></div>
+          <div class="form-group"><label for="shipmentNotesInput">Shipment notes (client-visible if enabled)</label><textarea id="shipmentNotesInput" maxlength="1000"></textarea></div>
+          <div class="form-group"><label for="shipmentInternalNotesInput">Internal notes (admin only)</label><textarea id="shipmentInternalNotesInput" maxlength="2000"></textarea></div>
         </div>
 
         <div class="section-label">💵 Shipping Information</div>
         <div class="form-grid">
-          <div class="form-group">
-            <label for="shipmentFeeInput">Shipping Fee *</label>
-            <input id="shipmentFeeInput" type="text" placeholder="e.g., ₱39,719.00" required>
-          </div>
+          <div class="form-group"><label for="shipmentFeeInput">Shipping Fee</label><input id="shipmentFeeInput" type="text" placeholder="e.g., ₱39,719.00"></div>
         </div>
 
         <div class="form-footer">
@@ -971,6 +1154,7 @@
     import { getFirestore, doc, setDoc, collection, getDocs, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import { loadCouriers, generateTrackingCode, mapGenericStatusToCourier, buildDefaultCourierUpdates } from "./courier-config.js";
     import { setupAdminClients } from "./admin-clients.js";
+    import { initControlCenter } from "./admin/center.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDRd7FFT2ycMaLvdgvYyauQz13nCnfGOss",
@@ -981,39 +1165,14 @@
       appId: "1:481927084665:web:6c067752a922890e44f2a8"
     };
 
+    // NOTE: shipments, tracking events, locations and the audit log are no longer touched from the browser.
+    // They go through the authenticated /api/admin endpoint (see admin/center.js). Firebase here is only used
+    // for the courier directory and client portfolio tools, which are unchanged.
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    let allShipments = [];
     let activeCouriers = [];
     let editingCourierId = null;
-    let editingShipmentId = null;
     let clientAdminTools = null;
-
-    const PASSWORD = "Hyperion@2026!";
-    const ADMIN_SESSION_KEY = "hyperion-admin-session-expiry";
-    const ADMIN_SESSION_TTL_MS = 30 * 60 * 1000;
-
-    function refreshAdminSession() {
-      sessionStorage.setItem(ADMIN_SESSION_KEY, String(Date.now() + ADMIN_SESSION_TTL_MS));
-    }
-
-    // Check authentication on page load
-    function checkAuth() {
-      const existingSessionExpiry = Number(sessionStorage.getItem(ADMIN_SESSION_KEY) || 0);
-      if (existingSessionExpiry < Date.now()) {
-        const input = prompt("Enter admin password:");
-        if (input !== PASSWORD) {
-          alert("Access denied!");
-          window.location.href = "index.html";
-        } else {
-          refreshAdminSession();
-        }
-      } else {
-        refreshAdminSession();
-      }
-    }
-
-    checkAuth();
 
     function findCourierById(courierId) {
       return activeCouriers.find((courier) => courier.id === courierId) || activeCouriers[0];
@@ -1034,12 +1193,10 @@
 
     function populateCourierOptions() {
       const courierSelect = document.getElementById("courier");
-      const courierFilter = document.getElementById("courierFilter");
       const shipmentCourierSelect = document.getElementById("shipmentCourierInput");
       
       if (!activeCouriers || activeCouriers.length === 0) {
         courierSelect.innerHTML = '<option value="">No couriers available</option>';
-        courierFilter.innerHTML = '<option value="">No couriers available</option>';
         if (shipmentCourierSelect) {
           shipmentCourierSelect.innerHTML = '<option value="">No couriers available</option>';
         }
@@ -1047,8 +1204,6 @@
       }
 
       courierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' + 
-        activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
-      courierFilter.innerHTML = '<option value="">All Couriers</option>' +
         activeCouriers.map((courier) => `<option value="${courier.id}">${courier.name}</option>`).join("");
       if (shipmentCourierSelect) {
         shipmentCourierSelect.innerHTML = '<option value="">-- Select a Courier --</option>' +
@@ -1076,220 +1231,6 @@
         updateCourierPrefixHint();
       }
     };
-
-    async function createUniqueTrackingCode(courierId) {
-      let attempts = 0;
-      while (attempts < 6) {
-        const candidate = generateTrackingCode(courierId);
-        const shipmentDoc = await getDoc(doc(db, "shipments", candidate));
-        if (!shipmentDoc.exists()) return candidate;
-        attempts += 1;
-      }
-      throw new Error("Could not generate unique tracking ID. Please try again.");
-    }
-
-    window.switchView = function(view) {
-      document.getElementById('view-dashboard').classList.remove('active');
-      document.getElementById('view-create').classList.remove('active');
-      document.getElementById('view-shipments').classList.remove('active');
-      document.getElementById('view-couriers').classList.remove('active');
-      document.getElementById('view-clients').classList.remove('active');
-
-      document.getElementById('btn-dashboard').classList.remove('active');
-      document.getElementById('btn-create').classList.remove('active');
-      document.getElementById('btn-shipments').classList.remove('active');
-      document.getElementById('btn-couriers').classList.remove('active');
-      document.getElementById('btn-clients').classList.remove('active');
-
-      if (view === 'dashboard') {
-        document.getElementById('view-dashboard').classList.add('active');
-        document.getElementById('btn-dashboard').classList.add('active');
-        document.getElementById('breadcrumb-view').innerText = 'Dashboard';
-        loadStats();
-      } else if (view === 'create') {
-        document.getElementById('view-create').classList.add('active');
-        document.getElementById('btn-create').classList.add('active');
-        document.getElementById('breadcrumb-view').innerText = 'Create';
-      } else if (view === 'shipments') {
-        document.getElementById('view-shipments').classList.add('active');
-        document.getElementById('btn-shipments').classList.add('active');
-        document.getElementById('breadcrumb-view').innerText = 'Shipments';
-        loadShipments();
-      } else if (view === 'couriers') {
-        document.getElementById('view-couriers').classList.add('active');
-        document.getElementById('btn-couriers').classList.add('active');
-        document.getElementById('breadcrumb-view').innerText = 'Couriers';
-        loadAvailableCouriers(true);
-      } else if (view === 'clients') {
-        document.getElementById('view-clients').classList.add('active');
-        document.getElementById('btn-clients').classList.add('active');
-        document.getElementById('breadcrumb-view').innerText = 'Clients';
-        clientAdminTools?.refreshClients?.();
-      }
-    };
-
-    async function loadStats() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "shipments"));
-        document.getElementById("totalShipments").innerText = querySnapshot.size;
-        const courierCounter = {};
-
-        querySnapshot.forEach((shipmentDoc) => {
-          const shipment = shipmentDoc.data();
-          courierCounter[shipment.courier] = (courierCounter[shipment.courier] || 0) + 1;
-        });
-
-        const courierStatsHtml = Object.entries(courierCounter)
-          .map(([courierId, count]) => {
-            const courier = findCourierById(courierId);
-            return `<div class="courier-stat"><span>${courier.name}</span><strong>${count}</strong></div>`;
-          })
-          .join("");
-
-        document.getElementById("courierStats").innerHTML = courierStatsHtml || "<div class='courier-stat'><span>No data</span><strong>0</strong></div>";
-        document.getElementById("lastUpdated").innerText = new Date().toLocaleString();
-      } catch (err) {
-        console.error("Error loading stats:", err);
-      }
-    }
-
-    async function loadShipments() {
-      try {
-        const querySnapshot = await getDocs(collection(db, "shipments"));
-        allShipments = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        renderShipments();
-      } catch (err) {
-        console.error("Error loading shipments:", err);
-      }
-    }
-
-    function renderShipments() {
-      const searchTerm = (document.getElementById("shipmentSearch")?.value || "").toLowerCase();
-      const courierFilter = document.getElementById("courierFilter")?.value || "";
-
-      const filtered = allShipments.filter((shipment) => {
-        const matchesSearch = shipment.id.toLowerCase().includes(searchTerm);
-        const matchesCourier = !courierFilter || shipment.courier === courierFilter;
-        return matchesSearch && matchesCourier;
-      });
-
-      if (filtered.length === 0) {
-        document.getElementById("shipmentsContainer").innerHTML = `
-          <div class="empty-state">
-            <div class="empty-icon">📦</div>
-            <h3>No Shipments</h3>
-            <p>No shipments match your search criteria</p>
-          </div>
-        `;
-        return;
-      }
-
-      const html = `
-        <div style="overflow:auto;">
-          <table class="shipments-table">
-            <thead>
-              <tr>
-                <th>Tracking ID</th>
-                <th>Courier</th>
-                <th>Status</th>
-                <th>Origin</th>
-                <th>Destination</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filtered.map((shipment) => `
-                <tr>
-                  <td>${shipment.id}</td>
-                  <td>${findCourierById(shipment.courier).name}</td>
-                  <td><span class="status-badge status-${shipment.status.toLowerCase().replace(/ /g, '-')}">${shipment.status}</span></td>
-                  <td>${shipment.origin}</td>
-                  <td>${shipment.destination}</td>
-                  <td>
-                    <button class="btn-action" onclick="editShipment('${shipment.id}')">Edit</button>
-                    <button class="btn-action btn-danger" onclick="deleteShipment('${shipment.id}')">Delete</button>
-                  </td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-      document.getElementById("shipmentsContainer").innerHTML = html;
-    }
-
-    window.editShipment = function(id) {
-      const shipment = allShipments.find((item) => item.id === id);
-      if (!shipment) return;
-
-      editingShipmentId = id;
-      document.getElementById("shipmentIdInput").value = shipment.id || "";
-      document.getElementById("shipmentStatusInput").value = shipment.status || "";
-      document.getElementById("shipmentCourierInput").value = shipment.courier || "";
-      document.getElementById("shipmentCourierTrackingNumberInput").value = shipment.courierTrackingNumber || "";
-      document.getElementById("shipmentOriginInput").value = shipment.origin || "";
-      document.getElementById("shipmentDestinationInput").value = shipment.destination || "";
-      document.getElementById("shipmentLocationInput").value = shipment.location || "";
-      document.getElementById("shipmentDistanceInput").value = shipment.distance || "";
-      document.getElementById("shipmentLatitudeInput").value = shipment.latitude ?? "";
-      document.getElementById("shipmentLongitudeInput").value = shipment.longitude ?? "";
-      document.getElementById("shipmentFeeInput").value = shipment.fee || "";
-      document.getElementById("shipmentModal").classList.add("show");
-    };
-
-    window.closeShipmentModal = function() {
-      document.getElementById("shipmentModal").classList.remove("show");
-    };
-
-    window.deleteShipment = function(id) {
-      if (confirm("Are you sure you want to delete this shipment?")) {
-        deleteDoc(doc(db, "shipments", id)).then(() => {
-          showToast("Shipment deleted successfully", "success");
-          loadShipments();
-        }).catch((err) => {
-          showToast("Error deleting shipment", "error");
-          console.error(err);
-        });
-      }
-    };
-
-    async function saveData(event) {
-      event.preventDefault();
-      const courierId = document.getElementById("courier").value;
-      
-      if (!courierId) {
-        showToast("Please select a courier", "error");
-        return;
-      }
-
-      const trackingCode = document.getElementById("id").value || await createUniqueTrackingCode(courierId);
-
-      const shipmentData = {
-        id: trackingCode,
-        status: document.getElementById("status").value,
-        courier: courierId,
-        courierTrackingNumber: document.getElementById("courierTrackingNumber").value,
-        origin: document.getElementById("origin").value,
-        destination: document.getElementById("destination").value,
-        location: document.getElementById("location").value,
-        distance: document.getElementById("distance").value,
-        latitude: parseFloat(document.getElementById("latitude").value),
-        longitude: parseFloat(document.getElementById("longitude").value),
-        fee: document.getElementById("fee").value,
-        createdAt: new Date().toISOString(),
-        updates: buildDefaultCourierUpdates({ courierName: findCourierById(courierId).name, ...document.getElementById("location").value })
-      };
-
-      try {
-        await setDoc(doc(db, "shipments", trackingCode), shipmentData);
-        showToast(`Shipment ${trackingCode} created successfully!`, "success");
-        document.querySelector("form").reset();
-        loadShipments();
-      } catch (err) {
-        showToast("Error saving shipment", "error");
-        console.error(err);
-      }
-    }
 
     async function renderCouriersTable() {
       if (!activeCouriers || activeCouriers.length === 0) {
@@ -1401,57 +1342,6 @@
       }
     });
 
-    document.getElementById("shipmentForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      if (!editingShipmentId) return;
-
-      const shipmentData = {
-        id: document.getElementById("shipmentIdInput").value,
-        status: document.getElementById("shipmentStatusInput").value,
-        courier: document.getElementById("shipmentCourierInput").value,
-        courierTrackingNumber: document.getElementById("shipmentCourierTrackingNumberInput").value,
-        origin: document.getElementById("shipmentOriginInput").value,
-        destination: document.getElementById("shipmentDestinationInput").value,
-        location: document.getElementById("shipmentLocationInput").value,
-        distance: document.getElementById("shipmentDistanceInput").value,
-        latitude: parseFloat(document.getElementById("shipmentLatitudeInput").value),
-        longitude: parseFloat(document.getElementById("shipmentLongitudeInput").value),
-        fee: document.getElementById("shipmentFeeInput").value
-      };
-
-      try {
-        await setDoc(doc(db, "shipments", editingShipmentId), shipmentData, { merge: true });
-        showToast("Shipment updated successfully", "success");
-        closeShipmentModal();
-        loadShipments();
-      } catch (err) {
-        showToast("Error updating shipment", "error");
-        console.error(err);
-      }
-    });
-
-    document.getElementById("shipmentSearch")?.addEventListener("input", renderShipments);
-    document.getElementById("courierFilter")?.addEventListener("change", renderShipments);
-
-    window.logout = function() {
-      sessionStorage.removeItem(ADMIN_SESSION_KEY);
-      window.location.href = "index.html";
-    };
-
-    window.goHome = function() {
-      window.location.href = "index.html";
-    };
-
-    window.exportData = function() {
-      const data = JSON.stringify(allShipments, null, 2);
-      const blob = new Blob([data], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "shipments_export.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    };
 
     function showToast(message, type = "success") {
       const toast = document.createElement("div");
@@ -1461,11 +1351,22 @@
       setTimeout(() => toast.remove(), 3000);
     }
 
-    window.saveData = saveData;
 
     // Initialize
-    await loadAvailableCouriers();
-    clientAdminTools = setupAdminClients({ db, collection, getDocs, doc, setDoc, deleteDoc });
+    const center = initControlCenter({
+      showToast,
+      getCouriers: () => activeCouriers,
+      findCourier: (id) => activeCouriers.find((c) => c.id === id) || null,
+      generateTrackingCode: (courierId) => generateTrackingCode(courierId),
+      onViewShown: (view) => {
+        if (view === "couriers") loadAvailableCouriers(true);
+        if (view === "clients") clientAdminTools?.refreshClients?.();
+      },
+      afterLogin: async () => {
+        await loadAvailableCouriers();
+        clientAdminTools = setupAdminClients({ db, firebaseConfig, showToast, collection, getDocs, doc, setDoc, deleteDoc });
+      }
+    });
   </script>
 </body>
 </html>
