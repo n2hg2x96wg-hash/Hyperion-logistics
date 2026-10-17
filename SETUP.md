@@ -25,10 +25,15 @@ Merge the pull request (or **Redeploy** in Vercel). Then open:
 
 It should say `"ready": true` and `"database": "ok (firestore)"`. If not, it tells you which variable is missing.
 
-## 4. First admin login
+## 4. First admin login, backup, migration
 1. Open `https://<your-site>/admin.html` and sign in with `ADMIN_PASSWORD`.
-2. On the Dashboard, click **Run data migration** (one time). It adds search/status fields to existing
-   shipments; it never removes anything.
+2. **Back up first.** Admin → **Settings & Backup** → **Download full backup**. This saves every shipment with its
+   tracking events and location history, plus carriers, as one JSON file with a SHA-256 checksum, and records the
+   backup in the Activity Log. Keep the file somewhere safe. (Optional extra safety: Google Cloud console →
+   Firestore → **Import/Export** → Export, or `gcloud firestore export gs://<bucket>`.)
+3. On the Overview, click **Run data migration** (enabled for 2 hours after a backup). It only *adds* fields
+   (status codes, search fields, derived countries) to existing shipments; it never removes or rewrites anything,
+   and running it again changes nothing.
 
 ## 5. Quick check (2 minutes)
 1. Admin → **Create Shipment** → fill origin/destination, courier → Save.
@@ -40,7 +45,28 @@ It should say `"ready": true` and `"database": "ok (firestore)"`. If not, it tel
 Firebase console → **Firestore → Rules** → replace with the contents of `firestore.rules` → **Publish**.
 Browsers can then no longer read or write shipment data directly; only the secure API can.
 
-## Map provider
+## Public homepage (globe, live activity, statistics)
+- Statistics (active, in transit, delivered, countries) are counted from your shipment records; the counting rules
+  are shown under "How these numbers are counted" on the homepage.
+- **No shipment appears individually on the homepage until you choose it**: Admin → Live Tracking → Client visibility →
+  **Show on public homepage**. It is then shown with a masked code (e.g. HY-12••56), city-level origin/destination,
+  status, the last recorded position (if "Show current location" is on) and recent event titles. Client names,
+  references, notes, addresses, fees and full tracking numbers are never public.
+- A shipment needs coordinates (route points or a recorded location) to be drawn on the map.
+- The 3D globe (MapLibre GL, free, no key) loads after the page and only on capable devices; slower or older phones,
+  data-saver mode and failures fall back automatically to a flat world map. Country shapes come from Natural Earth
+  (public domain), so the homepage needs no map key. `?map=flat` / `?map=globe` force a mode for testing.
+
+## Carrier directory
+- Shown on the homepage from Admin → Carriers. Each carrier has a category (Express & Parcel, Ocean Freight, Regional,
+  Custom), a short description and coverage. Fill these only with what the carrier publishes.
+- Logos: wordmark tiles are shown by default. To use an official logo you are licensed to use, set the carrier's
+  "Logo / badge" to an `https://` image address.
+- Integration status is honest: "Manual updates by Hyperion" unless an official tracking link is set ("Official tracking
+  link") or a carrier API adapter is configured AND has delivered a signed update ("Live API connected").
+  No carrier API is connected today.
+
+## Map provider (shipment tracking map)
 The map works with no setup: it uses OpenStreetMap standard tiles (free, no key, attribution shown).
 OpenStreetMap asks heavy/commercial sites to use a tile provider, so for production traffic:
 1. Create a free account at MapTiler (or Stadia Maps / Mapbox) and copy the **public** key.
