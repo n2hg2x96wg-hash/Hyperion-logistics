@@ -176,12 +176,12 @@
       <div class="wrap">
         <div class="section-head" data-reveal>
           <div><div class="kicker">Global activity</div><h2 id="activityTitle">Shipments moving through Hyperion</h2>
-            <p>Counts come from our shipment records. A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
+            <p>A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
         </div>
         <div class="cc">
           <div class="cc-stage">
             <div class="cc-map" id="ccMap" role="region" aria-label="World map of publicly shared shipment routes"></div>
-            <div class="cc-empty-note">No shipments are shared publicly right now. The figures alongside still reflect all current records.</div>
+            <div class="cc-empty-note">No shipments are shared publicly right now. Shared routes appear here as operations publishes them.</div>
             <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="ccStatus">Loading shipment data…</span></span></div>
             <div class="cc-overlay cc-legend" aria-label="Map legend">
               <span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span>
@@ -190,20 +190,6 @@
             <div class="cc-card" id="ccCard" hidden aria-live="polite"></div>
           </div>
           <aside class="cc-side">
-            <div class="cc-stats" id="ccStats">
-              <div class="cc-stat"><div class="v" data-stat="active">–</div><div class="l">Active shipments</div></div>
-              <div class="cc-stat"><div class="v" data-stat="inTransit">–</div><div class="l">In transit now</div></div>
-              <div class="cc-stat"><div class="v" data-stat="countriesActive">–</div><div class="l">Countries on active routes</div></div>
-              <div class="cc-stat"><div class="v" data-stat="delivered">–</div><div class="l">Delivered (all time)</div></div>
-              <div class="cc-countries" style="grid-column:1/-1"><span data-countries>Loading…</span></div>
-              <details class="cc-rules" style="grid-column:1/-1"><summary>How these numbers are counted</summary>
-                <ul>
-                  <li>Active: not archived, not delivered or cancelled.</li>
-                  <li>In transit: picked up, in transit, at a facility, in customs or out for delivery.</li>
-                  <li>Countries: from the place names entered for origin, destination or last recorded position of active shipments.</li>
-                  <li>Delivered: current status Delivered, all time (archived records excluded).</li>
-                </ul></details>
-            </div>
             <div class="cc-feed-wrap">
               <div class="cc-feed-head"><h3>Recent updates</h3></div>
               <ul class="cc-feed" id="ccFeed" aria-live="polite"><li class="cc-feed-empty">Loading…</li></ul>
@@ -347,7 +333,7 @@
 
     // Progressive enhancements (loaded after tracking is ready; failures never affect tracking).
     import("./ui/globe/command-center.js").then(({ mountCommandCenter }) => mountCommandCenter({
-      mapEl: document.getElementById("ccMap"), feedEl: document.getElementById("ccFeed"), statsEl: document.getElementById("ccStats"),
+      mapEl: document.getElementById("ccMap"), feedEl: document.getElementById("ccFeed"),
       tableEl: document.getElementById("ccTable"),
       cardEl: document.getElementById("ccCard"), statusEl: document.getElementById("ccStatus"), mode: "public", pollMs: 30000,
       load: async () => { const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }

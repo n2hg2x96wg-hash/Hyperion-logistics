@@ -141,6 +141,8 @@ for (const w of WIDTHS) {
     assert.ok(await noOverflow(page), `overflow at ${w}px`);
     const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
     assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("carriers"), order.join(","));
+    assert.equal(await page.locator("#ccStats, [data-stat], [data-countries]").count(), 0, "public statistics block is hidden");
+    for (const id of ["#ccMap", "#ccFeed", "#ccTable"]) assert.equal(await page.locator(id).count(), 1, `${id} kept`);
     for (const b of await page.$$eval("#freight .freight-ctas .btn", (bs) => bs.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.right, r.height]; }))) {
       assert.ok(b[2] >= 44, "button height"); assert.ok(b[0] >= 0 && b[1] <= w, "button inside the screen");
     }

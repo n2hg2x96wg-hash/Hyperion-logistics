@@ -138,3 +138,13 @@ test("homepage: freight showcase sits between global activity and carriers, with
   for (const id of section.match(/href="#(svc-[a-z]+)"/g).map((m) => m.slice(7, -1))) assert.ok(html.includes(`id="${id}"`), `${id} target exists`);
   assert.ok(fs.existsSync(new URL("../assets/hero/freight-ship.svg", import.meta.url)));
 });
+
+test("homepage: public statistics block hidden (presentation only); map, feed and table kept; API still computes stats", async () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  for (const gone of ['id="ccStats"', "data-stat=", "data-countries", "How these numbers are counted", "statsEl"]) assert.ok(!html.includes(gone), `${gone} still on the homepage`);
+  for (const kept of ['id="ccMap"', 'id="ccFeed"', 'id="ccTable"', 'id="ccCard"']) assert.ok(html.includes(kept), `${kept} missing`);
+  const { __clearPublicCache } = await import("../api/public.js");
+  __clearPublicCache();
+  const o = await (await fetch(`${base}/api/public?view=overview`)).json();
+  for (const k of ["active", "inTransit", "delivered", "countriesActive"]) assert.equal(typeof o.stats[k], "number", `stats.${k} still computed`);
+});
