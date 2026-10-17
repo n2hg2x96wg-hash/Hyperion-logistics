@@ -145,6 +145,9 @@ for (const w of WIDTHS) {
     await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 });
     await page.waitForTimeout(700); // reveal transition
     await shot(page, `freight-${w}`);
+    // the real photo is used, with the ship-centred crop on phones (never the fallback illustration)
+    const src = await page.$eval("#freight img", (i) => i.currentSrc);
+    assert.match(src, w <= 640 ? /assets\/freight\/ship-mobile-\d+\.(avif|webp|jpg)$/ : /assets\/freight\/ship-\d+\.(avif|webp|jpg)$/, src);
     assert.ok(await noOverflow(page), `overflow at ${w}px`);
     const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
     assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("carriers"), order.join(","));

@@ -263,12 +263,18 @@
 
     <section class="freight" id="freight" aria-labelledby="freightTitle">
       <div class="freight-stage">
-        <!-- Photo slot: when the licensed photo is added, <source> elements go here (see assets/freight/README.md).
+        <!-- Freight photo (see assets/freight/README.md and CREDITS.md). Phones get a crop centred on the ship.
              If an image fails to load, the original illustration is shown instead. -->
-        <picture class="freight-media" data-kind="illustration">
-          <img src="assets/hero/freight-ship.svg" width="1600" height="900" loading="lazy" decoding="async"
-            alt="Container ship loaded with stacked containers at sea at dusk"
-            onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.src='assets/hero/freight-ship.svg'}">
+        <picture class="freight-media" data-kind="photo">
+          <source media="(max-width: 640px)" type="image/avif" srcset="assets/freight/ship-mobile-720.avif 720w, assets/freight/ship-mobile-1080.avif 1080w" sizes="100vw">
+          <source media="(max-width: 640px)" type="image/webp" srcset="assets/freight/ship-mobile-720.webp 720w, assets/freight/ship-mobile-1080.webp 1080w" sizes="100vw">
+          <source media="(max-width: 640px)" srcset="assets/freight/ship-mobile-720.jpg 720w, assets/freight/ship-mobile-1080.jpg 1080w" sizes="100vw">
+          <source type="image/avif" srcset="assets/freight/ship-960.avif 960w, assets/freight/ship-1536.avif 1536w" sizes="100vw">
+          <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1536.webp 1536w" sizes="100vw">
+          <img src="assets/freight/ship-1536.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1536.jpg 1536w" sizes="100vw"
+            width="1536" height="1024" loading="lazy" decoding="async"
+            alt="Container ship loaded with stacked containers sailing out of a lit port at dusk"
+            onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.removeAttribute('srcset');this.src='assets/hero/freight-ship.svg'}">
         </picture>
         <div class="wrap freight-inner">
           <div class="freight-copy" data-reveal>

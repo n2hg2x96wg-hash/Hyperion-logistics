@@ -1,13 +1,12 @@
 # Freight showcase photo
 
-The homepage freight section (`#freight` in `index.html`) is ready for a photorealistic container-ship photo.
-Until one is added it shows the original illustration `assets/hero/freight-ship.svg`, which is also the
-automatic fallback if a photo ever fails to load.
+The homepage freight section (`#freight` in `index.html`) uses the container-ship photo in this folder. If a photo
+fails to load, the original illustration `assets/hero/freight-ship.svg` is shown instead.
 
-**Photo to supply:** a container ship at sea or in port, landscape, at least 2400 px wide, with a calm area on the
-left for the headline (blue hour or sunset suits the site). Only use a photo you are licensed to use on a commercial
-website and note its source and licence in `CREDITS.md` here.
+**Files** (generated from the owner-supplied 1536×1024 original, metadata stripped, never upscaled):
+- `ship-960.*`, `ship-1536.*` (AVIF, WebP, JPEG) for tablets and desktops
+- `ship-mobile-720.*`, `ship-mobile-1080.*`: a 4:3 crop centred on the ship, for phones
 
-**Files generated from it** (WebP/AVIF/JPEG, metadata stripped): `ship-960|1600|2400.*` for tablets and desktops and
-`ship-mobile-720|1080.*`, a crop centred on the ship for phones. They are referenced from `<source>` elements in the
-section's `<picture>`.
+**Replacing the photo:** use a landscape container-ship photo, ideally 2400 px wide or more, with a calm area on the
+left for the headline. Use only a photo licensed for a commercial website, regenerate the same file names, and update
+`CREDITS.md`.
