@@ -302,9 +302,10 @@
       <div class="wrap">
         <div class="section-head" data-reveal><div><div class="kicker">Carriers</div><h2 id="carriersTitle">Carrier directory</h2>
           <p>Carriers your shipment can move with. Tap a carrier to see its coverage and how its updates reach Hyperion today.</p></div></div>
+        <div id="carrierLegend"></div>
         <div class="cr-tabs" id="carrierTabs" role="group" aria-label="Filter carriers by category"></div>
         <div id="carrierDirectory"><p class="cr-note">Loading carriers…</p></div>
-        <p class="cr-note">Carrier names are trademarks of their respective owners and identify the services used; they do not indicate an official partnership. "Manual updates by Hyperion" means statuses and positions are entered by our operations team, not received automatically from the carrier.</p>
+        <p class="cr-note">Carrier names are trademarks of their respective owners and identify the services used. Being listed here does not mean a partnership. A carrier is marked "Live API" only while a working integration is delivering updates, and "Verified partner" only when a partnership has been confirmed.</p>
       </div>
     </section>
 
@@ -395,7 +396,7 @@
       cardEl: document.getElementById("ccCard"), statusEl: document.getElementById("ccStatus"), mode: "public", pollMs: 30000,
       load: async () => { const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }
     })).catch(() => { document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
-    import("./ui/carriers.js").then(({ mountCarrierDirectory }) => mountCarrierDirectory(document.getElementById("carrierDirectory"), document.getElementById("carrierTabs")))
+    import("./ui/carriers.js").then(({ mountCarrierDirectory }) => mountCarrierDirectory(document.getElementById("carrierDirectory"), document.getElementById("carrierTabs"), document.getElementById("carrierLegend")))
       .catch(() => { document.getElementById("carrierDirectory").innerHTML = '<p class="cr-note">The carrier directory could not load. Please refresh the page.</p>'; });
   </script>
 </body>

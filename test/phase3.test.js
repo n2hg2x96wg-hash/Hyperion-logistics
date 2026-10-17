@@ -182,3 +182,43 @@ test("search information: canonical, social tags, honest structured data, robots
   for (const f of ["admin.html", "login.html", "dashboard.html", "client-dashboard.html"]) assert.match(read(f), /<meta name="robots" content="noindex, nofollow">/, f);
   for (const html of [index, track]) assert.ok(!/name="robots" content="noindex/.test(html));
 });
+
+test("carriers: integration and partnership are separate, evidence-backed states; ids and catalogue unchanged", async () => {
+  const { CARRIERS, carrierPartnership, carrierIntegration } = await import("../shared/carriers.js");
+  for (const c of CARRIERS) {
+    assert.equal(carrierPartnership(c), "none", `${c.id} must not claim a partnership`);
+    assert.notEqual(carrierIntegration(c).status, "live", `${c.id} must not claim a live API`);
+  }
+  assert.equal(carrierIntegration({ id: "dhl", lastProviderUpdateAt: "2026-10-01T00:00:00Z" }).status, "manual", "a past update alone is not 'live'");
+  assert.equal(carrierIntegration({ id: "dhl" }, { configuredProviders: ["dhl"] }).status, "manual", "a configured adapter that never reported is not 'live'");
+  assert.equal(carrierIntegration({ id: "dhl", lastProviderUpdateAt: "2026-10-01T00:00:00Z" }, { configuredProviders: ["dhl"] }).status, "live");
+
+  const { __clearPublicCache } = await import("../api/public.js");
+  const pub = async () => { __clearPublicCache(); return (await (await fetch(`${base}/api/public?view=carriers`)).json()).carriers; };
+  let list = await pub();
+  assert.ok(list.length >= CARRIERS.length - 1 && list.every((c) => c.partner === false));
+  assert.deepEqual(list.map((c) => c.id).sort(), CARRIERS.map((c) => c.id).sort(), "catalogue ids unchanged");
+
+  // marking a partnership requires internal evidence; public output never includes it
+  const base0 = { name: "DHL", prefix: "DHL" };
+  let r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "partnerEvidence");
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: "yes" } });
+  assert.equal(r.status, 400);
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true, partnerEvidence: "Contract HX-TEST-1, 2026-10-01, confirmed by ops" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  list = await pub();
+  const dhl = list.find((c) => c.id === "dhl");
+  assert.equal(dhl.partner, true);
+  const raw = JSON.stringify(list);
+  for (const k of ["partnerEvidence", "HX-TEST-1", "apiEndpoint", "email"]) assert.ok(!raw.includes(k), `public carriers leak ${k}`);
+  const audit = await admin({ action: "audit" });
+  assert.ok(JSON.stringify(audit.json).includes('"verifiedPartner":true'), "partnership change is audited");
+  // an edit that does not send the field keeps it; unticking removes the badge
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, description: "Express parcels." } });
+  assert.equal((await pub()).find((c) => c.id === "dhl").partner, true);
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: false, partnerEvidence: "" } });
+  assert.equal(r.status, 200);
+  assert.equal((await pub()).find((c) => c.id === "dhl").partner, false);
+  assert.equal((await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true, partnerEvidence: "x" } }, { auth: false })).status, 401);
+});

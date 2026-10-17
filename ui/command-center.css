@@ -125,3 +125,24 @@
 .cr-detail a { font-size: 13.5px; font-weight: 600; }
 .cr-more { margin-top: 14px; }
 .cr-note { font-size: 13px; color: var(--hy-muted); margin-top: 16px; max-width: 900px; }
+
+/* carrier status chips (icon + text, never colour alone) and legend */
+.cr-tile .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cr-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; line-height: 1; padding: 5px 8px; border-radius: 999px; white-space: nowrap;
+  background: rgba(148, 163, 184, 0.14); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.2); }
+.cr-chip svg { flex: none; }
+.cr-chip.link { background: rgba(96, 165, 250, 0.14); color: #bfdbfe; border-color: rgba(96, 165, 250, 0.3); }
+.cr-chip.live { background: rgba(52, 211, 153, 0.14); color: #a7f3d0; border-color: rgba(52, 211, 153, 0.35); }
+.cr-chip.partner { background: rgba(251, 191, 36, 0.13); color: #fde68a; border-color: rgba(251, 191, 36, 0.35); }
+.cr-legend-wrap { margin: 0 0 16px; }
+.cr-legend-wrap summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 13.5px; font-weight: 600; color: #93c5fd; }
+.cr-legend-wrap[open] summary { margin-bottom: 10px; }
+.cr-legend { list-style: none; margin: 0; padding: 14px 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px;
+  border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 12px; background: rgba(7, 16, 41, 0.6); }
+.cr-legend li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 13px; color: #94a3b8; }
+@media (max-width: 720px) { .cr-legend { grid-template-columns: 1fr; } .cr-legend li { grid-template-columns: 1fr; gap: 4px; } .cr-legend .cr-chip { justify-self: start; } }
+.cr-facts { margin: 6px 0 0; display: grid; gap: 8px; }
+.cr-facts > div { display: grid; grid-template-columns: 170px 1fr; gap: 10px; font-size: 13.5px; }
+.cr-facts dt { color: #94a3b8; }
+.cr-facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; color: #cbd5e1; }
+@media (max-width: 560px) { .cr-facts > div { grid-template-columns: 1fr; gap: 4px; } }

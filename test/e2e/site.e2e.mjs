@@ -120,8 +120,14 @@ for (const w of WIDTHS) {
     await page.locator("#carriers .cr-tile").first().waitFor();
     const carH = await page.$eval("#carriers", (el) => el.getBoundingClientRect().height);
     assert.ok(carH < 1600, `carrier section is ${Math.round(carH)}px tall`);
+    // every tile states how its updates arrive; nothing claims a partnership or live API by default
+    const tiles = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => t.querySelector(".cr-chip")?.textContent.trim()));
+    assert.ok(tiles.length > 0 && tiles.every((t) => ["Manual updates", "Official tracking link"].includes(t)), JSON.stringify(tiles));
+    assert.equal(await page.locator("#carrierDirectory .cr-chip.partner, #carrierDirectory .cr-chip.live").count(), 0);
+    assert.equal(await page.locator("#carrierLegend .cr-legend li").count(), 4, "legend explains the four states");
     await page.locator("#carriers .cr-tile").first().click();
     assert.ok(await page.isVisible("#cr-detail"));
+    assert.match(await page.textContent("#cr-detail"), /How updates reach Hyperion[\s\S]*Relationship[\s\S]*not a partnership/);
     if (w <= 720) assert.ok(await page.isVisible("[data-more]"), "phones show a 'Show all' button");
     assert.deepEqual(errors, []);
     await ctx.close();
@@ -132,7 +138,8 @@ for (const w of WIDTHS) {
   test(`freight showcase at ${w}px: image loads, fits the screen, buttons work`, async () => {
     const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
     const page = await ctx.newPage(); const errors = watchErrors(page);
-    await page.goto(`${base}/index.html`);
+    // flat map: the globe (software-rendered in headless test browsers) would compete with the scroll animations under test
+    await page.goto(`${base}/index.html?map=flat`);
     const sec = page.locator("#freight");
     await sec.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 });

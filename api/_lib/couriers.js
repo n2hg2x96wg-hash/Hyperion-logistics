@@ -7,7 +7,7 @@
 //
 // Records are never deleted: "archive" hides a courier from new shipments and can be undone. Shipments that
 // already reference a courier keep working whatever its state.
-import { CARRIERS, CARRIER_CATEGORIES, builtInCarrier, carrierId, carrierCategory, carrierLogoUrl, carrierIntegration } from "../../shared/carriers.js";
+import { CARRIERS, CARRIER_CATEGORIES, builtInCarrier, carrierId, carrierCategory, carrierLogoUrl, carrierIntegration, carrierPartnership } from "../../shared/carriers.js";
 import { listProviders } from "./providers/index.js";
 import { ValidationError } from "./validate.js";
 import { ServiceError } from "./service.js";
@@ -68,6 +68,11 @@ export function parseCourierInput(input = {}, { creating }) {
   if (out.logo.length > 8 && !/^https:\/\//i.test(out.logo)) throw new ValidationError("Logo must be an emoji or an https:// image address.", "logo");
   out.apiEndpoint = url(input.apiEndpoint, "apiEndpoint", "API endpoint", { httpsOnly: true });
   out.note = text(input.note, 200, "note", "Note");
+  // A partnership is only shown publicly when it is recorded with internal evidence (never shown to the public).
+  if (input.verifiedPartner !== undefined && typeof input.verifiedPartner !== "boolean") throw new ValidationError("Verified partnership must be true or false.", "verifiedPartner");
+  out.verifiedPartner = input.verifiedPartner === true;
+  out.partnerEvidence = text(input.partnerEvidence, 200, "partnerEvidence", "Partnership evidence");
+  if (out.verifiedPartner && !out.partnerEvidence) throw new ValidationError("Record the evidence for the partnership (contract reference, date, who confirmed it) before marking it verified.", "partnerEvidence");
   out.active = input.active !== false;
   if (!creating) { // an edit only changes the fields it sends; anything omitted keeps its stored value
     for (const k of Object.keys(out)) if (input[k] === undefined && k !== "name" && k !== "prefix") delete out[k];
@@ -84,6 +89,7 @@ const view = (rec) => ({
   trackingUrl: rec.trackingUrl || "", region: rec.region || "", apiEndpoint: rec.apiEndpoint || "", note: rec.note || "",
   category: carrierCategory(rec), description: rec.description || "", coverage: rec.coverage || "",
   lastProviderUpdateAt: rec.lastProviderUpdateAt || null,
+  verifiedPartner: rec.verifiedPartner === true, partnerEvidence: rec.partnerEvidence || "",
   active: rec.active !== false && rec.archived !== true, archived: rec.archived === true,
   builtIn: !!builtInCarrier(rec.id), stored: !!rec.docId, updatedAt: rec.updatedAt || null
 });
@@ -126,7 +132,7 @@ export async function saveCourier(identity, input = {}) {
     if (clash) throw new ServiceError("duplicate_prefix", `The tracking prefix ${data.prefix} is already used by ${clash.name}.`, 409);
     try {
       await store.createCourier(data.id, { ...data, archived: false, createdAt: now, createdBy: identity.sub, updatedAt: now, updatedBy: identity.sub },
-        audit(identity, "courier.create", data.id, { changes: { name: data.name, prefix: data.prefix } }));
+        audit(identity, "courier.create", data.id, { changes: { name: data.name, prefix: data.prefix, verifiedPartner: data.verifiedPartner } }));
     } catch (err) {
       if (err.code === "courier_exists") throw new ServiceError("duplicate", `A courier with the ID "${data.id}" already exists.`, 409);
       throw err;
@@ -143,7 +149,8 @@ export async function saveCourier(identity, input = {}) {
   if (clash) throw new ServiceError("duplicate_prefix", `The tracking prefix ${data.prefix} is already used by ${clash.name}.`, 409);
   const patch = { ...data, updatedAt: now, updatedBy: identity.sub };
   if (data.active === true) patch.archived = false;
-  const entry = audit(identity, "courier.update", id, { changes: { name: data.name, prefix: data.prefix, ...(data.active !== undefined ? { active: data.active } : {}) } });
+  const entry = audit(identity, "courier.update", id, { changes: { name: data.name, prefix: data.prefix, ...(data.active !== undefined ? { active: data.active } : {}),
+    ...(data.verifiedPartner !== undefined ? { verifiedPartner: data.verifiedPartner } : {}) } });
   if (existing) await store.updateCourier(existing.docId, patch, entry);
   else await store.createCourier(id, { ...patch, id, createdAt: now, createdBy: identity.sub }, entry); // first save of a built-in = stored override
   return { courier: view({ ...(existing || builtInCarrier(id)), ...patch, id, docId: existing?.docId || id }), message: "Courier updated successfully." };
@@ -176,7 +183,8 @@ export async function publicCarriers() {
     brandColor: c.brandColor, logoUrl: carrierLogoUrl(c), description: c.description, coverage: c.coverage,
     website: c.type === "custom" ? null : (c.website && !/\.example(\/|$)/i.test(c.website) ? c.website : null),
     note: c.type === "custom" ? (c.note || "Custom option arranged by Hyperion.") : "",
-    integration: carrierIntegration(c, { configuredProviders })
+    integration: carrierIntegration(c, { configuredProviders }),
+    partner: carrierPartnership(c) === "verified" // evidence stays internal
   }));
 }
 
