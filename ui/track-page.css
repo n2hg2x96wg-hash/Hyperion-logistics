@@ -1,12 +1,5 @@
-/* Tracking pages (track.html, tracking-enhanced.html): shared Hyperion navy theme over each page's own layout. */
-body.track-page { font-family: var(--hy-font); color: var(--hy-text);
-  background: radial-gradient(1100px 520px at 80% -10%, rgba(37, 99, 235, 0.2), transparent 60%), var(--hy-bg-0); }
-body.track-page nav { background: rgba(5, 10, 24, 0.78); border-bottom: 1px solid var(--hy-line); position: sticky; top: 0; z-index: 50; }
-body.track-page .nav-links a { color: var(--hy-text-2); font-weight: 600; }
-body.track-page .nav-links a:hover { color: #fff; }
-body.track-page .hero h1 { background: linear-gradient(90deg, #e6ecf8, #60a5fa); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; letter-spacing: -0.03em; }
-body.track-page .hero p { color: var(--hy-text-2); }
-body.track-page .search-group input { background: rgba(5, 10, 24, 0.7); border: 1px solid var(--hy-line-strong); border-radius: 14px; height: 54px; color: var(--hy-text); }
-body.track-page .search-group input:focus { outline: none; border-color: var(--hy-blue-2); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); }
-body.track-page .btn-search { border-radius: 14px; height: 54px; background: linear-gradient(135deg, #2563eb, #3b82f6); box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35); }
-body.track-page footer { background: transparent !important; border-top: 1px solid var(--hy-line) !important; color: var(--hy-muted) !important; }
+/* Tracking pages (track.html, tracking-enhanced.html): page-specific touches on top of ui/site-v2.css,
+   which provides the shared header, tracking band and footer. */
+body.track-page { font-family: var(--hy-font); color: var(--hy-text); background: var(--hy-bg-0); }
+body.track-page .results { padding-top: 28px; }
+body.track-page .hx-support { padding-top: 8px; }

@@ -6,7 +6,7 @@
   "description": "Hyperion Logistics - static frontend with Vercel serverless API",
   "scripts": {
     "dev": "STORE=memory node dev-server.js",
-    "test": "node --test test/api.test.js test/command-center.test.js",
+    "test": "node --test test/api.test.js test/command-center.test.js test/phase3.test.js",
     "test:emulator": "STORE=firestore-emulator node --test --test-concurrency=1 test/api.test.js test/command-center.test.js",
     "dev:emulator": "STORE=firestore-emulator node dev-server.js"
   },

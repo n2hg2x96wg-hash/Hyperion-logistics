@@ -8,7 +8,7 @@
 //   name         display name
 //   prefix       tracking-code prefix used when an admin auto-generates a code
 //   type         "carrier" = public carrier/postal service, "custom" = internal/custom arrangement
-//   category     "express" (express & parcel / postal), "ocean" (ocean freight), "regional", "custom"
+//   category     "express" (express & parcel / postal), "air" (air cargo), "ocean" (ocean freight), "regional", "custom"
 //   description  short factual description of the service (no performance or partnership claims)
 //   coverage     plain-language service area as published by the carrier (no invented country counts)
 //   logo         emoji (admin picker only) or an https:// image URL of an APPROVED logo; public pages show a
@@ -23,6 +23,7 @@ export const CARRIER_TYPES = Object.freeze({ carrier: "Carrier", custom: "Custom
 
 export const CARRIER_CATEGORIES = Object.freeze({
   express: "Express & Parcel",
+  air: "Air Freight",
   ocean: "Ocean Freight",
   regional: "Regional Logistics",
   custom: "Custom Transport"
@@ -55,6 +56,14 @@ export const CARRIERS = Object.freeze([
     description: "Brazilian postal service for mail and parcels.", coverage: "Brazil (international via postal partners)" },
   { id: "ems", name: "EMS (Express Mail Service)", prefix: "EMS", logo: "📮", brandColor: "#0369a1", type: "carrier", category: "express", website: "https://www.ems.post",
     description: "International express mail run by national postal operators.", coverage: "International postal network" },
+  { id: "emiratesskycargo", name: "Emirates SkyCargo", prefix: "EKC", logo: "✈️", brandColor: "#d71a21", type: "carrier", category: "air", website: "https://www.skycargo.com",
+    description: "Air cargo division of Emirates.", coverage: "Emirates passenger and freighter network" },
+  { id: "qatarcargo", name: "Qatar Airways Cargo", prefix: "QRC", logo: "✈️", brandColor: "#5c0632", type: "carrier", category: "air", website: "https://www.qrcargo.com",
+    description: "Air cargo division of Qatar Airways.", coverage: "Qatar Airways passenger and freighter network" },
+  { id: "lufthansacargo", name: "Lufthansa Cargo", prefix: "LHC", logo: "✈️", brandColor: "#f9b000", type: "carrier", category: "air", website: "https://www.lufthansa-cargo.com",
+    description: "Air cargo carrier of the Lufthansa Group.", coverage: "Lufthansa Group network" },
+  { id: "ethiopiancargo", name: "Ethiopian Cargo", prefix: "ETC", logo: "✈️", brandColor: "#00843d", type: "carrier", category: "air", website: "https://www.ethiopiancargo.com",
+    description: "Cargo and logistics services of Ethiopian Airlines.", coverage: "Ethiopian Airlines network" },
   { id: "maersk", name: "Maersk", prefix: "MSK", logo: "🚢", brandColor: "#42b0d5", type: "carrier", category: "ocean", website: "https://www.maersk.com",
     description: "Container shipping and integrated ocean logistics.", coverage: "Global ocean routes" },
   { id: "msc", name: "MSC", prefix: "MSC", logo: "🚢", brandColor: "#c9a227", type: "carrier", category: "ocean", website: "https://www.msc.com",
