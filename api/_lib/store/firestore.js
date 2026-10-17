@@ -135,7 +135,7 @@ export function createFirestoreStore() {
     // Public homepage: field-masked scan for statistics (reads only these fields) and opted-in shipments
     // (single-field equality index, created automatically by Firestore).
     async scanShipmentSummaries(limit = 5000) {
-      const snap = await shipments.select(...["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt", "originCoordsSource", "destinationCoordsSource"]).limit(limit).get();
+      const snap = await shipments.select(...["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt", "originCoordsSource", "destinationCoordsSource", "courier"]).limit(limit).get();
       return snap.docs.map(stripId);
     },
     // Full, paged export for backups (shipment documents + their events and location history). Read-only.

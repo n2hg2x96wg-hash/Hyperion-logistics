@@ -87,7 +87,7 @@ export function createMemoryStore(seed = {}) {
 
     // Public homepage: lightweight summaries of every shipment (country/status statistics) and opted-in shipments.
     async scanShipmentSummaries(limit = 5000) {
-      const keep = ["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt", "originCoordsSource", "destinationCoordsSource"];
+      const keep = ["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt", "originCoordsSource", "destinationCoordsSource", "courier"];
       return [...shipments.values()].slice(0, limit).map((s) => Object.fromEntries([["id", s.id], ...keep.filter((k) => s[k] !== undefined).map((k) => [k, clone(s[k])])]));
     },
     // Full, paged export for backups (shipment documents + their events and location history).

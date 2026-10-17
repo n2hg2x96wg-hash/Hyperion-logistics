@@ -130,10 +130,76 @@ export function initControlCenter(host) {
     const open = $("consoleNav").classList.toggle("open"); $("consoleMenu").setAttribute("aria-expanded", String(open));
   });
 
-  // ---------- global tracking (same globe/flat-map component as the homepage, admin data, unmasked) ----------
+  // ---------- global tracking workspace: list · map · details (admin data, unmasked) ----------
+  // The map is the same globe/flat-map component as the homepage. Filtering happens on the loaded data, so
+  // changing a filter never re-queries the database; Refresh and the 60s poll fetch fresh data.
+  const SOURCE_LABEL = { admin: "Manual entry by Hyperion operations", system: "System", carrier_api: "Carrier API (signed update)", gps: "GPS telemetry" };
+  const ops = { data: null, useCache: false, selected: null, detailToken: 0 };
   let globalCenter = null;
+  const countryName = (iso) => { try { return iso ? new Intl.DisplayNames(["en"], { type: "region" }).of(iso) : ""; } catch { return iso || ""; } };
+  function opsFiltered() {
+    const rows = ops.data?.routes || [];
+    const q = $("opsSearch").value.trim().toLowerCase();
+    const status = $("globeFilter").value; const carrier = $("opsCarrier").value; const country = $("opsCountry").value;
+    const pub = $("globePublicOnly").checked; const pos = $("opsHasPosition").checked;
+    return rows.filter((r) => (!status || r.status.code === status) && (!carrier || r.courier === carrier) && (!pub || r.publicMap) && (!pos || r.current) &&
+      (!country || [r.originCountry, r.destinationCountry, r.currentCountry].includes(country)) &&
+      (!q || [r.ref, r.originLabel, r.destinationLabel, r.current?.place, r.courier].some((v) => String(v || "").toLowerCase().includes(q))));
+  }
+  function fillOpsSelects() {
+    const rows = ops.data?.routes || [];
+    const keep = (id, opts, blank) => { const el = $(id); const v = el.value; el.innerHTML = `<option value="">${blank}</option>` + opts.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join(""); if ([...el.options].some((o) => o.value === v)) el.value = v; };
+    keep("opsCarrier", [...new Set(rows.map((r) => r.courier).filter(Boolean))].sort().map((c) => [c, c]), "All carriers");
+    keep("opsCountry", [...new Set(rows.flatMap((r) => [r.originCountry, r.destinationCountry, r.currentCountry]).filter(Boolean))]
+      .map((c) => [c, countryName(c)]).sort((x, y) => x[1].localeCompare(y[1])), "All countries");
+  }
+  function renderOpsList(routes) {
+    $("opsCount").textContent = `${routes.length} of ${ops.data?.routes?.length || 0} shipments`;
+    $("opsList").innerHTML = routes.length ? routes.map((r) => `<li><button type="button" class="ops-row ${r.key === ops.selected ? "is-selected" : ""}" data-ops="${esc(r.key)}">
+        <span class="ops-row-top"><strong>${esc(r.ref)}</strong>${pill(r.status.code, r.status.label)}</span>
+        <span class="ops-row-route">${esc(r.originLabel || "Origin not set")} → ${esc(r.destinationLabel || "Destination not set")}</span>
+        <span class="ops-row-meta">${esc(r.courier || "No carrier")}${r.publicMap ? " · on homepage" : ""} · ${r.current ? `position ${esc(timeAgo(r.current.recordedAt) || "time not recorded")}` : "no recorded position"}</span>
+      </button></li>`).join("") : `<li class="ops-none">No shipments match these filters.</li>`;
+  }
+  async function renderOpsDetail(key) {
+    const el = $("opsDetail"); const token = ++ops.detailToken;
+    $("view-globe").querySelector(".ops-grid").dataset.pane = key ? "detail" : "list";
+    if (!key) { el.innerHTML = `<div class="ops-empty"><strong>Select a shipment</strong><span>Pick a row or a route on the map to see its status, last recorded position and timeline.</span></div>`; return; }
+    el.innerHTML = `<div class="ops-empty"><span>Loading ${esc(key)}…</span></div>`;
+    let full;
+    try { full = await api("get", { code: key }); } catch (err) { if (token === ops.detailToken) el.innerHTML = `<div class="ops-empty"><strong>Could not load ${esc(key)}</strong><span>${esc(err.message)}</span></div>`; return; }
+    if (token !== ops.detailToken) return;
+    const s = full.shipment; const r = ops.data?.routes?.find((x) => x.key === key);
+    const hasPos = typeof s.latitude === "number" && typeof s.longitude === "number" && !(s.latitude === 0 && s.longitude === 0);
+    const row = (k, v) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`;
+    const events = (full.events || []).slice().sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || ""))).slice(0, 30);
+    el.innerHTML = `
+      <div class="ops-detail-head">
+        <button type="button" class="ops-back" data-ops-back aria-label="Back to the list">←</button>
+        <div><div class="ops-code">${esc(s.id)}</div>${pill(s.statusCode)}</div>
+      </div>
+      <dl class="ops-facts">
+        ${row("Route", `${esc(s.origin || "—")} → ${esc(s.destination || "—")}`)}
+        ${row("Carrier", esc(s.courier || "—"))}
+        ${row("Last recorded position", hasPos ? `${esc(s.location || `${s.latitude}, ${s.longitude}`)}<small>${s.locationUpdatedAt ? esc(fmt(s.locationUpdatedAt)) : "Time not recorded"} · ${esc(SOURCE_LABEL[s.locationSource || "admin"] || s.locationSource)}</small>` : `<span class="muted">No position recorded yet</span>`)}
+        ${row("Homepage", r?.publicMap ? "Shown (masked, city level)" : "Not shown")}
+        ${row("Last change", esc(fmt(s.updatedAt || s.createdAt)))}
+      </dl>
+      <div class="ops-actions">
+        <button type="button" class="ops-btn primary" data-ops-open="tracking">Update location</button>
+        <button type="button" class="ops-btn" data-ops-open="events">Add event</button>
+        <button type="button" class="ops-btn" data-ops-open="preview">Client view</button>
+      </div>
+      <h4 class="ops-sub">Timeline <span>${events.length ? `${events.length} event(s)` : ""}</span></h4>
+      ${events.length ? `<ol class="ops-timeline">${events.map((e) => `<li class="${e.clientVisible === false ? "is-hidden" : ""}">
+          <i class="tone-${esc(e.statusCode ? statusTone(e.statusCode) : "info")}"></i>
+          <div><strong>${esc(e.title || (e.statusCode ? STATUS_META[e.statusCode]?.label : "Update"))}</strong>
+            <span>${e.location ? `${esc(e.location)} · ` : ""}${esc(fmt(e.timestamp))}</span>
+            <small>${esc(SOURCE_LABEL[e.source] || e.source || "")}${e.clientVisible === false ? " · hidden from client" : ""}</small></div></li>`).join("")}</ol>`
+        : `<p class="ops-none">No tracking events recorded yet.</p>`}`;
+  }
   async function loadGlobal() {
-    if (globalCenter) { globalCenter.refresh(); return; }
+    if (globalCenter) { ops.useCache = false; globalCenter.refresh(); return; }
     $("globeFilter").innerHTML = `<option value="">All active statuses</option>` + STATUS_CODES.filter((c) => c !== "DELIVERED" && c !== "CANCELLED")
       .map((c) => `<option value="${c}">${esc(STATUS_META[c].label)}</option>`).join("");
     try {
@@ -141,17 +207,27 @@ export function initControlCenter(host) {
       globalCenter = mountCommandCenter({
         mapEl: $("globeMap"), feedEl: $("globeFeed"), cardEl: $("globeCard"), statusEl: $("globeStatus"), mode: "admin", pollMs: 60000,
         load: async () => {
-          const d = await api("globalMap");
-          const status = $("globeFilter").value; const pub = $("globePublicOnly").checked;
-          const routes = d.routes.filter((r) => (!status || r.status.code === status) && (!pub || r.publicMap));
+          if (!ops.useCache || !ops.data) { ops.data = await api("globalMap"); fillOpsSelects(); }
+          ops.useCache = false;
+          const routes = opsFiltered();
           return { routes, stats: { lastUpdated: routes[0]?.updatedAt || null } };
         },
+        onData: (d) => renderOpsList(d.routes || []),
+        onSelect: (key) => { ops.selected = key; $("opsList").querySelectorAll("[data-ops]").forEach((b) => b.classList.toggle("is-selected", b.dataset.ops === key)); renderOpsDetail(key); },
         onOpen: (r) => openShipment(r.ref, "tracking")
       });
     } catch { $("globeStatus").textContent = "The map component could not load."; }
   }
-  ["globeFilter", "globePublicOnly"].forEach((id) => $(id).addEventListener("change", () => globalCenter?.refresh()));
-  $("globeRefresh").addEventListener("click", () => globalCenter?.refresh());
+  const reFilter = () => { ops.useCache = true; globalCenter?.refresh(); };
+  ["globeFilter", "globePublicOnly", "opsCarrier", "opsCountry", "opsHasPosition"].forEach((id) => $(id).addEventListener("change", reFilter));
+  let searchTimer = null;
+  $("opsSearch").addEventListener("input", () => { clearTimeout(searchTimer); searchTimer = setTimeout(reFilter, 160); });
+  $("globeRefresh").addEventListener("click", () => { ops.useCache = false; globalCenter?.refresh(); });
+  $("opsList").addEventListener("click", (e) => { const b = e.target.closest("[data-ops]"); if (b) globalCenter?.select(b.dataset.ops); });
+  $("opsDetail").addEventListener("click", (e) => {
+    if (e.target.closest("[data-ops-back]")) { globalCenter?.select(null); return; }
+    const v = e.target.closest("[data-ops-open]")?.dataset.opsOpen; if (v && ops.selected) openShipment(ops.selected, v);
+  });
   window.switchView = switchView;
 
   // ---------- dashboard ----------
@@ -165,6 +241,7 @@ export function initControlCenter(host) {
       $("kpiGrid").innerHTML = tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
         tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived) + (t.unclassified ? tile("Not yet classified", t.unclassified, "warn") : "");
       $("lastUpdated").textContent = `refreshed ${fmt(d.generatedAt)}`;
+      loadLocationCheck();
       const banner = $("migrationBanner");
       banner.classList.toggle("hidden", !d.needsMigration);
       if (d.needsMigration) $("migrationText").textContent = `${d.unmigrated} existing shipment(s) were created before the control center upgrade. Run the additive data migration so they are counted, searchable and filterable. No data is removed.`;
@@ -182,6 +259,44 @@ export function initControlCenter(host) {
     });
   }
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-open]")?.dataset.open; if (c) openShipment(c, "tracking"); });
+
+  // ---------- location data check (read-only report; fixes only on explicit confirmation) ----------
+  const POINT_LABEL = { origin: "Origin", destination: "Destination", current: "Current position" };
+  const ISSUE_LABEL = { swapped: "Lat/lng look swapped", zero: "Stored as 0,0", invalid: "Not a valid coordinate", mismatch: "Wrong country" };
+  const ignoredIssues = new Set();
+  let locIssues = [];
+  async function loadLocationCheck() {
+    try {
+      const r = await api("locationHealth");
+      locIssues = r.issues.filter((i) => !ignoredIssues.has(`${i.code}:${i.field}`));
+      const parts = [`${r.checked} shipment(s) checked`];
+      parts.push(locIssues.length ? `${locIssues.length} coordinate problem(s) to review` : "no coordinate problems found");
+      if (r.missingCoordinates) parts.push(`${r.missingCoordinates} active shipment(s) without any coordinates`);
+      $("locCheckSummary").textContent = parts.join(" · ");
+      $("locCheck").classList.toggle("has-issues", locIssues.length > 0);
+      $("locCheckWrap").classList.toggle("hidden", !locIssues.length);
+      const cc = (iso) => { try { return iso ? new Intl.DisplayNames(["en"], { type: "region" }).of(iso) : ""; } catch { return iso; } };
+      $("locCheckRows").innerHTML = locIssues.map((i, n) => `<tr>
+        <td data-label="Shipment"><button class="code" data-open="${esc(i.code)}" type="button">${esc(i.code)}</button></td>
+        <td data-label="Point">${esc(POINT_LABEL[i.field])}<br><small>${esc(i.place || "no place name")}</small></td>
+        <td data-label="Stored value"><code>${esc(i.lat)}, ${esc(i.lng)}</code></td>
+        <td data-label="Problem"><strong class="issue-${esc(i.issue)}">${esc(ISSUE_LABEL[i.issue])}</strong><br><small>${esc(i.message)}${i.expectedCountry ? ` Text says ${esc(cc(i.expectedCountry))}` : ""}${i.foundCountry ? `, point is in ${esc(cc(i.foundCountry))}.` : ""}</small></td>
+        <td data-label="Actions" class="row-actions">${i.canSwap ? `<button type="button" class="btn-action" data-loc-swap="${n}">Swap</button>` : ""}<button type="button" class="btn-action" data-loc-edit="${n}">Edit</button><button type="button" class="btn-action subtle" data-loc-ignore="${n}">Ignore</button></td></tr>`).join("");
+    } catch (err) { if (!err.silent) $("locCheckSummary").textContent = "The location check could not run."; }
+  }
+  $("locCheckRun").addEventListener("click", () => loadLocationCheck());
+  $("locCheckRows").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-loc-swap],[data-loc-edit],[data-loc-ignore]"); if (!b) return;
+    const i = locIssues[Number(b.dataset.locSwap ?? b.dataset.locEdit ?? b.dataset.locIgnore)]; if (!i) return;
+    if (b.dataset.locIgnore !== undefined) { ignoredIssues.add(`${i.code}:${i.field}`); loadLocationCheck(); return; }
+    if (b.dataset.locEdit !== undefined) { openShipment(i.code, "tracking"); return; }
+    if (!window.confirm(`Swap the ${POINT_LABEL[i.field].toLowerCase()} coordinates of ${i.code}?\n\nNow: ${i.lat}, ${i.lng}\nAfter: ${i.lng}, ${i.lat}\n\nThe change is recorded in the activity log.`)) return;
+    await guarded(`swap:${i.code}`, b, async () => {
+      await api("update", { code: i.code, changes: { [i.latField]: i.lng, [i.lngField]: i.lat } });
+      host.showToast(`${i.code}: ${POINT_LABEL[i.field].toLowerCase()} coordinates corrected`, "success");
+      loadLocationCheck();
+    });
+  });
   // ---------- backup (required before migration) ----------
   async function sha256Hex(text) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));

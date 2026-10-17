@@ -828,6 +828,17 @@
         </div>
         <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-action" id="bannerBackupBtn" type="button">1. Download full backup</button><button class="btn-action" id="migrateBtn" type="button" disabled title="Download a full backup first">2. Run data migration</button></span></div>
         <div class="kpi-grid" id="kpiGrid" data-reveal-stagger></div>
+        <section class="loc-check" id="locCheck" aria-labelledby="locCheckTitle">
+          <div class="loc-check-head">
+            <div><h4 id="locCheckTitle">Location data check</h4><p id="locCheckSummary">Checking stored coordinates…</p></div>
+            <button class="btn-action" id="locCheckRun" type="button">Re-check</button>
+          </div>
+          <div class="ops-table-wrap hidden" id="locCheckWrap">
+            <table class="ops-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Point</th><th scope="col">Stored value</th><th scope="col">Problem</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody id="locCheckRows"></tbody></table>
+          </div>
+          <p class="loc-check-note">Read-only check. Nothing is changed automatically: a fix is applied only when you confirm it, through the normal audited update.</p>
+        </section>
         <div class="dash-cols" data-reveal>
           <div>
             <h4>Recent shipment activity</h4><ul class="feed" id="dashRecent"></ul>
@@ -843,10 +854,10 @@
         <div class="quick-actions">
           <h4>Quick Actions</h4>
           <div class="action-buttons" style="flex-direction:row;flex-wrap:wrap;">
-            <button class="btn-action" onclick="switchView('create')">➕ New shipment</button>
-            <button class="btn-action" onclick="switchView('shipments')">📋 View All Shipments</button>
-            <button class="btn-action" onclick="exportData()">💾 Export Data</button>
-            <button class="btn-action" onclick="goHome()">🏠 Back to Home</button>
+            <button class="btn-action" onclick="switchView('create')">New shipment</button>
+            <button class="btn-action" onclick="switchView('shipments')">View all shipments</button>
+            <button class="btn-action" onclick="exportData()">Export data</button>
+            <button class="btn-action" onclick="goHome()">Public website</button>
           </div>
         </div>
       </div>
@@ -977,27 +988,41 @@
         <div class="tool-actions" style="margin-top:14px;"><button class="btn btn-reset inline hidden" type="button" id="loadMore">Load more</button></div>
       </div>
 
-      <!-- Global Tracking -->
-      <div class="shipments-card" id="view-globe">
-        <div class="card-header">
-          <h3>Global Tracking</h3>
-          <p>All active shipments with known coordinates. Solid lines run to the last recorded position; dashed lines are planned routes, not GPS tracks. Select a route to open it.</p>
-        </div>
-        <div class="globe-tools">
-          <select id="globeFilter" aria-label="Filter by status"><option value="">All active statuses</option></select>
-          <label style="display:flex;align-items:center;gap:6px;margin:0;text-transform:none;letter-spacing:0"><input type="checkbox" id="globePublicOnly"> Only shipments shown on the homepage</label>
-          <button class="btn-action" type="button" id="globeRefresh">Refresh</button>
-        </div>
-        <div class="globe-layout">
-          <div class="cc-stage">
-            <div class="cc-map" id="globeMap" role="region" aria-label="Map of active shipments"></div>
-            <div class="cc-empty-note">No active shipments have coordinates yet. Add route points or a location in Live Tracking.</div>
-            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="globeStatus">Loading…</span></span></div>
-            <div class="cc-overlay cc-legend"><span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span><span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span></div>
-            <div class="cc-card" id="globeCard" hidden></div>
+      <!-- Global Tracking: list · map · details -->
+      <div class="shipments-card ops-view" id="view-globe">
+        <div class="ops-head">
+          <div>
+            <h3>Global Tracking</h3>
+            <p>Active shipments with recorded or planned coordinates. Solid lines run to the last recorded position; dashed lines are planned routes, not GPS tracks.</p>
           </div>
-          <div class="cc-feed-wrap"><div class="cc-feed-head"><h3>Active routes</h3></div><ul class="cc-feed" id="globeFeed"></ul></div>
+          <button class="ops-btn" type="button" id="globeRefresh">Refresh</button>
         </div>
+        <div class="ops-toolbar" role="search">
+          <input type="search" id="opsSearch" placeholder="Search code, city, carrier…" aria-label="Search shipments" autocomplete="off">
+          <select id="globeFilter" aria-label="Filter by status"><option value="">All active statuses</option></select>
+          <select id="opsCarrier" aria-label="Filter by carrier"><option value="">All carriers</option></select>
+          <select id="opsCountry" aria-label="Filter by country"><option value="">All countries</option></select>
+          <label class="ops-check"><input type="checkbox" id="globePublicOnly"> On homepage</label>
+          <label class="ops-check"><input type="checkbox" id="opsHasPosition"> Has recorded position</label>
+        </div>
+        <div class="ops-grid" data-pane="list">
+          <section class="ops-list" aria-label="Shipments">
+            <div class="ops-list-head"><span id="opsCount">Loading…</span><span id="globeStatus" class="ops-status">Loading…</span></div>
+            <ul id="opsList" class="ops-rows"></ul>
+          </section>
+          <section class="ops-map" aria-label="Map">
+            <div class="cc-stage">
+              <div class="cc-map" id="globeMap" role="region" aria-label="Map of active shipments"></div>
+              <div class="cc-empty-note">No shipments match. Clear the filters, or add route points or a location in Live Tracking.</div>
+              <div class="cc-overlay cc-legend"><span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span><span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span></div>
+              <div class="cc-card" id="globeCard" hidden></div>
+            </div>
+          </section>
+          <section class="ops-detail" id="opsDetail" aria-label="Shipment details" aria-live="polite">
+            <div class="ops-empty"><strong>Select a shipment</strong><span>Pick a row or a route on the map to see its status, last recorded position and timeline.</span></div>
+          </section>
+        </div>
+        <ul id="globeFeed" hidden></ul>
       </div>
 
       <!-- Live Tracking -->

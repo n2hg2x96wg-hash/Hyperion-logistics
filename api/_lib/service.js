@@ -569,6 +569,7 @@ export async function globalMapData() {
       ref: s.id, key: s.id, publicMap: s.publicMap === true,
       status: code ? { code, label: STATUS_META[code].label, tone: STATUS_META[code].tone } : { code: null, label: "Unknown", tone: "neutral" },
       originLabel: s.origin || null, destinationLabel: s.destination || null,
+      courier: s.courier || null, ...countryFields(s),
       origin, destination,
       current: current ? { ...current, place: s.location || s.currentLocation || null, recordedAt: s.locationUpdatedAt || null, source: s.locationSource || "admin" } : null,
       updatedAt: s.updatedAt || s.createdAt || null
@@ -614,7 +615,8 @@ export async function locationHealth() {
         lng: typeof lng === "number" || typeof lng === "string" ? lng : null,
         issue: issue.issue, expectedCountry: issue.expected || null, foundCountry: issue.found || null,
         message: ISSUE_TEXT[issue.issue],
-        canSwap: issue.issue === "swapped" && typeof lat === "number" && typeof lng === "number",
+        // one-click swap only for route points; a current position is corrected in Live Tracking so its history stays honest
+        canSwap: issue.issue === "swapped" && field !== "current" && typeof lat === "number" && typeof lng === "number",
         coordsSource: field === "current" ? s.locationSource || null : s[`${field}CoordsSource`] || null
       });
     }
