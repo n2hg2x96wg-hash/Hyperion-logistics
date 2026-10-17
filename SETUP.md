@@ -58,13 +58,28 @@ Browsers can then no longer read or write shipment data directly; only the secur
   (public domain), so the homepage needs no map key. `?map=flat` / `?map=globe` force a mode for testing.
 
 ## Carrier directory
-- Shown on the homepage from Admin → Carriers. Each carrier has a category (Express & Parcel, Ocean Freight, Regional,
-  Custom), a short description and coverage. Fill these only with what the carrier publishes.
+- Shown on the homepage from Admin → Carriers as compact tiles (tap a tile for details). Each carrier has a category
+  (Express & Parcel, Air Freight, Ocean Freight, Regional, Custom), a short description and coverage. Fill these only
+  with what the carrier publishes. Directory entries do not mean a partnership; the page says so.
 - Logos: wordmark tiles are shown by default. To use an official logo you are licensed to use, set the carrier's
   "Logo / badge" to an `https://` image address.
 - Integration status is honest: "Manual updates by Hyperion" unless an official tracking link is set ("Official tracking
   link") or a carrier API adapter is configured AND has delivered a signed update ("Live API connected").
   No carrier API is connected today.
+
+## Hero image
+The homepage hero uses an original illustrated night-port scene (`assets/hero/scene.svg`), so nothing unlicensed is
+shipped. To use a photograph you have the rights to:
+1. Save it as `assets/hero/hero.jpg` (about 2400×1350, under 400 KB; a dark, uncluttered left side reads best).
+2. In `ui/site-v2.css`, find `.hero3-media` and change `var(--hero-photo, url("../assets/hero/scene.svg"))` to
+   `url("../assets/hero/hero.jpg")`.
+
+## Location data check (Admin → Overview)
+A read-only report of stored coordinates that cannot be right: 0,0 (an empty form field), non-numeric or out-of-range
+values, latitude/longitude typed the wrong way round, or a point in a different country than the place name says.
+Such points are never drawn on maps; the shipment shows "Awaiting location" instead. Nothing is changed automatically:
+**Swap** (origin/destination only) runs the normal audited update after you confirm; **Edit** opens Live Tracking;
+**Ignore** hides the row for this session. Countries are taken from the place name first, coordinates second.
 
 ## Map provider (shipment tracking map)
 The map works with no setup: it uses OpenStreetMap standard tiles (free, no key, attribution shown).
@@ -74,6 +89,13 @@ OpenStreetMap asks heavy/commercial sites to use a tile provider, so for product
 3. In Vercel add `MAP_PROVIDER=maptiler` and `MAP_TILE_KEY=<the key>`, then redeploy.
 4. `/api/health` shows `"map": { "provider": "MapTiler Streets", "issues": [] }`.
 If the key is wrong or blocked, the map falls back to OpenStreetMap automatically.
+
+## Tests
+- `npm test`: API, privacy and data rules (in-memory store).
+- `npm run test:emulator`: the same against the Firestore emulator. Start it first on port 8085: `firebase emulators:start --only firestore --project demo-hyperion` with `{"emulators":{"firestore":{"port":8085}}}` in `firebase.json`. Two client-deletion tests need Firebase Auth test data and fail on the emulator (also before these changes).
+- `npm run test:e2e`: browser checks (Playwright) at 320, 360, 390, 430, 768 and 1280 px against the local dev server:
+  menu, shared header, no overflow, tracking, map markers, admin workspace and authorization. Needs a Chromium:
+  `CHROMIUM_PATH=/path/to/chrome npm run test:e2e`. Never runs against production data.
 
 ## Troubleshooting
 - Admin login says "not configured": `ADMIN_PASSWORD` or `SESSION_SECRET` missing → add and redeploy.
