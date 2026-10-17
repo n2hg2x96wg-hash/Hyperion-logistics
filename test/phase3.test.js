@@ -148,3 +148,37 @@ test("homepage: public statistics block hidden (presentation only); map, feed an
   const o = await (await fetch(`${base}/api/public?view=overview`)).json();
   for (const k of ["active", "inTransit", "delivered", "countriesActive"]) assert.equal(typeof o.stats[k], "number", `stats.${k} still computed`);
 });
+
+test("search information: canonical, social tags, honest structured data, robots and sitemap", async () => {
+  const SITE = "https://hyperion-logistics.vercel.app";
+  const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+  const index = read("index.html"); const track = read("track.html"); const enhanced = read("tracking-enhanced.html");
+  assert.match(index, new RegExp(`<link rel="canonical" href="${SITE}/">`));
+  assert.match(track, new RegExp(`<link rel="canonical" href="${SITE}/track.html">`));
+  assert.match(enhanced, new RegExp(`<link rel="canonical" href="${SITE}/track.html">`), "duplicate tracking page points to /track.html");
+  for (const html of [index, track, enhanced]) {
+    assert.match(html, /<meta name="description" content="[^"]{60,}">/);
+    for (const t of ["og:title", "og:description", "og:url", "og:image"]) assert.ok(html.includes(`property="${t}"`), t);
+    assert.ok(html.includes('rel="icon"'));
+  }
+  // structured data parses and only states verifiable facts
+  const blocks = [...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  const graph = blocks.flatMap((b) => b["@graph"] || [b]);
+  const org = graph.find((n) => n["@type"] === "Organization");
+  assert.ok(org && graph.some((n) => n["@type"] === "WebSite"));
+  assert.equal(org.contactPoint[0].email, "hyperionlogistics.com@gmail.com");
+  assert.ok(index.includes("mailto:hyperionlogistics.com@gmail.com"), "the same email is shown on the page");
+  const raw = JSON.stringify(blocks);
+  for (const banned of ["aggregateRating", "review", "telephone", "address", "sameAs", "award", "foundingDate"]) assert.ok(!raw.includes(banned), `no unverified ${banned}`);
+  for (const f of ["assets/brand/og-image.png", "assets/brand/logo-512.png", "assets/brand/favicon.svg"]) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), f);
+  // robots + sitemap are served
+  const robots = await fetch(`${base}/robots.txt`); assert.equal(robots.status, 200);
+  const rtxt = await robots.text();
+  for (const d of ["Disallow: /api/", "Disallow: /admin.html", `Sitemap: ${SITE}/sitemap.xml`]) assert.ok(rtxt.includes(d), d);
+  const sm = await fetch(`${base}/sitemap.xml`); assert.equal(sm.status, 200);
+  const locs = [...(await sm.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  assert.deepEqual(locs, [`${SITE}/`, `${SITE}/track.html`]);
+  // private pages are not indexed; public ones are
+  for (const f of ["admin.html", "login.html", "dashboard.html", "client-dashboard.html"]) assert.match(read(f), /<meta name="robots" content="noindex, nofollow">/, f);
+  for (const html of [index, track]) assert.ok(!/name="robots" content="noindex/.test(html));
+});
