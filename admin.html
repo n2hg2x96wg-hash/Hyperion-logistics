@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hyperion Admin - Advanced Shipment Management</title>
@@ -1326,6 +1327,11 @@
             <input id="courierCoverageInput" type="text" maxlength="80" placeholder="e.g., Nigeria, or Global ocean routes">
             <small class="field-hint">Only what the carrier publishes. Leave empty if unsure.</small>
           </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0"><input type="checkbox" id="courierPartnerInput" style="width:auto;margin:0"> Verified partnership</label>
+            <input id="courierPartnerEvidenceInput" type="text" maxlength="200" placeholder="Evidence (internal): contract reference, date, who confirmed it" aria-label="Partnership evidence (internal)">
+            <small class="field-hint">Tick only for a confirmed business partnership. The public directory then shows "Verified partner"; the evidence is never shown publicly. Leave unticked for carriers that are only listed.</small>
+          </div>
           <div class="form-group">
             <label for="courierRegionInput">Country / region</label>
             <input id="courierRegionInput" type="text" placeholder="e.g., Philippines" maxlength="60">
@@ -1559,7 +1565,8 @@
       id: "courierIdInput", name: "courierNameInput", prefix: "courierPrefixInput", type: "courierTypeInput", region: "courierRegionInput",
       phone: "courierPhoneInput", email: "courierEmailInput", website: "courierWebsiteInput", trackingUrl: "courierTrackingUrlInput",
       logo: "courierLogoInput", brandColor: "courierBrandColorInput", apiEndpoint: "courierApiEndpointInput",
-      category: "courierCategoryInput", description: "courierDescriptionInput", coverage: "courierCoverageInput"
+      category: "courierCategoryInput", description: "courierDescriptionInput", coverage: "courierCoverageInput",
+      partnerEvidence: "courierPartnerEvidenceInput"
     };
     const $c = (k) => document.getElementById(CF[k]);
     function courierFormError(message, field) {
@@ -1596,6 +1603,7 @@
       $c("id").readOnly = true;
       document.getElementById("courierIdHint").textContent = "The ID is permanent because existing shipments refer to it.";
       document.getElementById("courierActiveInput").checked = courier.active !== false && !courier.archived;
+      document.getElementById("courierPartnerInput").checked = courier.verifiedPartner === true;
       document.getElementById("courierModalTitle").innerText = `Edit Courier: ${courier.name}`;
       document.getElementById("courierModal").classList.add("show");
       $c("name").focus();
@@ -1617,6 +1625,8 @@
       e.preventDefault();
       const courier = Object.fromEntries(Object.keys(CF).map((k) => [k, $c(k).value.trim()]));
       courier.active = document.getElementById("courierActiveInput").checked;
+      courier.verifiedPartner = document.getElementById("courierPartnerInput").checked;
+      if (courier.verifiedPartner && !courier.partnerEvidence) return courierFormError("Record the partnership evidence before marking it verified.", "partnerEvidence");
       // Quick checks before the server validates everything again.
       if (!editingCourierId && !courier.id) return courierFormError("Courier ID is required.", "id");
       if (!courier.name) return courierFormError("Name is required.", "name");

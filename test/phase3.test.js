@@ -126,3 +126,108 @@ test("public statistics count countries from the typed place, not a mistyped coo
   assert.ok(!isos.includes("NE"), JSON.stringify(o.stats.activeCountries));
   assert.ok(isos.includes("NG"));
 });
+
+test("homepage: freight showcase sits between global activity and carriers, with real actions and no fabricated proof", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const pos = (id) => html.indexOf(`id="${id}"`);
+  assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("carriers"), "section order");
+  const section = html.slice(pos("freight"), pos("carriers"));
+  assert.ok(!/★|rating|review|testimonial|\d+(\.\d+)?\s*\/\s*5|customers|on[- ]time|guarantee/i.test(section), "no ratings, reviews or invented claims");
+  assert.match(section, /href="#services"[^>]*>Explore freight services/);
+  assert.match(section, /href="#trackForm" data-focus-track>Track a shipment/);
+  for (const id of section.match(/href="#(svc-[a-z]+)"/g).map((m) => m.slice(7, -1))) assert.ok(html.includes(`id="${id}"`), `${id} target exists`);
+  assert.ok(fs.existsSync(new URL("../assets/hero/freight-ship.svg", import.meta.url)));
+  // image: reserved size, alt text, fallback to an existing file, every referenced file exists
+  const img = section.match(/<img [^>]+>/)[0];
+  assert.match(img, /width="\d+" height="\d+"/); assert.match(img, /alt="[^"]{20,}"/); assert.match(img, /loading="lazy"/);
+  assert.match(img, /onerror="[^"]*assets\/hero\/freight-ship\.svg/);
+  const refs = [...section.matchAll(/(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(" ")[0]));
+  for (const f of refs) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), `missing ${f}`);
+  // four compact service cards, each linking to an existing service
+  const cards = section.match(/class="freight-card"/g) || [];
+  assert.equal(cards.length, 4);
+});
+
+test("homepage: public statistics block hidden (presentation only); map, feed and table kept; API still computes stats", async () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  for (const gone of ['id="ccStats"', "data-stat=", "data-countries", "How these numbers are counted", "statsEl"]) assert.ok(!html.includes(gone), `${gone} still on the homepage`);
+  for (const kept of ['id="ccMap"', 'id="ccFeed"', 'id="ccTable"', 'id="ccCard"']) assert.ok(html.includes(kept), `${kept} missing`);
+  const { __clearPublicCache } = await import("../api/public.js");
+  __clearPublicCache();
+  const o = await (await fetch(`${base}/api/public?view=overview`)).json();
+  for (const k of ["active", "inTransit", "delivered", "countriesActive"]) assert.equal(typeof o.stats[k], "number", `stats.${k} still computed`);
+});
+
+test("search information: canonical, social tags, honest structured data, robots and sitemap", async () => {
+  const SITE = "https://hyperion-logistics.vercel.app";
+  const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+  const index = read("index.html"); const track = read("track.html"); const enhanced = read("tracking-enhanced.html");
+  assert.match(index, new RegExp(`<link rel="canonical" href="${SITE}/">`));
+  assert.match(track, new RegExp(`<link rel="canonical" href="${SITE}/track.html">`));
+  assert.match(enhanced, new RegExp(`<link rel="canonical" href="${SITE}/track.html">`), "duplicate tracking page points to /track.html");
+  for (const html of [index, track, enhanced]) {
+    assert.match(html, /<meta name="description" content="[^"]{60,}">/);
+    for (const t of ["og:title", "og:description", "og:url", "og:image"]) assert.ok(html.includes(`property="${t}"`), t);
+    assert.ok(html.includes('rel="icon"'));
+  }
+  // structured data parses and only states verifiable facts
+  const blocks = [...index.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => JSON.parse(m[1]));
+  const graph = blocks.flatMap((b) => b["@graph"] || [b]);
+  const org = graph.find((n) => n["@type"] === "Organization");
+  assert.ok(org && graph.some((n) => n["@type"] === "WebSite"));
+  assert.equal(org.contactPoint[0].email, "hyperionlogistics.com@gmail.com");
+  assert.ok(index.includes("mailto:hyperionlogistics.com@gmail.com"), "the same email is shown on the page");
+  const raw = JSON.stringify(blocks);
+  for (const banned of ["aggregateRating", "review", "telephone", "address", "sameAs", "award", "foundingDate"]) assert.ok(!raw.includes(banned), `no unverified ${banned}`);
+  for (const f of ["assets/brand/og-image.png", "assets/brand/logo-512.png", "assets/brand/favicon.svg"]) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), f);
+  // robots + sitemap are served
+  const robots = await fetch(`${base}/robots.txt`); assert.equal(robots.status, 200);
+  const rtxt = await robots.text();
+  for (const d of ["Disallow: /api/", "Disallow: /admin.html", `Sitemap: ${SITE}/sitemap.xml`]) assert.ok(rtxt.includes(d), d);
+  const sm = await fetch(`${base}/sitemap.xml`); assert.equal(sm.status, 200);
+  const locs = [...(await sm.text()).matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  assert.deepEqual(locs, [`${SITE}/`, `${SITE}/track.html`]);
+  // private pages are not indexed; public ones are
+  for (const f of ["admin.html", "login.html", "dashboard.html", "client-dashboard.html"]) assert.match(read(f), /<meta name="robots" content="noindex, nofollow">/, f);
+  for (const html of [index, track]) assert.ok(!/name="robots" content="noindex/.test(html));
+});
+
+test("carriers: integration and partnership are separate, evidence-backed states; ids and catalogue unchanged", async () => {
+  const { CARRIERS, carrierPartnership, carrierIntegration } = await import("../shared/carriers.js");
+  for (const c of CARRIERS) {
+    assert.equal(carrierPartnership(c), "none", `${c.id} must not claim a partnership`);
+    assert.notEqual(carrierIntegration(c).status, "live", `${c.id} must not claim a live API`);
+  }
+  assert.equal(carrierIntegration({ id: "dhl", lastProviderUpdateAt: "2026-10-01T00:00:00Z" }).status, "manual", "a past update alone is not 'live'");
+  assert.equal(carrierIntegration({ id: "dhl" }, { configuredProviders: ["dhl"] }).status, "manual", "a configured adapter that never reported is not 'live'");
+  assert.equal(carrierIntegration({ id: "dhl", lastProviderUpdateAt: "2026-10-01T00:00:00Z" }, { configuredProviders: ["dhl"] }).status, "live");
+
+  const { __clearPublicCache } = await import("../api/public.js");
+  const pub = async () => { __clearPublicCache(); return (await (await fetch(`${base}/api/public?view=carriers`)).json()).carriers; };
+  let list = await pub();
+  assert.ok(list.length >= CARRIERS.length - 1 && list.every((c) => c.partner === false));
+  assert.deepEqual(list.map((c) => c.id).sort(), CARRIERS.map((c) => c.id).sort(), "catalogue ids unchanged");
+
+  // marking a partnership requires internal evidence; public output never includes it
+  const base0 = { name: "DHL", prefix: "DHL" };
+  let r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "partnerEvidence");
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: "yes" } });
+  assert.equal(r.status, 400);
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true, partnerEvidence: "Contract HX-TEST-1, 2026-10-01, confirmed by ops" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  list = await pub();
+  const dhl = list.find((c) => c.id === "dhl");
+  assert.equal(dhl.partner, true);
+  const raw = JSON.stringify(list);
+  for (const k of ["partnerEvidence", "HX-TEST-1", "apiEndpoint", "email"]) assert.ok(!raw.includes(k), `public carriers leak ${k}`);
+  const audit = await admin({ action: "audit" });
+  assert.ok(JSON.stringify(audit.json).includes('"verifiedPartner":true'), "partnership change is audited");
+  // an edit that does not send the field keeps it; unticking removes the badge
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, description: "Express parcels." } });
+  assert.equal((await pub()).find((c) => c.id === "dhl").partner, true);
+  r = await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: false, partnerEvidence: "" } });
+  assert.equal(r.status, 200);
+  assert.equal((await pub()).find((c) => c.id === "dhl").partner, false);
+  assert.equal((await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true, partnerEvidence: "x" } }, { auth: false })).status, 401);
+});

@@ -1,0 +1,10 @@
+# Hyperion Logistics
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /login.html
+Disallow: /dashboard.html
+Disallow: /client-dashboard.html
+
+Sitemap: https://hyperion-logistics.vercel.app/sitemap.xml

@@ -90,6 +90,32 @@ OpenStreetMap asks heavy/commercial sites to use a tile provider, so for product
 4. `/api/health` shows `"map": { "provider": "MapTiler Streets", "issues": [] }`.
 If the key is wrong or blocked, the map falls back to OpenStreetMap automatically.
 
+## Google Search (what the site provides, and what needs your Google access)
+**Already in the code**
+- Canonical address: `https://hyperion-logistics.vercel.app`. It is written in `index.html`, `track.html`,
+  `tracking-enhanced.html` (which points to `/track.html`), `robots.txt` and `sitemap.xml`. If you buy a custom domain,
+  change it in those five files.
+- Title, description, Open Graph/Twitter share image (`assets/brand/og-image.png`), favicon and app icons.
+- Structured data (JSON-LD) on the homepage: Organization (name, web address, logo, description, customer-support
+  email) and WebSite. Only facts that can be checked are included: no phone, street address, registration numbers,
+  ratings, reviews, social profiles or partnerships. Add those only once they exist and can be verified.
+- `robots.txt` (keeps `/api/` and the admin/login/dashboard pages out of search) and `sitemap.xml` (home + tracking page).
+  The admin, login and dashboard pages also carry `noindex`.
+
+**Your steps in Google Search Console** (https://search.google.com/search-console, signed in with your Google account)
+1. Add property → **URL prefix** → `https://hyperion-logistics.vercel.app/`.
+2. Verify with **HTML tag**: copy the `<meta name="google-site-verification" ...>` tag and send it to me (or paste it into
+   the `<head>` of `index.html` yourself), deploy, then press Verify.
+3. Sitemaps → submit `sitemap.xml`.
+4. URL Inspection → enter the homepage, then **Request indexing**; repeat for `/track.html`.
+5. Optional: check the homepage at https://search.google.com/test/rich-results and https://validator.schema.org.
+6. Your Vercel account also has older projects named `hyperion-logistics-d6zd`, `-8oro`, `-4bsc` and `-11kh`. If they
+   serve copies of the site, delete them or turn on Deployment Protection so Google sees one site. The canonical tags
+   already point Google to the main address.
+
+Google decides when and how pages appear (titles, logo, rich results, AI Overviews). These changes make the
+information clear and accurate; they cannot guarantee rankings or any particular result.
+
 ## Tests
 - `npm test`: API, privacy and data rules (in-memory store).
 - `npm run test:emulator`: the same against the Firestore emulator. Start it first on port 8085: `firebase emulators:start --only firestore --project demo-hyperion` with `{"emulators":{"firestore":{"port":8085}}}` in `firebase.json`. Two client-deletion tests need Firebase Auth test data and fail on the emulator (also before these changes).

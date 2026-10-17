@@ -102,6 +102,15 @@ export function carrierIntegration(c, { configuredProviders = [] } = {}) {
   return { status: "manual", label: "Manual updates by Hyperion" };
 }
 
+/**
+ * Business relationship, separate from how updates arrive:
+ *   verified – an admin recorded a verified partnership with internal evidence (contract reference, date, who confirmed)
+ *   none     – listed only to identify the carrier a shipment moves with (the default for every built-in carrier)
+ */
+export function carrierPartnership(c) {
+  return c?.verifiedPartner === true ? "verified" : "none";
+}
+
 const BY_ID = new Map(CARRIERS.map((c) => [c.id, c]));
 
 export function carrierId(input) {
