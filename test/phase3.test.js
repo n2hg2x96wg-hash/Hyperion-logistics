@@ -240,7 +240,7 @@ test("homepage: logistics journey section follows the freight showcase, with an 
   const section = html.slice(pos("journey"), pos("carriers"));
   const img = section.match(/<img [^>]+>/)[0];
   assert.match(img, /width="1179" height="638"/); assert.match(img, /loading="lazy"/); assert.match(img, /alt="Illustration:[^"]+"/); assert.match(img, /onerror="/);
-  assert.match(section, /<figcaption>Illustrative image<\/figcaption>/);
+  assert.ok(!/<figcaption/.test(section), "no label over the photo");
   assert.match(section, /href="#trackForm" data-focus-track/);
   assert.ok(!/★|rating|review|testimonial|customers|guarantee|\d+\s*%/i.test(section), "no ratings, reviews or invented figures");
   const refs = [...section.matchAll(/(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(" ")[0]));
