@@ -50,7 +50,7 @@ export function parseCourierInput(input = {}, { creating }) {
   if (!PREFIX_RE.test(out.prefix)) throw new ValidationError("Tracking prefix must be 1–8 letters or numbers (for example DHL).", "prefix");
   out.type = input.type === "custom" ? "custom" : "carrier";
   if (input.category !== undefined && input.category !== "") {
-    if (!CARRIER_CATEGORIES[input.category]) throw new ValidationError("Category must be Express & Parcel, Ocean Freight, Regional Logistics or Custom Transport.", "category");
+    if (!CARRIER_CATEGORIES[input.category]) throw new ValidationError("Category must be Express & Parcel, Air Freight, Ocean Freight, Regional Logistics or Custom Transport.", "category");
     out.category = input.category;
   }
   out.description = text(input.description, 200, "description", "Description");

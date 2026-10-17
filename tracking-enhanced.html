@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="ui/tokens.css">
+  <link rel="stylesheet" href="ui/site-v2.css">
   <link rel="stylesheet" href="tracker/tracker.css">
   <link rel="stylesheet" href="ui/motion.css">
   <style>
@@ -22,81 +23,6 @@
       background: linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%);
       color: #e2e8f0;
       min-height: 100vh;
-    }
-
-    nav {
-      background: rgba(15, 23, 42, 0.8);
-      backdrop-filter: blur(10px);
-      padding: 20px 0;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    }
-
-    .nav-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo { font-size: 20px; font-weight: 700; color: #3b82f6; }
-    .nav-links { display: flex; list-style: none; gap: 32px; }
-    .nav-links a { color: #e2e8f0; text-decoration: none; }
-    .nav-links a:hover { color: #3b82f6; }
-
-    .hero {
-      max-width: 1200px;
-      margin: 60px auto;
-      padding: 0 24px;
-      text-align: center;
-    }
-
-    .hero h1 {
-      font-size: 48px;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero p { font-size: 18px; color: #94a3b8; margin-bottom: 40px; }
-
-    .search-group {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 40px;
-      flex-wrap: wrap;
-    }
-
-    .search-group input {
-      flex: 1;
-      min-width: 250px;
-      padding: 12px 16px;
-      background: rgba(30, 41, 59, 0.8);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 8px;
-      color: #e2e8f0;
-      font-size: 16px;
-    }
-
-    .btn-search {
-      padding: 12px 32px;
-      background: #3b82f6;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-search:hover {
-      background: #2563eb;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
     }
 
     .results {
@@ -174,10 +100,6 @@
     }
 
     @media (max-width: 768px) {
-      .hero h1 { font-size: 32px; }
-      .hero p { font-size: 16px; }
-      .search-group { flex-direction: column; }
-      .btn-search { width: 100%; }
       .map-card { height: 350px; }
     }
 
@@ -265,28 +187,46 @@
   </script>
   <link rel="stylesheet" href="ui/site.css">
   <script type="module" src="ui/motion.js"></script>
+  <script type="module" src="ui/site-shell.js"></script>
   <link rel="stylesheet" href="ui/track-page.css">
 </head>
-<body class="track-page">
-  <nav data-scroll-nav>
-    <div class="nav-container">
-      <div class="logo">📦 Hyperion</div>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="investment.html">Investments</a></li>
-        <li><a href="admin.html">Admin</a></li>
-      </ul>
+<body class="site track-page">
+  <!-- site-header -->
+  <header class="site-nav" data-site-header data-scroll-nav>
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="Hyperion Logistics home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
+        <span>Hyperion<small>Logistics</small></span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu">
+        <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <nav class="nav-panel" id="navMenu" aria-label="Main">
+        <ul class="nav-menu">
+          <li><a href="/#services">Services</a></li>
+          <li><a href="/track.html">Tracking</a></li>
+          <li><a href="/#activity">Global activity</a></li>
+          <li><a href="/#carriers">Carriers</a></li>
+          <li><a href="/#support">Support</a></li>
+        </ul>
+        <a class="nav-cta" href="/#track">Track a shipment</a>
+      </nav>
     </div>
-  </nav>
+  </header>
+  <!-- /site-header -->
 
-  <div class="hero">
-    <h1>Advanced Shipment Tracking</h1>
-    <p>Real-time tracking with detailed logistics insights</p>
-    <div class="search-group">
-      <input type="text" id="trackingInput" aria-label="Tracking number" placeholder="Enter Tracking ID (e.g., HY-123456)" oninput="this.value = this.value.toUpperCase()">
-      <button class="btn-search hx-press" onclick="track()">Track</button>
+  <section class="track-band" id="track" aria-labelledby="trackTitle">
+    <div class="wrap">
+      <p class="eyebrow">Hyperion Logistics · Precision tracking</p>
+      <h1 id="trackTitle">Shipment tracking</h1>
+      <p>Detailed status, recorded route and milestone timeline for your shipment.</p>
+      <div class="search-group">
+        <input type="text" id="trackingInput" aria-label="Tracking number" placeholder="Enter Tracking ID (e.g., HY-123456)" oninput="this.value = this.value.toUpperCase()">
+        <button class="btn-search hx-press" onclick="track()">Track</button>
+      </div>
     </div>
-  </div>
+  </section>
 
   <div class="results" id="results"></div>
 
@@ -327,8 +267,30 @@
     </div>
   </section>
 
-  <footer>
-    <p>&copy; 2024 Hyperion Logistics. All rights reserved.</p>
+  <!-- site-footer -->
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="foot-grid">
+        <div class="foot-brand">
+          <a class="brand" href="/" aria-label="Hyperion Logistics home">
+            <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
+            <span>Hyperion<small>Logistics</small></span>
+          </a>
+          <p>Global shipping with precision tracking: every recorded milestone, in one clear view.</p>
+        </div>
+        <div><h3>Services</h3><ul>
+          <li><a href="/#services">Express shipping</a></li><li><a href="/#services">Air freight</a></li>
+          <li><a href="/#services">Ocean freight</a></li><li><a href="/#services">Road &amp; regional</a></li></ul></div>
+        <div><h3>Tracking</h3><ul>
+          <li><a href="/#track">Track a shipment</a></li><li><a href="/track.html">Tracking page</a></li>
+          <li><a href="/#activity">Global activity</a></li><li><a href="/#carriers">Carriers</a></li></ul></div>
+        <div><h3>Support</h3><ul>
+          <li><a href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">hyperionlogistics.com@gmail.com</a></li>
+          <li><a href="/#support">Customer support</a></li></ul></div>
+      </div>
+      <div class="foot-base"><span>&copy; 2026 Hyperion Logistics. All rights reserved.</span><span>Carrier names are trademarks of their owners.</span></div>
+    </div>
   </footer>
+  <!-- /site-footer -->
 </body>
 </html>

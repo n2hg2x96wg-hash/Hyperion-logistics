@@ -12,6 +12,8 @@ const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { tim
 /**
  * @param {object} o
  *   mapEl, feedEl?, statsEl?, cardEl?, statusEl?    DOM elements (all but mapEl optional)
+ *   tableEl?: <tbody> for a shipments table (one row per route: reference, route, status, last update)
+ *   onData?: (data) => void, onSelect?: (key|null) => void   hooks for pages that build their own panels
  *   load: async () => ({ routes, activity?, stats?, version?, generatedAt? })   data source
  *   pollMs: number (0 = no polling)
  *   onOpen?: (route) => void                       admin: open the shipment
@@ -89,7 +91,9 @@ export function mountCommandCenter(o) {
     if (state.selected && !routes.some((r) => r.key === state.selected)) state.selected = null;
     renderStats(d.stats);
     renderFeed(d, routes);
+    renderTable(routes);
     renderCard();
+    o.onData?.(d);
     o.mapEl.classList.toggle("cc-empty", !routes.length);
     const updated = d.stats?.lastUpdated;
     status(updated ? `Last update ${timeAgo(updated)}` : "No shipment updates recorded yet", "ok");
@@ -136,6 +140,23 @@ export function mountCommandCenter(o) {
         </span></button></li>`).join("");
   }
 
+  function renderTable(routes) {
+    if (!o.tableEl) return;
+    if (!routes.length) {
+      o.tableEl.innerHTML = `<tr class="cc-row-empty"><td colspan="4">${o.mode === "admin" ? "No active shipments with coordinates yet." :
+        "No shipments are shared publicly right now. Routes appear here when operations publishes a shipment."}</td></tr>`;
+      return;
+    }
+    o.tableEl.innerHTML = routes.slice(0, 12).map((r) => {
+      const at = r.current?.recordedAt || r.updatedAt;
+      return `<tr data-route="${esc(r.key)}" tabindex="0" class="${r.key === state.selected ? "is-selected" : ""}">
+        <td data-label="Shipment"><span class="cc-ref">${esc(r.ref)}</span></td>
+        <td data-label="Route"><span class="cc-route">${esc(r.originLabel || "Origin not set")}<i aria-hidden="true">→</i>${esc(r.destinationLabel || "Destination not set")}</span></td>
+        <td data-label="Status"><span class="cc-pill tone-${esc(r.status.tone)}">${esc(r.status.label)}</span></td>
+        <td data-label="Last update">${at ? `<time datetime="${esc(at)}" title="${esc(fmt(at))}">${esc(timeAgo(at))}</time>` : "Not recorded"}</td></tr>`;
+    }).join("");
+  }
+
   function renderCard() {
     if (!o.cardEl) return;
     const r = state.data?.routes?.find((x) => x.key === state.selected);
@@ -159,9 +180,13 @@ export function mountCommandCenter(o) {
     state.renderer?.select(state.selected);
     renderCard();
     o.feedEl?.querySelectorAll(".cc-feed-item").forEach((b) => b.classList.toggle("is-selected", b.dataset.route === state.selected));
+    o.tableEl?.querySelectorAll("tr[data-route]").forEach((b) => b.classList.toggle("is-selected", b.dataset.route === state.selected));
+    o.onSelect?.(state.selected);
   }
 
   o.feedEl?.addEventListener("click", (e) => { const b = e.target.closest("[data-route]"); if (b) select(b.dataset.route); });
+  o.tableEl?.addEventListener("click", (e) => { const b = e.target.closest("[data-route]"); if (b) select(b.dataset.route); });
+  o.tableEl?.addEventListener("keydown", (e) => { const b = e.target.closest("[data-route]"); if (b && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(b.dataset.route); } });
   o.cardEl?.addEventListener("click", (e) => {
     if (e.target.closest("[data-close]")) select(null);
     if (e.target.closest("[data-open-route]")) { const r = state.data?.routes?.find((x) => x.key === state.selected); if (r) o.onOpen?.(r); }
@@ -170,6 +195,7 @@ export function mountCommandCenter(o) {
   refresh();
   return {
     refresh,
+    select: (key) => select(key),
     destroy() { state.destroyed = true; clearTimeout(state.timer); document.removeEventListener("visibilitychange", onVisible); state.renderer?.destroy(); },
     get renderer() { return state.renderer?.kind || null; }
   };

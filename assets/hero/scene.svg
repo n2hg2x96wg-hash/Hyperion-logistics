@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <!-- Original Hyperion artwork (no third-party imagery): night port, cargo aircraft on approach, road light trails. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#020617"/>
+      <stop offset=".45" stop-color="#0a1736"/>
+      <stop offset=".72" stop-color="#1a2f63"/>
+      <stop offset=".86" stop-color="#3a3c62"/>
+      <stop offset="1" stop-color="#5b4256"/>
+    </linearGradient>
+    <radialGradient id="haze" cx=".72" cy=".78" r=".55">
+      <stop offset="0" stop-color="#f59e0b" stop-opacity=".38"/>
+      <stop offset=".35" stop-color="#f97316" stop-opacity=".14"/>
+      <stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blueGlow" cx=".25" cy=".7" r=".5">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1633"/>
+      <stop offset="1" stop-color="#030712"/>
+    </linearGradient>
+    <linearGradient id="trailW" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#e0f2fe" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".1"/>
+    </linearGradient>
+    <linearGradient id="trailR" x1="0" x2="1">
+      <stop offset="0" stop-color="#ef4444" stop-opacity=".1"/>
+      <stop offset=".6" stop-color="#f87171" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#ef4444" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="contrail" x1="0" x2="1">
+      <stop offset="0" stop-color="#cbd5e1" stop-opacity="0"/>
+      <stop offset="1" stop-color="#e2e8f0" stop-opacity=".35"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="glow"><feGaussianBlur stdDeviation="5"/></filter>
+    <pattern id="win" width="14" height="12" patternUnits="userSpaceOnUse">
+      <rect width="14" height="12" fill="#0b1226"/>
+      <rect x="3" y="3" width="4" height="3" fill="#fcd34d" opacity=".55"/>
+      <rect x="9" y="7" width="3" height="3" fill="#93c5fd" opacity=".35"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#haze)"/>
+  <rect width="1600" height="900" fill="url(#blueGlow)"/>
+
+  <!-- stars -->
+  <g fill="#e2e8f0">
+    <circle cx="120" cy="80" r="1.2" opacity=".7"/><circle cx="310" cy="150" r="1" opacity=".5"/><circle cx="520" cy="60" r="1.4" opacity=".6"/>
+    <circle cx="760" cy="120" r="1" opacity=".45"/><circle cx="980" cy="70" r="1.3" opacity=".6"/><circle cx="1180" cy="140" r="1" opacity=".4"/>
+    <circle cx="1390" cy="60" r="1.5" opacity=".7"/><circle cx="1520" cy="190" r="1" opacity=".5"/><circle cx="660" cy="230" r=".9" opacity=".35"/>
+    <circle cx="1270" cy="250" r=".9" opacity=".3"/><circle cx="210" cy="260" r=".9" opacity=".3"/><circle cx="880" cy="210" r="1" opacity=".35"/>
+  </g>
+
+  <!-- cargo aircraft on approach with contrail and nav lights -->
+  <path d="M120 360 C 420 300, 760 250, 1040 214" stroke="url(#contrail)" stroke-width="3" fill="none" filter="url(#soft)"/>
+  <g transform="translate(1060 206) rotate(-8) scale(1.15)" fill="#0b1226" stroke="#1e293b" stroke-width=".8">
+    <path d="M-70 0 C-60 -6 40 -7 66 -3 C78 -1 82 3 74 5 C50 9 -50 8 -70 4 Z"/>
+    <path d="M-6 -2 L-34 -40 L-22 -40 L14 -3 Z"/>
+    <path d="M-6 5 L-30 36 L-19 36 L14 5 Z"/>
+    <path d="M-62 -1 L-74 -22 L-66 -22 L-52 -2 Z"/>
+    <ellipse cx="-14" cy="9" rx="9" ry="3.2"/><ellipse cx="6" cy="9" rx="9" ry="3.2"/>
+  </g>
+  <circle cx="1022" cy="166" r="2.6" fill="#ef4444"/><circle cx="1022" cy="166" r="9" fill="#ef4444" opacity=".35" filter="url(#glow)"/>
+  <circle cx="1144" cy="196" r="2.4" fill="#f8fafc"/><circle cx="1144" cy="196" r="10" fill="#f8fafc" opacity=".45" filter="url(#glow)"/>
+  <circle cx="1060" cy="250" r="2.2" fill="#22c55e"/>
+
+  <!-- distant skyline -->
+  <g fill="#0a1124" opacity=".9">
+    <path d="M0 600 V540 h40 v-30 h30 v50 h26 v-80 h34 v80 h30 v-46 h40 v46 h22 v-120 h46 v120 h30 v-60 h36 v60 h28 v-36 h40 v36 h30 V600 Z"/>
+  </g>
+  <g opacity=".5"><rect x="230" y="440" width="46" height="120" fill="url(#win)"/><rect x="96" y="480" width="34" height="80" fill="url(#win)"/></g>
+
+  <!-- quay, water reflections -->
+  <rect y="618" width="1600" height="282" fill="url(#water)"/>
+  <g stroke="#f59e0b" stroke-linecap="round" opacity=".35">
+    <path d="M980 650 h60 M1010 664 h90 M1060 680 h50 M1180 656 h70 M1220 672 h40" stroke-width="2"/>
+  </g>
+  <g stroke="#60a5fa" stroke-linecap="round" opacity=".25">
+    <path d="M300 660 h80 M340 676 h40 M520 652 h60" stroke-width="2"/>
+  </g>
+
+  <!-- container yard -->
+  <g>
+    <rect x="560" y="560" width="1040" height="62" fill="#070d1f"/>
+    <g opacity=".95">
+      <rect x="600" y="520" width="78" height="40" fill="#7f1d1d"/><rect x="682" y="520" width="78" height="40" fill="#1e3a8a"/>
+      <rect x="764" y="520" width="78" height="40" fill="#155e75"/><rect x="600" y="480" width="78" height="40" fill="#1e3a8a"/>
+      <rect x="682" y="480" width="78" height="40" fill="#92400e"/><rect x="642" y="440" width="78" height="40" fill="#334155"/>
+      <rect x="880" y="520" width="78" height="40" fill="#334155"/><rect x="962" y="520" width="78" height="40" fill="#7f1d1d"/>
+      <rect x="1044" y="520" width="78" height="40" fill="#1e40af"/><rect x="920" y="480" width="78" height="40" fill="#155e75"/>
+      <rect x="1002" y="480" width="78" height="40" fill="#78350f"/>
+      <rect x="1180" y="520" width="78" height="40" fill="#155e75"/><rect x="1262" y="520" width="78" height="40" fill="#1e3a8a"/>
+      <rect x="1344" y="520" width="78" height="40" fill="#7f1d1d"/><rect x="1426" y="520" width="78" height="40" fill="#334155"/>
+      <rect x="1222" y="480" width="78" height="40" fill="#92400e"/><rect x="1304" y="480" width="78" height="40" fill="#1e40af"/>
+      <rect x="1386" y="480" width="78" height="40" fill="#155e75"/><rect x="1264" y="440" width="78" height="40" fill="#334155"/>
+    </g>
+    <!-- container ribs -->
+    <g stroke="#000" stroke-opacity=".28" stroke-width="2">
+      <path d="M610 440 V560 M622 440 V560 M634 440 V560 M646 440 V560 M658 440 V560 M670 440 V560 M694 480 V560 M706 480 V560 M718 480 V560 M730 480 V560 M742 480 V560 M776 520 V560 M788 520 V560 M800 520 V560 M812 520 V560 M824 520 V560"/>
+      <path d="M892 520 V560 M904 520 V560 M916 520 V560 M932 480 V560 M944 480 V560 M956 480 V560 M974 520 V560 M986 520 V560 M1014 480 V560 M1026 480 V560 M1038 480 V560 M1056 520 V560 M1068 520 V560 M1080 520 V560"/>
+      <path d="M1192 520 V560 M1204 520 V560 M1234 480 V560 M1246 480 V560 M1276 440 V560 M1288 440 V560 M1300 440 V560 M1316 480 V560 M1328 480 V560 M1356 520 V560 M1368 520 V560 M1398 480 V560 M1410 480 V560 M1438 520 V560 M1450 520 V560"/>
+    </g>
+    <!-- gantry cranes -->
+    <g fill="none" stroke="#0b1226" stroke-width="9" stroke-linejoin="round">
+      <path d="M840 618 V330 M900 618 V330 M800 330 H1010 M840 420 H900 M840 470 L900 420"/>
+      <path d="M1450 618 V300 M1510 618 V300 M1390 300 H1600 M1450 400 H1510 M1450 450 L1510 400"/>
+    </g>
+    <g stroke="#0b1226" stroke-width="4"><path d="M960 330 V380 M1560 300 V350"/></g>
+    <circle cx="870" cy="322" r="3" fill="#ef4444"/><circle cx="870" cy="322" r="10" fill="#ef4444" opacity=".35" filter="url(#glow)"/>
+    <circle cx="1480" cy="292" r="3" fill="#ef4444"/><circle cx="1480" cy="292" r="10" fill="#ef4444" opacity=".35" filter="url(#glow)"/>
+    <!-- yard floodlights -->
+    <g fill="#fde68a"><circle cx="760" cy="430" r="3"/><circle cx="1150" cy="420" r="3"/><circle cx="1360" cy="410" r="3"/></g>
+    <g fill="#fde68a" opacity=".25" filter="url(#glow)"><circle cx="760" cy="430" r="16"/><circle cx="1150" cy="420" r="16"/><circle cx="1360" cy="410" r="16"/></g>
+    <g stroke="#0b1226" stroke-width="4"><path d="M760 432 V560 M1150 422 V560 M1360 412 V480"/></g>
+  </g>
+
+  <!-- foreground highway with light trails -->
+  <path d="M0 790 C 400 740, 900 720, 1600 700 L1600 900 L0 900 Z" fill="#030712"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M-20 812 C 420 760, 920 742, 1620 722" stroke="url(#trailW)" stroke-width="3"/>
+    <path d="M-20 824 C 420 772, 920 754, 1620 734" stroke="url(#trailW)" stroke-width="2" opacity=".7"/>
+    <path d="M-20 846 C 420 794, 920 774, 1620 752" stroke="url(#trailR)" stroke-width="3"/>
+    <path d="M-20 858 C 420 806, 920 786, 1620 764" stroke="url(#trailR)" stroke-width="2" opacity=".75"/>
+    <path d="M-20 812 C 420 760, 920 742, 1620 722" stroke="#e0f2fe" stroke-width="10" opacity=".08" filter="url(#glow)"/>
+    <path d="M-20 846 C 420 794, 920 774, 1620 752" stroke="#f87171" stroke-width="10" opacity=".1" filter="url(#glow)"/>
+  </g>
+</svg>

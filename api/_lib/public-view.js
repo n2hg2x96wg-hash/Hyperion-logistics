@@ -49,10 +49,10 @@ export function computeStats(summaries) {
     if (s.archived === true) continue;
     total += 1;
     const code = resolveShipmentStatus(s);
-    // stored (derived-on-write) countries, or derived now for records written before the upgrade
-    const derived = s.originCountry === undefined || s.destinationCountry === undefined ? countryFields(s) : {};
-    const countries = [s.originCountry ?? derived.originCountry, s.destinationCountry ?? derived.destinationCountry,
-      s.currentCountry ?? derived.currentCountry].filter(Boolean);
+    // derived at read time with the current rule (typed place name first, coordinates second), so records whose
+    // stored country came from a mistyped coordinate are counted correctly without rewriting them
+    const derived = countryFields(s);
+    const countries = [derived.originCountry, derived.destinationCountry, derived.currentCountry].filter(Boolean);
     countries.forEach((c) => allCountries.add(c));
     if (isActive(code)) { active += 1; countries.forEach((c) => activeCountries.add(c)); }
     if (IN_TRANSIT_GROUP.includes(code)) inTransit += 1;
@@ -98,7 +98,7 @@ function routeFor(s, now) {
     status: code ? { code, label: statusLabel(code), tone: statusTone(code) } : { code: null, label: "Status unavailable", tone: "neutral" },
     deliveredRecently,
     originLabel: cityLabel(s.origin), destinationLabel: cityLabel(s.destination),
-    originCountry: s.originCountry || null, destinationCountry: s.destinationCountry || null,
+    ...(({ originCountry, destinationCountry }) => ({ originCountry, destinationCountry }))(countryFields(s)),
     origin, destination, current,
     updatedAt: isoOk(s.updatedAt)
   };
