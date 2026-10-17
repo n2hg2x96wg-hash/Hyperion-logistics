@@ -121,3 +121,19 @@ body.console .globe-tools select { width: auto; min-width: 200px; }
   body.console .btn-logout { order: 1; }
   body.console .console-menu { order: 2; flex: none; }
 }
+/* very small phones (320px): let grids and the brand shrink instead of overflowing */
+body.console .logo, body.console .logo-text { min-width: 0; }
+body.console .dash-cols { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+body.console .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+body.console .panel-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+body.console .tool-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+body.console .summary-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+@media (max-width: 360px) { body.console .logo-icon { width: 32px; height: 32px; } body.console .btn-logout { padding: 7px 9px; font-size: 12px; } }
+@media (max-width: 900px) {
+  body.console .sticky-actions { background: rgba(8, 18, 42, 0.96); border-top-color: var(--hy-line); margin: 20px -16px -16px; padding-left: 16px; }
+}
+@media (max-width: 400px) {
+  body.console .logo-text h2 { font-size: 0; }
+  body.console .logo-text h2::after { content: "Admin"; font-size: 15px; }
+  body.console .sticky-actions { padding-right: 76px; }
+}

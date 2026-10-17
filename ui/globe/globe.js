@@ -139,7 +139,8 @@ export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs =
       selected = key; setData();
       const r = routes.find((x) => x.key === key); if (!r) return;
       const p = r.current || r.origin || r.destination;
-      if (p) map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 1.8), duration: reduced ? 0 : 900 });
+      const wide = el.clientWidth > 640;
+      if (p) map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 1.8), duration: reduced ? 0 : 900, offset: wide ? [-150, 0] : [0, -110] });
     },
     resize() { map.resize(); },
     destroy() { destroyed = true; cancelAnimationFrame(raf); io?.disconnect(); try { map.remove(); } catch { /* ignore */ } }
