@@ -85,6 +85,22 @@ export function createMemoryStore(seed = {}) {
       return { total, archived, byStatus, unmigrated };
     },
 
+    // Public homepage: lightweight summaries of every shipment (country/status statistics) and opted-in shipments.
+    async scanShipmentSummaries(limit = 5000) {
+      const keep = ["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt"];
+      return [...shipments.values()].slice(0, limit).map((s) => Object.fromEntries([["id", s.id], ...keep.filter((k) => s[k] !== undefined).map((k) => [k, clone(s[k])])]));
+    },
+    // Full, paged export for backups (shipment documents + their events and location history).
+    async exportPage({ cursor = null, limit = 50 } = {}) {
+      const rows = [...shipments.values()].sort((a, b) => a.id.localeCompare(b.id)).filter((s) => !cursor || s.id > cursor).slice(0, limit);
+      const items = rows.map((s) => ({ id: s.id, data: clone(s),
+        events: [...(events.get(s.id)?.values() || [])].map(clone), locations: [...(locations.get(s.id)?.values() || [])].map(clone) }));
+      return { items, nextCursor: rows.length === limit ? rows[rows.length - 1].id : null };
+    },
+    async listPublicShipments(limit = 100) {
+      return [...shipments.values()].filter((s) => s.publicMap === true).slice(0, limit).map(clone);
+    },
+
     async recentShipments(limit = 8) {
       return [...shipments.values()].map(clone)
         .sort((a, b) => (b.updatedAt || b.createdAt || "").localeCompare(a.updatedAt || a.createdAt || "")).slice(0, limit);

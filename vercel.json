@@ -20,6 +20,15 @@
       ]
     },
     {
+      "source": "/api/public",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
+        }
+      ]
+    },
+    {
       "source": "/",
       "headers": [
         {
@@ -52,6 +61,15 @@
         {
           "key": "Cache-Control",
           "value": "no-store"
+        }
+      ]
+    },
+    {
+      "source": "/assets/geo/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     }

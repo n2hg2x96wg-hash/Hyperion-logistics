@@ -132,6 +132,28 @@ export function createFirestoreStore() {
       return { total, archived, byStatus, unmigrated: Math.max(0, total - archived - migrated) };
     },
 
+    // Public homepage: field-masked scan for statistics (reads only these fields) and opted-in shipments
+    // (single-field equality index, created automatically by Firestore).
+    async scanShipmentSummaries(limit = 5000) {
+      const snap = await shipments.select(...["statusCode", "status", "archived", "originCountry", "destinationCountry", "currentCountry", "origin", "destination", "location", "currentLocation", "originLat", "originLng", "destinationLat", "destinationLng", "latitude", "longitude", "updatedAt", "createdAt", "locationUpdatedAt", "locationSource", "publicMap", "statusUpdatedAt"]).limit(limit).get();
+      return snap.docs.map(stripId);
+    },
+    // Full, paged export for backups (shipment documents + their events and location history). Read-only.
+    async exportPage({ cursor = null, limit = 50 } = {}) {
+      let q = shipments.orderBy(FieldPath.documentId());
+      if (cursor) q = q.startAfter(cursor);
+      const snap = await q.limit(limit).get();
+      const items = await Promise.all(snap.docs.map(async (d) => {
+        const [ev, loc] = await Promise.all([d.ref.collection("events").get(), d.ref.collection("locations").get()]);
+        return { id: d.id, data: stripId(d), events: ev.docs.map(stripId), locations: loc.docs.map(stripId) };
+      }));
+      return { items, nextCursor: snap.size === limit ? snap.docs[snap.size - 1].id : null };
+    },
+    async listPublicShipments(limit = 100) {
+      const snap = await shipments.where("publicMap", "==", true).limit(limit).get();
+      return snap.docs.map(stripId);
+    },
+
     async recentShipments(limit = 8) {
       const q = await shipments.orderBy("updatedAt", "desc").limit(limit).get();
       if (!q.empty) return q.docs.map(stripId);
