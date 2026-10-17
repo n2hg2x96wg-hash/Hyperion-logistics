@@ -115,3 +115,14 @@ test("public pages: one shared header, no Admin or Investments links", () => {
   assert.equal(headers[1], headers[0]);
   assert.equal(headers[2], headers[0]);
 });
+
+test("public statistics count countries from the typed place, not a mistyped coordinate", async () => {
+  const { __clearPublicCache } = await import("../api/public.js");
+  // a record whose stored country was derived from a wrong point before the fix
+  await store.mutateShipment("NIGER-100004", (s) => ({ next: { ...s, originCountry: "NE" } }));
+  __clearPublicCache();
+  const o = await (await fetch(`${base}/api/public?view=overview`)).json();
+  const isos = o.stats.activeCountries.map((c) => c.iso);
+  assert.ok(!isos.includes("NE"), JSON.stringify(o.stats.activeCountries));
+  assert.ok(isos.includes("NG"));
+});
