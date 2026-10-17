@@ -64,7 +64,7 @@ export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs =
     center: [12, 18], zoom: el.clientWidth < 520 ? 1.05 : 1.6, minZoom: 0.6, maxZoom: 6,
     attributionControl: { compact: true }, dragRotate: true, pitchWithRotate: false, cooperativeGestures: false
   });
-  map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
+  map.addControl(new lib.NavigationControl({ showCompass: false }), "top-right");
 
   await new Promise((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("globe style timeout")), timeoutMs);

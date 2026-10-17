@@ -22,7 +22,7 @@ export async function createFlatMap(el, { onSelect } = {}) {
   const map = L.map(el, { zoomControl: false, attributionControl: true, worldCopyJump: false, minZoom: 1, maxZoom: 7,
     zoomSnap: 0.25, preferCanvas: true, maxBounds: [[-75, -260], [85, 260]], scrollWheelZoom: false });
   map.attributionControl.setPrefix(false).addAttribution("Natural Earth");
-  L.control.zoom({ position: "bottomright" }).addTo(map);
+  L.control.zoom({ position: "topright" }).addTo(map);
   L.geoJSON(countries, { interactive: false, style: { color: "#2f4f8f", weight: 0.6, fillColor: "#13254d", fillOpacity: 0.95 } }).addTo(map);
   map.setView([18, 12], el.clientWidth < 520 ? 1 : 1.75);
   map.on("click", () => map.scrollWheelZoom.enable());

@@ -17,7 +17,7 @@
 .cc-map-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--hy-text-2); }
 .cc-overlay { position: absolute; z-index: 5; pointer-events: none; }
 .cc-overlay > * { pointer-events: auto; }
-.cc-top { top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.cc-top { top: 14px; left: 14px; right: 64px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .cc-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; background: rgba(5, 10, 24, 0.72); border: 1px solid var(--hy-line); font-size: 12.5px; color: var(--hy-text-2); backdrop-filter: blur(8px); }
 .cc-badge .live { width: 8px; height: 8px; border-radius: 50%; background: var(--hy-ok); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
 @media (prefers-reduced-motion: no-preference) { .cc-badge .live { animation: cc-pulse 2.4s infinite; } }
