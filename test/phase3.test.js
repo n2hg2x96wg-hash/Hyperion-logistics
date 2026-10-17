@@ -126,3 +126,15 @@ test("public statistics count countries from the typed place, not a mistyped coo
   assert.ok(!isos.includes("NE"), JSON.stringify(o.stats.activeCountries));
   assert.ok(isos.includes("NG"));
 });
+
+test("homepage: freight showcase sits between global activity and carriers, with real actions and no fabricated proof", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const pos = (id) => html.indexOf(`id="${id}"`);
+  assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("carriers"), "section order");
+  const section = html.slice(pos("freight"), pos("carriers"));
+  assert.ok(!/★|rating|review|testimonial|\d+(\.\d+)?\s*\/\s*5|customers|on[- ]time|guarantee/i.test(section), "no ratings, reviews or invented claims");
+  assert.match(section, /href="#services"[^>]*>Explore freight services/);
+  assert.match(section, /href="#trackForm" data-focus-track>Track a shipment/);
+  for (const id of section.match(/href="#(svc-[a-z]+)"/g).map((m) => m.slice(7, -1))) assert.ok(html.includes(`id="${id}"`), `${id} target exists`);
+  assert.ok(fs.existsSync(new URL("../assets/hero/freight-ship.svg", import.meta.url)));
+});

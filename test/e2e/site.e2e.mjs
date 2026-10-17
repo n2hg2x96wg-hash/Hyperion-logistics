@@ -128,6 +128,35 @@ for (const w of WIDTHS) {
   });
 }
 
+for (const w of WIDTHS) {
+  test(`freight showcase at ${w}px: image loads, fits the screen, buttons work`, async () => {
+    const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/index.html`);
+    const sec = page.locator("#freight");
+    await sec.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 });
+    await page.waitForTimeout(700); // reveal transition
+    await shot(page, `freight-${w}`);
+    assert.ok(await noOverflow(page), `overflow at ${w}px`);
+    const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
+    assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("carriers"), order.join(","));
+    for (const b of await page.$$eval("#freight .freight-ctas .btn", (bs) => bs.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.right, r.height]; }))) {
+      assert.ok(b[2] >= 44, "button height"); assert.ok(b[0] >= 0 && b[1] <= w, "button inside the screen");
+    }
+    // headline stays readable: not wider than the screen and not clipped
+    const h = await page.$eval("#freightTitle", (el) => { const r = el.getBoundingClientRect(); return [r.left, r.right]; });
+    assert.ok(h[0] >= 0 && h[1] <= w + 1, `headline ${h}`);
+    await page.click("#freight .freight-ctas .btn-primary");
+    await page.waitForFunction(() => { const r = document.getElementById("services").getBoundingClientRect(); return r.top >= -2 && r.top < 160; }, null, { timeout: 5000 });
+    await sec.scrollIntoViewIfNeeded();
+    await page.click("#freight .freight-ctas .btn-ghost");
+    await page.waitForFunction(() => document.activeElement?.id === "trackingInput", null, { timeout: 5000 });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
+
 test("tracking from the hero shows the shipment and keeps markers inside the map", async () => {
   for (const w of [390, 1280]) {
     const ctx = await newContext({ width: w, height: 900 });

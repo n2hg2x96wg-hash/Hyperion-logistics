@@ -97,7 +97,7 @@
             <p>From a single urgent parcel to full containers, every Hyperion shipment gets the same tracking: recorded milestones, a route map and a single place to check progress.</p></div>
         </div>
         <div class="services" data-reveal-stagger>
-          <article class="service" data-reveal>
+          <article class="service" id="svc-express" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
               <defs><linearGradient id="sa1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8" stop-opacity=".55"/><stop offset="1" stop-color="#0b1a3d" stop-opacity="0"/></linearGradient></defs>
               <rect width="320" height="150" fill="url(#sa1)"/><path d="M0 122h320" stroke="#1e3a8a" stroke-width="2"/>
@@ -110,7 +110,7 @@
             <div class="service-body"><h3>Express Shipping</h3><p>Time-critical parcels and documents through express and postal networks, with each handover recorded.</p>
               <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
           </article>
-          <article class="service" data-reveal>
+          <article class="service" id="svc-air" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
               <defs><linearGradient id="sa2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0ea5e9" stop-opacity=".45"/><stop offset="1" stop-color="#0b1a3d" stop-opacity="0"/></linearGradient></defs>
               <rect width="320" height="150" fill="url(#sa2)"/>
@@ -123,7 +123,7 @@
             <div class="service-body"><h3>Air Freight</h3><p>Air cargo for urgent and high-value consignments, with departure, transit and arrival milestones recorded.</p>
               <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
           </article>
-          <article class="service" data-reveal>
+          <article class="service" id="svc-ocean" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
               <defs><linearGradient id="sa3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2563eb" stop-opacity=".5"/><stop offset="1" stop-color="#0b1a3d" stop-opacity="0"/></linearGradient></defs>
               <rect width="320" height="150" fill="url(#sa3)"/>
@@ -136,7 +136,7 @@
             <div class="service-body"><h3>Ocean Freight</h3><p>Container and consolidated sea freight for larger volumes, tracked port to port as each milestone is confirmed.</p>
               <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
           </article>
-          <article class="service" data-reveal>
+          <article class="service" id="svc-road" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
               <defs><linearGradient id="sa4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f46e5" stop-opacity=".45"/><stop offset="1" stop-color="#0b1a3d" stop-opacity="0"/></linearGradient></defs>
               <rect width="320" height="150" fill="url(#sa4)"/><path d="M0 124h320" stroke="#1e3a8a" stroke-width="2"/>
@@ -215,6 +215,43 @@
           <table class="cc-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Route</th><th scope="col">Status</th><th scope="col">Last update</th></tr></thead>
             <tbody id="ccTable"><tr class="cc-row-empty"><td colspan="4">Loading…</td></tr></tbody></table>
         </div>
+      </div>
+    </section>
+
+    <section class="freight" id="freight" aria-labelledby="freightTitle">
+      <div class="freight-stage">
+        <figure class="freight-media">
+          <img src="assets/hero/freight-ship.svg" width="1600" height="900" loading="lazy" decoding="async" alt="Illustration of a Hyperion container ship at sea at dusk">
+          <figcaption>Illustration</figcaption>
+        </figure>
+        <div class="wrap freight-inner">
+          <div class="freight-copy" data-reveal>
+            <p class="eyebrow">Hyperion Logistics · Global freight</p>
+            <h2 id="freightTitle">Global freight. <span>One clear view.</span></h2>
+            <p class="freight-lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
+            <div class="freight-ctas">
+              <a class="btn btn-primary" href="#services">Explore freight services</a>
+              <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
+            </div>
+          </div>
+          <aside class="freight-panel" aria-labelledby="freightPanelTitle" data-reveal>
+            <h3 id="freightPanelTitle">How freight is tracked at Hyperion</h3>
+            <ol>
+              <li><strong>Milestones recorded</strong><span>Our operations team records each handover as your freight moves.</span></li>
+              <li><strong>One tracking page</strong><span>Follow status, route map and timeline with your tracking number.</span></li>
+              <li><strong>People to ask</strong><span>Questions about a shipment go to our support team by email.</span></li>
+            </ol>
+            <a class="link-arrow" href="/track.html">Open the tracking page</a>
+          </aside>
+        </div>
+      </div>
+      <div class="wrap">
+        <ul class="freight-services" data-reveal-stagger>
+          <li data-reveal><a href="#svc-ocean"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></a></li>
+          <li data-reveal><a href="#svc-air"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></a></li>
+          <li data-reveal><a href="#svc-express"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></a></li>
+          <li data-reveal><a href="#svc-road"><strong>Road &amp; Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></a></li>
+        </ul>
       </div>
     </section>
 
