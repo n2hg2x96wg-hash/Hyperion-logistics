@@ -19,7 +19,7 @@ const PERMISSION = {
   me: "read", logout: "read", stats: "read", list: "read", get: "read", preview: "read", audit: "read", settings: "read",
   create: "write", update: "write", updateLocation: "location", addEvent: "event", setVisibility: "visibility",
   archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate",
-  globalMap: "read", backup: "migrate", backupDone: "migrate",
+  globalMap: "read", locationHealth: "read", backup: "migrate", backupDone: "migrate",
   listCouriers: "read", saveCourier: "couriers", setCourierState: "couriers",
   listClients: "clients", getClient: "clients", saveClient: "clients", setClientStatus: "clients", deleteClient: "clients"
 };
@@ -63,6 +63,7 @@ export default async function handler(req, res) {
       }
       case "logout": return send(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", { clear: true, secure }) });
       case "stats": return send(res, 200, await svc.dashboardStats());
+      case "locationHealth": return send(res, 200, await svc.locationHealth());
       case "list": return send(res, 200, await svc.listShipments(body));
       case "get": return send(res, 200, await svc.getAdminShipment(body.code));
       case "preview": {

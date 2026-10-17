@@ -52,6 +52,9 @@ function popupNode(title, lines) {
   return el;
 }
 const samePt = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
+// Defence in depth (the server already filters): never draw missing, non-numeric or 0,0 points.
+const ll = (p) => (p && typeof p.lat === "number" && typeof p.lng === "number" && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
+  Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180 && !(p.lat === 0 && p.lng === 0) ? [p.lat, p.lng] : null);
 
 /** Creates a map inside `el`. Returns { update(mapData), fit(), destroy() }. Rejects if Leaflet cannot be loaded. */
 export async function createMap(el, { onStatus, interactiveHint = true } = {}) {
@@ -141,10 +144,10 @@ export async function createMap(el, { onStatus, interactiveHint = true } = {}) {
 
   function update(data) {
     if (destroyed || !data) return;
-    const o = data.origin ? [data.origin.lat, data.origin.lng] : null;
-    const d = data.destination ? [data.destination.lat, data.destination.lng] : null;
-    const c = data.current ? [data.current.lat, data.current.lng] : null;
-    const trail = (data.trail || []).map((t) => ({ ...t, ll: [t.lat, t.lng] }));
+    const o = ll(data.origin);
+    const d = ll(data.destination);
+    const c = ll(data.current);
+    const trail = (data.trail || []).map((t) => ({ ...t, ll: ll(t) })).filter((t) => t.ll);
     const pts = [];
 
     placeMarker("origin", o, "hx-m-origin", "Origin", popupNode("Origin", [data.originLabel]));
@@ -183,7 +186,13 @@ export async function createMap(el, { onStatus, interactiveHint = true } = {}) {
   map.invalidateSize();
   setTimeout(() => !destroyed && map.invalidateSize(), 200);
   setTimeout(() => !destroyed && map.invalidateSize(), 600);
-  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => !destroyed && map.invalidateSize()) : null;
+  let sized = el.clientWidth > 0 && el.clientHeight > 0;
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => {
+    if (destroyed) return;
+    map.invalidateSize();
+    // a map created inside a hidden container fitted against 0×0; frame the route again once it is visible
+    if (!sized && el.clientWidth > 0 && el.clientHeight > 0) { sized = true; if (!userMoved) fit(); }
+  }) : null;
   ro?.observe(el);
 
   return {

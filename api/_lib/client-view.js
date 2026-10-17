@@ -7,14 +7,12 @@ import {
   resolveShipmentStatus, resolveVisibility, computeProgress, progressSteps, statusLabel, statusTone,
   locationFreshness, LOCATION_WINDOWS, LOCATION_STATE_LABELS
 } from "../../shared/status.js";
+import { validPoint } from "./geo.js";
 
-const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const isoOrNull = (v) => (typeof v === "string" && Number.isFinite(Date.parse(v)) ? v : null);
 
-function point(lat, lng) {
-  const a = num(lat); const b = num(lng);
-  return a != null && b != null && Math.abs(a) <= 90 && Math.abs(b) <= 180 ? { lat: a, lng: b } : null;
-}
+// (0,0) and non-numeric values are never drawn: they come from empty form fields, not real positions.
+const point = (lat, lng) => validPoint(lat, lng);
 
 /** Freshness windows (env-tunable). "Live" requires a recorded position newer than liveMs. */
 export function locationWindows(env = process.env) {

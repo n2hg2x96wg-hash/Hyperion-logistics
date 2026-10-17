@@ -13,6 +13,7 @@ import {
 import { buildClientView } from "./client-view.js";
 import { notifyEvents } from "./notifications.js";
 import { geocode } from "./geocode.js";
+import { validPoint, coordinateIssue } from "./geo.js";
 import { mergeCarriers, carrierId } from "../../shared/carriers.js";
 
 export class ServiceError extends Error {
@@ -555,7 +556,7 @@ export async function recentAudit({ limit = 100, code } = {}) {
 export async function globalMapData() {
   const store = await getStore();
   const rows = await store.scanShipmentSummaries();
-  const pt = (lat, lng) => (typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0) ? { lat, lng } : null);
+  const pt = validPoint;
   const routes = [];
   for (const s of rows) {
     if (s.archived === true) continue;
@@ -575,6 +576,53 @@ export async function globalMapData() {
   }
   routes.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
   return { routes: routes.slice(0, 500), total: routes.length, generatedAt: new Date().toISOString() };
+}
+
+// ---------- location data check (admin, read-only) ----------
+
+const ISSUE_TEXT = {
+  invalid: "Not a valid coordinate (non-numeric or out of range) — it is not shown on any map.",
+  zero: "Stored as 0,0 — almost always an empty form field. Hidden from maps until corrected.",
+  swapped: "Latitude and longitude look swapped: the swapped point lies in the country typed for this place.",
+  mismatch: "The point is in a different country than the place text says."
+};
+
+/** Lists coordinate problems for review. Changes nothing: fixes go through the normal, audited update actions. */
+export async function locationHealth() {
+  const store = await getStore();
+  const rows = await store.scanShipmentSummaries();
+  const items = []; let checked = 0; let missing = 0;
+  const pairs = [
+    ["origin", "originLat", "originLng", (s) => s.origin],
+    ["destination", "destinationLat", "destinationLng", (s) => s.destination],
+    ["current", "latitude", "longitude", (s) => s.location || s.currentLocation]
+  ];
+  for (const s of rows) {
+    if (s.archived === true) continue;
+    checked++;
+    const code = resolveShipmentStatus(s);
+    const active = code !== STATUS.DELIVERED && code !== STATUS.CANCELLED;
+    let any = false;
+    for (const [field, latKey, lngKey, textOf] of pairs) {
+      const lat = s[latKey]; const lng = s[lngKey];
+      if (validPoint(lat, lng)) any = true;
+      const issue = coordinateIssue(lat, lng, textOf(s));
+      if (!issue) continue;
+      items.push({
+        code: s.id, field, latField: latKey, lngField: lngKey, place: textOf(s) || null,
+        lat: typeof lat === "number" || typeof lat === "string" ? lat : null,
+        lng: typeof lng === "number" || typeof lng === "string" ? lng : null,
+        issue: issue.issue, expectedCountry: issue.expected || null, foundCountry: issue.found || null,
+        message: ISSUE_TEXT[issue.issue],
+        canSwap: issue.issue === "swapped" && typeof lat === "number" && typeof lng === "number",
+        coordsSource: field === "current" ? s.locationSource || null : s[`${field}CoordsSource`] || null
+      });
+    }
+    if (active && !any) missing++;
+  }
+  const order = { swapped: 0, zero: 1, invalid: 2, mismatch: 3 };
+  items.sort((a, b) => order[a.issue] - order[b.issue] || a.code.localeCompare(b.code));
+  return { checked, missingCoordinates: missing, issues: items.slice(0, 300), total: items.length, generatedAt: new Date().toISOString() };
 }
 
 // ---------- backups ----------
