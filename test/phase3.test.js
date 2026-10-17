@@ -131,7 +131,7 @@ test("homepage: freight showcase sits between global activity and carriers, with
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const pos = (id) => html.indexOf(`id="${id}"`);
   assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("carriers"), "section order");
-  const section = html.slice(pos("freight"), pos("carriers"));
+  const section = html.slice(pos("freight"), pos("journey"));
   assert.ok(!/★|rating|review|testimonial|\d+(\.\d+)?\s*\/\s*5|customers|on[- ]time|guarantee/i.test(section), "no ratings, reviews or invented claims");
   assert.match(section, /href="#services"[^>]*>Explore freight services/);
   assert.match(section, /href="#trackForm" data-focus-track>Track a shipment/);
@@ -230,4 +230,20 @@ test("carriers: integration and partnership are separate, evidence-backed states
   assert.equal(r.status, 200);
   assert.equal((await pub()).find((c) => c.id === "dhl").partner, false);
   assert.equal((await admin({ action: "saveCourier", mode: "update", id: "dhl", courier: { ...base0, verifiedPartner: true, partnerEvidence: "x" } }, { auth: false })).status, 401);
+});
+
+test("homepage: logistics journey section follows the freight showcase, with an honest illustrative image", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const pos = (id) => html.indexOf(`id="${id}"`);
+  assert.ok(pos("freight") < pos("journey") && pos("journey") < pos("carriers"), "order: freight → journey → carriers");
+  assert.ok(!html.includes('id="ccStats"') && !html.includes("data-stat="), "statistics block stays hidden");
+  const section = html.slice(pos("journey"), pos("carriers"));
+  const img = section.match(/<img [^>]+>/)[0];
+  assert.match(img, /width="1179" height="638"/); assert.match(img, /loading="lazy"/); assert.match(img, /alt="Illustration:[^"]+"/); assert.match(img, /onerror="/);
+  assert.match(section, /<figcaption>Illustrative image<\/figcaption>/);
+  assert.match(section, /href="#trackForm" data-focus-track/);
+  assert.ok(!/★|rating|review|testimonial|customers|guarantee|\d+\s*%/i.test(section), "no ratings, reviews or invented figures");
+  const refs = [...section.matchAll(/(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(" ")[0]));
+  assert.ok(refs.length >= 10);
+  for (const f of refs) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), `missing ${f}`);
 });

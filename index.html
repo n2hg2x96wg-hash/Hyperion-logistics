@@ -310,6 +310,41 @@
       </div>
     </section>
 
+    <section class="journey" id="journey" aria-labelledby="journeyTitle">
+      <svg class="journey-route" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true" data-reveal="fade">
+        <path d="M-10 96 C 240 96, 360 24, 600 30 S 980 100, 1210 40" pathLength="1"/>
+      </svg>
+      <div class="wrap journey-inner">
+        <figure class="journey-frame" data-reveal="clip">
+          <div class="journey-parallax">
+            <picture class="journey-media">
+              <source media="(max-width: 640px)" type="image/avif" srcset="assets/journey/handover-mobile-600.avif 600w, assets/journey/handover-mobile-851.avif 851w" sizes="100vw">
+              <source media="(max-width: 640px)" type="image/webp" srcset="assets/journey/handover-mobile-600.webp 600w, assets/journey/handover-mobile-851.webp 851w" sizes="100vw">
+              <source media="(max-width: 640px)" srcset="assets/journey/handover-mobile-600.jpg 600w, assets/journey/handover-mobile-851.jpg 851w" sizes="100vw">
+              <source type="image/avif" srcset="assets/journey/handover-720.avif 720w, assets/journey/handover-1179.avif 1179w" sizes="(max-width: 900px) 100vw, 720px">
+              <source type="image/webp" srcset="assets/journey/handover-720.webp 720w, assets/journey/handover-1179.webp 1179w" sizes="(max-width: 900px) 100vw, 720px">
+              <img src="assets/journey/handover-1179.jpg" srcset="assets/journey/handover-720.jpg 720w, assets/journey/handover-1179.jpg 1179w" sizes="(max-width: 900px) 100vw, 720px"
+                width="1179" height="638" loading="lazy" decoding="async"
+                alt="Illustration: a parcel handed over at a delivery van outside a warehouse"
+                onerror="this.closest('figure').classList.add('is-missing');this.closest('picture').remove()">
+            </picture>
+          </div>
+          <figcaption>Illustrative image</figcaption>
+        </figure>
+        <div class="journey-copy" data-reveal-stagger>
+          <p class="eyebrow" data-reveal>The logistics journey</p>
+          <h2 id="journeyTitle" data-reveal>From the warehouse to the doorstep.</h2>
+          <p class="journey-lead" data-reveal>Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
+          <ol class="journey-steps">
+            <li data-reveal><strong>Handled and recorded</strong><span>Each handover is recorded by our operations team.</span></li>
+            <li data-reveal><strong>Followed on one page</strong><span>Status, route map and timeline in one tracking view.</span></li>
+            <li data-reveal><strong>Delivered milestone</strong><span>The final delivery is recorded with its time.</span></li>
+          </ol>
+          <a class="link-arrow" href="#trackForm" data-focus-track data-reveal>Track a shipment</a>
+        </div>
+      </div>
+    </section>
+
     <section class="section alt" id="carriers" aria-labelledby="carriersTitle">
       <div class="wrap">
         <div class="section-head" data-reveal><div><div class="kicker">Carriers</div><h2 id="carriersTitle">Carrier directory</h2>

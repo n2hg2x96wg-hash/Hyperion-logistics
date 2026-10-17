@@ -150,7 +150,7 @@ for (const w of WIDTHS) {
     assert.match(src, w <= 640 ? /assets\/freight\/ship-mobile-\d+\.(avif|webp|jpg)$/ : /assets\/freight\/ship-\d+\.(avif|webp|jpg)$/, src);
     assert.ok(await noOverflow(page), `overflow at ${w}px`);
     const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
-    assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("carriers"), order.join(","));
+    assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("carriers"), order.join(","));
     assert.equal(await page.locator("#ccStats, [data-stat], [data-countries]").count(), 0, "public statistics block is hidden");
     for (const id of ["#ccMap", "#ccFeed", "#ccTable"]) assert.equal(await page.locator(id).count(), 1, `${id} kept`);
     for (const b of await page.$$eval("#freight .freight-ctas .btn", (bs) => bs.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.right, r.height]; }))) {
@@ -183,6 +183,54 @@ test("freight showcase: a photo that fails to load falls back to the illustratio
   // simulate a broken photo even before one is installed: point the image at a blocked file
   await page.$eval("#freight img", (i) => { i.loading = "eager"; i.src = "assets/freight/missing.webp"; });
   await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i.complete && i.naturalWidth > 0 && i.src.endsWith("freight-ship.svg"); }, null, { timeout: 10000 });
+  await ctx.close();
+});
+
+for (const w of WIDTHS) {
+  test(`logistics journey at ${w}px: placement, image, reveal without layout shift, button`, async () => {
+    const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/index.html?map=flat`);
+    const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
+    assert.ok(order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("carriers"), order.join(","));
+    assert.equal(await page.locator("#ccStats, [data-stat]").count(), 0, "statistics block stays hidden");
+    // the frame reserves its size before the lazy image arrives
+    const before = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
+    assert.ok(before > 100, "image box reserved before load");
+    await page.locator("#journey").scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, 100));
+    await page.waitForFunction(() => { const i = document.querySelector("#journey img"); return i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelector(".journey-frame").classList.contains("is-visible"), null, { timeout: 5000 });
+    await page.waitForTimeout(1600);
+    const after = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
+    assert.ok(Math.abs(after - before) < 1, `layout shift: ${before} → ${after}`);
+    const st = await page.$eval(".journey-frame", (f) => ({ op: getComputedStyle(f).opacity, src: f.querySelector("img").currentSrc }));
+    assert.equal(st.op, "1");
+    assert.match(st.src, w <= 640 ? /assets\/journey\/handover-mobile-\d+\.(avif|webp|jpg)$/ : /assets\/journey\/handover-\d+\.(avif|webp|jpg)$/, st.src);
+    assert.ok(await noOverflow(page), `overflow at ${w}px`);
+    await shot(page, `journey-${w}`);
+    await page.click("#journey .link-arrow");
+    await page.waitForFunction(() => document.activeElement?.id === "trackingInput", null, { timeout: 5000 });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
+
+test("logistics journey: reduced motion shows everything at once; a failed image leaves a clean panel", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|cdn\.jsdelivr\.net/, (r) => r.abort());
+  await ctx.route(/\/assets\/journey\//, (r) => r.abort());
+  const page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  const st = await page.$eval(".journey-frame", (f) => { const cs = getComputedStyle(f); return { op: cs.opacity, clip: cs.clipPath, anim: getComputedStyle(f.querySelector(".journey-parallax")).animationName }; });
+  assert.equal(st.op, "1"); assert.equal(st.clip, "none"); assert.equal(st.anim, "none");
+  assert.equal(await page.$eval("#journeyTitle", (h) => getComputedStyle(h).opacity), "1", "text visible without scrolling");
+  await page.locator("#journey").scrollIntoViewIfNeeded();
+  await page.$eval("#journey img", (i) => { i.loading = "eager"; });
+  await page.waitForFunction(() => document.querySelector(".journey-frame").classList.contains("is-missing"), null, { timeout: 10000 });
+  assert.equal(await page.locator("#journey img").count(), 0, "broken image removed");
+  const h = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
+  assert.ok(h > 100, "panel keeps its size");
   await ctx.close();
 });
 
