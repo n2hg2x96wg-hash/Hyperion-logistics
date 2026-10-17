@@ -156,6 +156,12 @@ for (const w of WIDTHS) {
     // headline stays readable: not wider than the screen and not clipped
     const h = await page.$eval("#freightTitle", (el) => { const r = el.getBoundingClientRect(); return [r.left, r.right]; });
     assert.ok(h[0] >= 0 && h[1] <= w + 1, `headline ${h}`);
+    // the two buttons don't overlap; service cards in a row share one height
+    const bx = await page.$$eval("#freight .freight-ctas .btn", (bs) => bs.map((x) => x.getBoundingClientRect()).map((r) => ({ l: r.left, r: r.right, t: r.top, b: r.bottom })));
+    assert.ok(bx[0].r <= bx[1].l + 1 || bx[0].b <= bx[1].t + 1, "buttons overlap");
+    const rows = await page.$$eval("#freight .freight-card", (cs) => cs.map((c) => c.getBoundingClientRect()).map((r) => [Math.round(r.top), Math.round(r.height)]));
+    assert.equal(rows.length, 4);
+    for (const [top, h] of rows) for (const [t2, h2] of rows) if (Math.abs(top - t2) < 2) assert.ok(Math.abs(h - h2) < 2, `card heights differ: ${h} vs ${h2}`);
     await page.click("#freight .freight-ctas .btn-primary");
     await page.waitForFunction(() => { const r = document.getElementById("services").getBoundingClientRect(); return r.top >= -2 && r.top < 160; }, null, { timeout: 5000 });
     await sec.scrollIntoViewIfNeeded();
@@ -165,6 +171,17 @@ for (const w of WIDTHS) {
     await ctx.close();
   });
 }
+
+test("freight showcase: a photo that fails to load falls back to the illustration", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.route(/\/assets\/freight\//, (r) => r.abort());
+  const page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  // simulate a broken photo even before one is installed: point the image at a blocked file
+  await page.$eval("#freight img", (i) => { i.loading = "eager"; i.src = "assets/freight/missing.webp"; });
+  await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i.complete && i.naturalWidth > 0 && i.src.endsWith("freight-ship.svg"); }, null, { timeout: 10000 });
+  await ctx.close();
+});
 
 test("tracking from the hero shows the shipment and keeps markers inside the map", async () => {
   for (const w of [390, 1280]) {

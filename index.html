@@ -263,37 +263,43 @@
 
     <section class="freight" id="freight" aria-labelledby="freightTitle">
       <div class="freight-stage">
-        <figure class="freight-media">
-          <img src="assets/hero/freight-ship.svg" width="1600" height="900" loading="lazy" decoding="async" alt="Illustration of a Hyperion container ship at sea at dusk">
-          <figcaption>Illustration</figcaption>
-        </figure>
+        <!-- Photo slot: when the licensed photo is added, <source> elements go here (see assets/freight/README.md).
+             If an image fails to load, the original illustration is shown instead. -->
+        <picture class="freight-media" data-kind="illustration">
+          <img src="assets/hero/freight-ship.svg" width="1600" height="900" loading="lazy" decoding="async"
+            alt="Container ship loaded with stacked containers at sea at dusk"
+            onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.src='assets/hero/freight-ship.svg'}">
+        </picture>
         <div class="wrap freight-inner">
           <div class="freight-copy" data-reveal>
             <p class="eyebrow">Hyperion Logistics · Global freight</p>
             <h2 id="freightTitle">Global freight. <span>One clear view.</span></h2>
             <p class="freight-lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
             <div class="freight-ctas">
-              <a class="btn btn-primary" href="#services">Explore freight services</a>
+              <a class="btn btn-primary" href="#services">Explore freight services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
               <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
             </div>
           </div>
-          <aside class="freight-panel" aria-labelledby="freightPanelTitle" data-reveal>
-            <h3 id="freightPanelTitle">How freight is tracked at Hyperion</h3>
-            <ol>
-              <li><strong>Milestones recorded</strong><span>Our operations team records each handover as your freight moves.</span></li>
-              <li><strong>One tracking page</strong><span>Follow status, route map and timeline with your tracking number.</span></li>
-              <li><strong>People to ask</strong><span>Questions about a shipment go to our support team by email.</span></li>
-            </ol>
-            <a class="link-arrow" href="/track.html">Open the tracking page</a>
-          </aside>
         </div>
       </div>
       <div class="wrap">
-        <ul class="freight-services" data-reveal-stagger>
-          <li data-reveal><a href="#svc-ocean"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></a></li>
-          <li data-reveal><a href="#svc-air"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></a></li>
-          <li data-reveal><a href="#svc-express"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></a></li>
-          <li data-reveal><a href="#svc-road"><strong>Road &amp; Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></a></li>
+        <ul class="freight-services" data-reveal-stagger aria-label="Freight services">
+          <li data-reveal><a href="#svc-ocean" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/><path d="M5 14 4 10h16l-1 4"/><path d="M8 10V6h4v4M12 7h4v3"/></svg></span>
+            <span class="fc-text"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-air" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z"/></svg></span>
+            <span class="fc-text"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-express" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M1 10h4M1 13h3"/></svg></span>
+            <span class="fc-text"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-road" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6M9 11h6"/></svg></span>
+            <span class="fc-text"><strong>Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
         </ul>
       </div>
     </section>

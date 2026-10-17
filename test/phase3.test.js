@@ -137,6 +137,15 @@ test("homepage: freight showcase sits between global activity and carriers, with
   assert.match(section, /href="#trackForm" data-focus-track>Track a shipment/);
   for (const id of section.match(/href="#(svc-[a-z]+)"/g).map((m) => m.slice(7, -1))) assert.ok(html.includes(`id="${id}"`), `${id} target exists`);
   assert.ok(fs.existsSync(new URL("../assets/hero/freight-ship.svg", import.meta.url)));
+  // image: reserved size, alt text, fallback to an existing file, every referenced file exists
+  const img = section.match(/<img [^>]+>/)[0];
+  assert.match(img, /width="\d+" height="\d+"/); assert.match(img, /alt="[^"]{20,}"/); assert.match(img, /loading="lazy"/);
+  assert.match(img, /onerror="[^"]*assets\/hero\/freight-ship\.svg/);
+  const refs = [...section.matchAll(/(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1].split(",").map((x) => x.trim().split(" ")[0]));
+  for (const f of refs) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), `missing ${f}`);
+  // four compact service cards, each linking to an existing service
+  const cards = section.match(/class="freight-card"/g) || [];
+  assert.equal(cards.length, 4);
 });
 
 test("homepage: public statistics block hidden (presentation only); map, feed and table kept; API still computes stats", async () => {
