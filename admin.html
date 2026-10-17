@@ -758,8 +758,11 @@
     c.src='https://www.smartsuppchat.com/loader.js?';s.parentNode.insertBefore(c,s);
   })(document);
   </script>
+  <link rel="stylesheet" href="ui/tokens.css">
+  <link rel="stylesheet" href="ui/command-center.css">
+  <link rel="stylesheet" href="admin/console.css">
 </head>
-<body>
+<body class="console">
   <div class="login-overlay" id="loginOverlay">
     <form class="login-box" id="loginForm" autocomplete="off">
       <h2>Hyperion Admin</h2>
@@ -782,22 +785,29 @@
               <p>Logistics operations &amp; shipment management</p>
             </div>
           </div>
-          <div class="breadcrumb">Dashboard > <span id="breadcrumb-view">Dashboard</span> · <span id="whoami">--</span></div>
+          <div class="breadcrumb">Admin › <span id="breadcrumb-view">Dashboard</span> · <span id="whoami">--</span></div>
         </div>
+        <button class="console-menu" type="button" id="consoleMenu" aria-expanded="false" aria-controls="consoleNav" aria-label="Open navigation">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
         <button class="btn-logout" onclick="logout()">Logout</button>
       </div>
 
-      <div class="view-toggle" role="tablist">
-        <button class="toggle-btn active" id="btn-dashboard" onclick="switchView('dashboard')">📊 Dashboard</button>
-        <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">📋 Shipments</button>
-        <button class="toggle-btn" id="btn-create" onclick="switchView('create')">➕ Create Shipment</button>
-        <button class="toggle-btn" id="btn-tracking" onclick="switchView('tracking')">📍 Live Tracking</button>
-        <button class="toggle-btn" id="btn-events" onclick="switchView('events')">🧾 Tracking Events</button>
-        <button class="toggle-btn" id="btn-preview" onclick="switchView('preview')">👁️ Client View</button>
-        <button class="toggle-btn" id="btn-audit" onclick="switchView('audit')">🛡️ Activity Logs</button>
-        <button class="toggle-btn" id="btn-couriers" onclick="switchView('couriers')">🚚 Manage Couriers</button>
-        <button class="toggle-btn" id="btn-clients" onclick="switchView('clients')">👥 Clients</button>
-        <button class="toggle-btn" id="btn-settings" onclick="switchView('settings')">⚙️ Settings</button>
+      <div class="view-toggle" role="tablist" id="consoleNav" aria-label="Admin sections">
+        <div class="nav-section">Operations</div>
+        <button class="toggle-btn active" id="btn-dashboard" onclick="switchView('dashboard')">Overview</button>
+        <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">Shipments</button>
+        <button class="toggle-btn" id="btn-create" onclick="switchView('create')">Create Shipment</button>
+        <button class="toggle-btn" id="btn-globe" onclick="switchView('globe')">Global Tracking</button>
+        <button class="toggle-btn" id="btn-tracking" onclick="switchView('tracking')">Live Tracking</button>
+        <button class="toggle-btn" id="btn-events" onclick="switchView('events')">Tracking Events</button>
+        <div class="nav-section">Directory</div>
+        <button class="toggle-btn" id="btn-couriers" onclick="switchView('couriers')">Carriers</button>
+        <button class="toggle-btn" id="btn-clients" onclick="switchView('clients')">Clients</button>
+        <div class="nav-section">Review</div>
+        <button class="toggle-btn" id="btn-preview" onclick="switchView('preview')">Client View</button>
+        <button class="toggle-btn" id="btn-audit" onclick="switchView('audit')">Activity Logs</button>
+        <button class="toggle-btn" id="btn-settings" onclick="switchView('settings')">Settings &amp; Backup</button>
       </div>
     </div>
 
@@ -816,7 +826,7 @@
           <h3>Operations Dashboard</h3>
           <p>Live figures from the shipment database · <span id="lastUpdated">--</span></p>
         </div>
-        <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><button class="btn-action" id="migrateBtn" type="button">Run data migration</button></div>
+        <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-action" id="bannerBackupBtn" type="button">1. Download full backup</button><button class="btn-action" id="migrateBtn" type="button" disabled title="Download a full backup first">2. Run data migration</button></span></div>
         <div class="kpi-grid" id="kpiGrid" data-reveal-stagger></div>
         <div class="dash-cols" data-reveal>
           <div>
@@ -967,6 +977,29 @@
         <div class="tool-actions" style="margin-top:14px;"><button class="btn btn-reset inline hidden" type="button" id="loadMore">Load more</button></div>
       </div>
 
+      <!-- Global Tracking -->
+      <div class="shipments-card" id="view-globe">
+        <div class="card-header">
+          <h3>Global Tracking</h3>
+          <p>All active shipments with known coordinates. Solid lines run to the last recorded position; dashed lines are planned routes, not GPS tracks. Select a route to open it.</p>
+        </div>
+        <div class="globe-tools">
+          <select id="globeFilter" aria-label="Filter by status"><option value="">All active statuses</option></select>
+          <label style="display:flex;align-items:center;gap:6px;margin:0;text-transform:none;letter-spacing:0"><input type="checkbox" id="globePublicOnly"> Only shipments shown on the homepage</label>
+          <button class="btn-action" type="button" id="globeRefresh">Refresh</button>
+        </div>
+        <div class="globe-layout">
+          <div class="cc-stage">
+            <div class="cc-map" id="globeMap" role="region" aria-label="Map of active shipments"></div>
+            <div class="cc-empty-note">No active shipments have coordinates yet. Add route points or a location in Live Tracking.</div>
+            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="globeStatus">Loading…</span></span></div>
+            <div class="cc-overlay cc-legend"><span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span><span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span></div>
+            <div class="cc-card" id="globeCard" hidden></div>
+          </div>
+          <div class="cc-feed-wrap"><div class="cc-feed-head"><h3>Active routes</h3></div><ul class="cc-feed" id="globeFeed"></ul></div>
+        </div>
+      </div>
+
       <!-- Live Tracking -->
       <div class="shipments-card" id="view-tracking">
         <div class="card-header">
@@ -1038,6 +1071,10 @@
             <form class="panel" id="visForm" style="grid-column:1/-1;">
               <h4>Client visibility</h4>
               <div class="vis-grid" id="visGrid"></div>
+              <div class="banner info" style="margin:6px 0 12px;display:block">
+                <label class="check-row" style="margin:0;text-transform:none;letter-spacing:0"><input type="checkbox" id="publicMapInput"> <strong>Show on public homepage</strong></label>
+                <small style="display:block;margin-top:6px">Off by default. When on, the homepage globe and activity feed show this route as a masked code (e.g. HY-12••56), city-level origin/destination, status and recent event titles. Never shown: full tracking number, client details, notes, addresses or fees. The position marker also respects "Show current location".</small>
+              </div>
               <button class="btn btn-primary inline" type="submit">Save visibility</button>
               <p class="hint">Enforced by the server: hidden data is never sent to the client browser. Use “Client View” to verify.</p>
             </form>
@@ -1092,6 +1129,11 @@
       <!-- Settings -->
       <div class="shipments-card" id="view-settings">
         <div class="card-header"><h3>Settings &amp; Integrations</h3><p>Read-only view of server configuration. Secrets are never displayed.</p></div>
+        <div class="panel" id="backupPanel" style="margin-bottom:18px">
+          <h4>Backup</h4>
+          <p class="hint">Downloads every shipment with its tracking events and location history, plus carriers, as one JSON file with a SHA-256 checksum. Read-only: nothing is changed. Required before running a data migration (valid for 2 hours).</p>
+          <div class="tool-actions" style="margin:10px 0 0"><button class="btn btn-primary inline" type="button" id="backupBtn">Download full backup</button><span class="hint" id="backupStatus"></span></div>
+        </div>
         <div id="settingsBody"></div>
       </div>
 
@@ -1241,6 +1283,24 @@
             </select>
           </div>
           <div class="form-group">
+            <label for="courierCategoryInput">Category</label>
+            <select id="courierCategoryInput">
+              <option value="express">Express &amp; Parcel</option>
+              <option value="ocean">Ocean Freight</option>
+              <option value="regional">Regional Logistics</option>
+              <option value="custom">Custom Transport</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="courierDescriptionInput">Public description</label>
+            <input id="courierDescriptionInput" type="text" maxlength="200" placeholder="Short factual description shown in the carrier directory">
+          </div>
+          <div class="form-group">
+            <label for="courierCoverageInput">Coverage</label>
+            <input id="courierCoverageInput" type="text" maxlength="80" placeholder="e.g., Nigeria, or Global ocean routes">
+            <small class="field-hint">Only what the carrier publishes. Leave empty if unsure.</small>
+          </div>
+          <div class="form-group">
             <label for="courierRegionInput">Country / region</label>
             <input id="courierRegionInput" type="text" placeholder="e.g., Philippines" maxlength="60">
           </div>
@@ -1263,7 +1323,8 @@
           </div>
           <div class="form-group">
             <label for="courierLogoInput">Logo / badge</label>
-            <input id="courierLogoInput" type="text" placeholder="🚚 or https:// image">
+            <input id="courierLogoInput" type="text" placeholder="🚚 or https:// image of an approved logo">
+            <small class="field-hint">The public directory shows a wordmark unless an https logo you are licensed to use is set.</small>
           </div>
           <div class="form-group">
             <label for="courierBrandColorInput">Brand color</label>
@@ -1471,7 +1532,8 @@
     const CF = {
       id: "courierIdInput", name: "courierNameInput", prefix: "courierPrefixInput", type: "courierTypeInput", region: "courierRegionInput",
       phone: "courierPhoneInput", email: "courierEmailInput", website: "courierWebsiteInput", trackingUrl: "courierTrackingUrlInput",
-      logo: "courierLogoInput", brandColor: "courierBrandColorInput", apiEndpoint: "courierApiEndpointInput"
+      logo: "courierLogoInput", brandColor: "courierBrandColorInput", apiEndpoint: "courierApiEndpointInput",
+      category: "courierCategoryInput", description: "courierDescriptionInput", coverage: "courierCoverageInput"
     };
     const $c = (k) => document.getElementById(CF[k]);
     function courierFormError(message, field) {
@@ -1504,6 +1566,7 @@
       courierFormError("");
       for (const k of Object.keys(CF)) $c(k).value = courier[k] && courier[k] !== "--" ? courier[k] : "";
       $c("type").value = courier.type === "custom" ? "custom" : "carrier";
+      $c("category").value = courier.category || (courier.type === "custom" ? "custom" : "express");
       $c("id").readOnly = true;
       document.getElementById("courierIdHint").textContent = "The ID is permanent because existing shipments refer to it.";
       document.getElementById("courierActiveInput").checked = courier.active !== false && !courier.archived;

@@ -19,6 +19,7 @@ const PERMISSION = {
   me: "read", logout: "read", stats: "read", list: "read", get: "read", preview: "read", audit: "read", settings: "read",
   create: "write", update: "write", updateLocation: "location", addEvent: "event", setVisibility: "visibility",
   archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate",
+  globalMap: "read", backup: "migrate", backupDone: "migrate",
   listCouriers: "read", saveCourier: "couriers", setCourierState: "couriers",
   listClients: "clients", getClient: "clients", saveClient: "clients", setClientStatus: "clients", deleteClient: "clients"
 };
@@ -75,6 +76,7 @@ export default async function handler(req, res) {
       case "update": {
         const patch = { ...(body.changes || {}) };
         if (patch.visibility && !can(identity.role, "visibility")) delete patch.visibility;
+        if ("publicMap" in patch && !can(identity.role, "visibility")) delete patch.publicMap;
         return send(res, 200, await svc.updateShipment(identity, body.code, patch));
       }
       case "updateLocation": return send(res, 200, await svc.updateLocation(identity, body.code, body));
@@ -83,7 +85,12 @@ export default async function handler(req, res) {
       case "archive": return send(res, 200, { changed: await svc.setArchived(identity, body.code, true) });
       case "unarchive": return send(res, 200, { changed: await svc.setArchived(identity, body.code, false) });
       case "delete": await svc.deleteShipment(identity, body.code); return send(res, 200, { ok: true });
-      case "migrate": return send(res, 200, await svc.runBackfill(identity, { cursor: body.cursor || null }));
+      case "migrate":
+        if (!body.cursor) await svc.assertRecentBackup(identity); // first page only; later pages continue the same run
+        return send(res, 200, await svc.runBackfill(identity, { cursor: body.cursor || null }));
+      case "globalMap": return send(res, 200, await svc.globalMapData());
+      case "backup": return send(res, 200, await svc.backupPage(identity, { cursor: body.cursor || null }));
+      case "backupDone": return send(res, 200, await svc.recordBackup(identity, body));
       case "listCouriers": return send(res, 200, { couriers: await couriers.listCouriers() });
       case "saveCourier": return send(res, 200, await couriers.saveCourier(identity, body));
       case "setCourierState": return send(res, 200, await couriers.setCourierState(identity, body));

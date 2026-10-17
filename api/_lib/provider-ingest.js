@@ -1,6 +1,7 @@
 // Applies normalized provider updates through the same service path as admin edits.
 import { updateShipment, ServiceError } from "./service.js";
 import { ValidationError } from "./validate.js";
+import { markProviderUpdate } from "./couriers.js";
 
 export async function ingestProviderUpdates(adapter, updates) {
   const results = [];
@@ -23,5 +24,6 @@ export async function ingestProviderUpdates(adapter, updates) {
       results.push({ trackingCode: String(u?.trackingCode), ok: false, error: known ? err.message : "internal_error" });
     }
   }
+  if (results.some((r) => r.ok)) await markProviderUpdate(adapter.id).catch(() => {});
   return results;
 }

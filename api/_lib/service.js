@@ -2,7 +2,7 @@
 // integration all go through here, so status rules, event generation, audit logging and de-duplication
 // live in exactly one place.
 import crypto from "node:crypto";
-import { getStore, derivedFields } from "./store/index.js";
+import { getStore, derivedFields, countryFields } from "./store/index.js";
 import {
   STATUS, STATUS_META, MANUAL_SOURCES, EXCEPTION_TYPES, resolveShipmentStatus, resolveVisibility, VISIBILITY_KEYS, normalizeStatus
 } from "../../shared/status.js";
@@ -62,6 +62,10 @@ export function parsePatch(input = {}) {
   if (!!p.etaWindowStart !== !!p.etaWindowEnd && ("etaWindowStart" in p) && ("etaWindowEnd" in p)) throw new ValidationError("Provide both ETA window start and end", "etaWindowStart");
   if ("package" in input) p.package = parsePackage(input.package);
   if ("visibility" in input) p.visibility = parseVisibility(input.visibility);
+  if ("publicMap" in input) {
+    if (typeof input.publicMap !== "boolean") throw new ValidationError("publicMap must be true or false", "publicMap");
+    p.publicMap = input.publicMap;
+  }
   if ("exception" in input) {
     const ex = input.exception;
     p.exception = ex == null ? null : {
@@ -120,6 +124,13 @@ export function computeChange(current, patch, ctx) {
       visibilityChange = Object.fromEntries(VISIBILITY_KEYS.filter((k) => before[k] !== after[k]).map((k) => [k, { from: before[k], to: after[k] }]));
     } else if (creating) next.visibility = after;
   } else if (creating) next.visibility = resolveVisibility(null);
+
+  // public homepage opt-in (off unless explicitly enabled)
+  let publicChange = null;
+  if ("publicMap" in patch && patch.publicMap !== (prev.publicMap === true)) {
+    next.publicMap = patch.publicMap;
+    if (!creating || patch.publicMap) publicChange = { from: prev.publicMap === true, to: patch.publicMap };
+  }
 
   // location group
   const locChanged = ("location" in patch && (patch.location || "") !== (prev.location || "")) ||
@@ -209,6 +220,7 @@ export function computeChange(current, patch, ctx) {
   if (locChanged && !creating) audit.push({ ...base, action: "location.changed", previous: { location: prev.location || null, latitude: prev.latitude ?? null, longitude: prev.longitude ?? null }, next: { location: next.location || null, latitude: next.latitude ?? null, longitude: next.longitude ?? null, source: next.locationSource || null } });
   if (visibilityChange) audit.push({ ...base, action: "visibility.changed", previous: Object.fromEntries(Object.entries(visibilityChange).map(([k, v]) => [k, v.from])), next: Object.fromEntries(Object.entries(visibilityChange).map(([k, v]) => [k, v.to])) });
   if (exceptionChange) audit.push({ ...base, action: exceptionChange.to ? "exception.recorded" : "exception.cleared", previous: { exception: exceptionChange.from }, next: { exception: exceptionChange.to } });
+  if (publicChange) audit.push({ ...base, action: "publicmap.changed", previous: { publicMap: publicChange.from }, next: { publicMap: publicChange.to } });
 
   const nothingChanged = !creating && !events.length && !locations.length && !audit.length &&
     !("statusCode" in patch && patch.statusCode !== prevStatus);
@@ -432,6 +444,9 @@ export async function runBackfill(identity, { cursor = null, limit = 200 } = {})
     if (s.origin && s.originLower == null) patch.originLower = String(s.origin).toLowerCase();
     if (s.clientRef && s.clientRefLower == null) patch.clientRefLower = String(s.clientRef).toLowerCase();
     if (s.latitude != null && !s.locationUpdatedAt) patch.locationUpdatedAt = s.updatedAt || s.createdAt || now;
+    // derived countries (only filled when missing; values come from recorded coordinates or place text)
+    const countries = countryFields({ ...s, ...patch });
+    for (const [k, v] of Object.entries(countries)) if (s[k] === undefined && v) patch[k] = v;
     return Object.keys(patch).length ? patch : null;
   } });
   return page;
@@ -523,7 +538,7 @@ export async function listShipments(filters) {
     items: page.items.map((s) => ({
       id: s.id, statusCode: resolveShipmentStatus(s), status: s.status, courier: s.courier || null, origin: s.origin || null,
       destination: s.destination || null, location: s.location || s.currentLocation || null, clientRef: s.clientRef || null,
-      archived: s.archived === true, updatedAt: s.updatedAt || s.createdAt || null, hasCoordinates: typeof s.latitude === "number" && typeof s.longitude === "number"
+      archived: s.archived === true, publicMap: s.publicMap === true, updatedAt: s.updatedAt || s.createdAt || null, hasCoordinates: typeof s.latitude === "number" && typeof s.longitude === "number"
     })),
     nextCursor: page.nextCursor
   };
@@ -532,4 +547,63 @@ export async function listShipments(filters) {
 export async function recentAudit({ limit = 100, code } = {}) {
   const store = await getStore();
   return store.listAudit({ limit: Math.min(limit, 200), code: code ? normalizeTrackingCode(code) || undefined : undefined });
+}
+
+// ---------- global tracking (admin) ----------
+
+/** All non-archived active shipments that have at least one recorded/known coordinate. Admin-only (unmasked). */
+export async function globalMapData() {
+  const store = await getStore();
+  const rows = await store.scanShipmentSummaries();
+  const pt = (lat, lng) => (typeof lat === "number" && typeof lng === "number" && !(lat === 0 && lng === 0) ? { lat, lng } : null);
+  const routes = [];
+  for (const s of rows) {
+    if (s.archived === true) continue;
+    const code = resolveShipmentStatus(s);
+    if (code === STATUS.DELIVERED || code === STATUS.CANCELLED) continue;
+    const origin = pt(s.originLat, s.originLng); const destination = pt(s.destinationLat, s.destinationLng);
+    const current = pt(s.latitude, s.longitude); // admin view: legacy positions may have no recorded time (shown as such)
+    if (!origin && !destination && !current) continue;
+    routes.push({
+      ref: s.id, key: s.id, publicMap: s.publicMap === true,
+      status: code ? { code, label: STATUS_META[code].label, tone: STATUS_META[code].tone } : { code: null, label: "Unknown", tone: "neutral" },
+      originLabel: s.origin || null, destinationLabel: s.destination || null,
+      origin, destination,
+      current: current ? { ...current, place: s.location || s.currentLocation || null, recordedAt: s.locationUpdatedAt || null, source: s.locationSource || "admin" } : null,
+      updatedAt: s.updatedAt || s.createdAt || null
+    });
+  }
+  routes.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+  return { routes: routes.slice(0, 500), total: routes.length, generatedAt: new Date().toISOString() };
+}
+
+// ---------- backups ----------
+
+const BACKUP_VALID_MS = 2 * 3600 * 1000;
+
+/** One page of a full, read-only backup. The first page also carries couriers. */
+export async function backupPage(identity, { cursor = null } = {}) {
+  const store = await getStore();
+  const page = await store.exportPage({ cursor, limit: 40 });
+  const extra = cursor ? {} : { couriers: await store.listCouriers(), startedAt: new Date().toISOString(), format: "hyperion-backup-v1" };
+  return { ...extra, ...page };
+}
+
+/** Records that the admin downloaded a complete backup (counts + checksum computed by the browser). */
+export async function recordBackup(identity, { shipments, events, locations, checksum } = {}) {
+  const n = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+  if (n(shipments) == null || !/^[a-f0-9]{64}$/.test(String(checksum || ""))) throw new ValidationError("Backup summary is incomplete.", "checksum");
+  const store = await getStore();
+  const at = new Date().toISOString();
+  await store.addAuditEntry({ at, actor: identity.sub, role: identity.role, via: identity.via || "admin", shipment: null,
+    action: "backup.created", previous: null, next: { shipments: n(shipments), events: n(events), locations: n(locations), checksum } });
+  return { ok: true, at };
+}
+
+/** Migration is only allowed after the same admin recorded a backup in the last 2 hours. */
+export async function assertRecentBackup(identity) {
+  const store = await getStore();
+  const recent = await store.listAudit({ limit: 200 });
+  const ok = recent.some((a) => a.action === "backup.created" && a.actor === identity.sub && Date.now() - Date.parse(a.at) < BACKUP_VALID_MS);
+  if (!ok) throw new ServiceError("backup_required", "Download a full backup first (Settings → Download full backup). Migration is enabled for 2 hours after a backup.", 409);
 }

@@ -1,0 +1,24 @@
+/* Hyperion design tokens: deep navy surfaces, electric-blue accents, restrained glass. Shared by the public
+   pages, the tracker and the admin console. Components read these variables; nothing here animates. */
+:root {
+  --hy-bg-0: #050a18;          /* page background (deepest) */
+  --hy-bg-1: #08122a;          /* sections */
+  --hy-bg-2: #0d1a3a;          /* raised surfaces */
+  --hy-surface: rgba(16, 30, 64, 0.62);
+  --hy-surface-strong: rgba(18, 34, 72, 0.86);
+  --hy-line: rgba(120, 150, 210, 0.16);
+  --hy-line-strong: rgba(120, 160, 230, 0.28);
+  --hy-text: #e6ecf8;
+  --hy-text-2: #b6c3dc;
+  --hy-muted: #8394b4;
+  --hy-blue: #3b82f6;
+  --hy-blue-2: #60a5fa;
+  --hy-cyan: #38bdf8;
+  --hy-glow: 0 0 0 1px rgba(96, 165, 250, 0.25), 0 10px 40px rgba(37, 99, 235, 0.25);
+  --hy-ok: #34d399; --hy-warn: #fbbf24; --hy-bad: #f87171; --hy-info: #60a5fa;
+  --hy-radius-s: 10px; --hy-radius: 16px; --hy-radius-l: 22px;
+  --hy-shadow: 0 18px 50px rgba(2, 6, 23, 0.55);
+  --hy-font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --hy-nav-h: 64px;
+  color-scheme: dark;
+}

@@ -22,6 +22,22 @@ before(async () => {
 });
 after(() => server.close());
 
+/** Downloads a full backup through the admin API (as the admin page does) and records it. */
+async function takeBackup() {
+  let cursor = null; const items = []; let couriers = null;
+  do {
+    const page = (await admin({ action: "backup", cursor })).json;
+    assert.ok(Array.isArray(page.items), JSON.stringify(page));
+    if (!cursor) couriers = page.couriers;
+    items.push(...page.items); cursor = page.nextCursor;
+  } while (cursor);
+  const checksum = crypto.createHash("sha256").update(JSON.stringify(items)).digest("hex");
+  const done = await admin({ action: "backupDone", shipments: items.length, events: items.reduce((a, i) => a + i.events.length, 0),
+    locations: items.reduce((a, i) => a + i.locations.length, 0), checksum });
+  assert.equal(done.status, 200, JSON.stringify(done.json));
+  return { items, couriers, checksum };
+}
+
 const track = (code, v) => fetch(`${base}/api/track?code=${encodeURIComponent(code)}${v ? `&v=${v}` : ""}`);
 async function admin(body, { auth = true, headers = {} } = {}) {
   const res = await fetch(`${base}/api/admin`, {
@@ -193,6 +209,10 @@ test("search & filter, stats are computed from real data", async () => {
   assert.equal(stats.totals.total, 3);
   assert.equal(stats.totals.delivered, 1);
   assert.equal(stats.needsMigration, true, "legacy docs flagged until migration");
+  const refused = await admin({ action: "migrate" });
+  assert.equal(refused.status, 409, "migration requires a recent backup");
+  assert.equal(refused.json.error, "backup_required");
+  await takeBackup();
   const mig = (await admin({ action: "migrate" })).json;
   assert.ok(mig.changed >= 2);
   assert.equal((await admin({ action: "stats" })).json.needsMigration, false);

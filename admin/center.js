@@ -5,8 +5,8 @@ import { STATUS_META, STATUS_CODES, EXCEPTION_TYPES, VISIBILITY_KEYS, DEFAULT_VI
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (iso) => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(+d) ? "—" : d.toLocaleString(); };
-const VIEWS = ["dashboard", "create", "shipments", "tracking", "events", "preview", "audit", "couriers", "clients", "settings"];
-const TITLES = { dashboard: "Dashboard", create: "Create Shipment", shipments: "Shipments", tracking: "Live Tracking", events: "Tracking Events", preview: "Client View", audit: "Activity Logs", couriers: "Couriers", clients: "Clients", settings: "Settings" };
+const VIEWS = ["dashboard", "create", "shipments", "globe", "tracking", "events", "preview", "audit", "couriers", "clients", "settings"];
+const TITLES = { dashboard: "Overview", create: "Create Shipment", shipments: "Shipments", globe: "Global Tracking", tracking: "Live Tracking", events: "Tracking Events", preview: "Client View", audit: "Activity Logs", couriers: "Carriers", clients: "Clients", settings: "Settings & Backup" };
 const WORKSPACE_VIEWS = ["tracking", "events", "preview"];
 const VIS_LABELS = {
   map: ["Show live map", "Interactive map with route"], location: ["Show current location", "Location name, marker and position source"],
@@ -122,8 +122,36 @@ export function initControlCenter(host) {
     if (view === "shipments" && !state.list.rows.length) runSearch(true);
     if (view === "audit") loadAudit();
     if (view === "settings") loadSettings();
+    if (view === "globe") loadGlobal();
     if (WORKSPACE_VIEWS.includes(view)) renderWorkspace();
+    $("consoleNav")?.classList.remove("open"); $("consoleMenu")?.setAttribute("aria-expanded", "false");
   }
+  $("consoleMenu")?.addEventListener("click", () => {
+    const open = $("consoleNav").classList.toggle("open"); $("consoleMenu").setAttribute("aria-expanded", String(open));
+  });
+
+  // ---------- global tracking (same globe/flat-map component as the homepage, admin data, unmasked) ----------
+  let globalCenter = null;
+  async function loadGlobal() {
+    if (globalCenter) { globalCenter.refresh(); return; }
+    $("globeFilter").innerHTML = `<option value="">All active statuses</option>` + STATUS_CODES.filter((c) => c !== "DELIVERED" && c !== "CANCELLED")
+      .map((c) => `<option value="${c}">${esc(STATUS_META[c].label)}</option>`).join("");
+    try {
+      const { mountCommandCenter } = await import("../ui/globe/command-center.js");
+      globalCenter = mountCommandCenter({
+        mapEl: $("globeMap"), feedEl: $("globeFeed"), cardEl: $("globeCard"), statusEl: $("globeStatus"), mode: "admin", pollMs: 60000,
+        load: async () => {
+          const d = await api("globalMap");
+          const status = $("globeFilter").value; const pub = $("globePublicOnly").checked;
+          const routes = d.routes.filter((r) => (!status || r.status.code === status) && (!pub || r.publicMap));
+          return { routes, stats: { lastUpdated: routes[0]?.updatedAt || null } };
+        },
+        onOpen: (r) => openShipment(r.ref, "tracking")
+      });
+    } catch { $("globeStatus").textContent = "The map component could not load."; }
+  }
+  ["globeFilter", "globePublicOnly"].forEach((id) => $(id).addEventListener("change", () => globalCenter?.refresh()));
+  $("globeRefresh").addEventListener("click", () => globalCenter?.refresh());
   window.switchView = switchView;
 
   // ---------- dashboard ----------
@@ -154,7 +182,40 @@ export function initControlCenter(host) {
     });
   }
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-open]")?.dataset.open; if (c) openShipment(c, "tracking"); });
+  // ---------- backup (required before migration) ----------
+  async function sha256Hex(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  async function runBackup(btn) {
+    return guarded("backup", btn, async () => {
+      const statusEl = $("backupStatus"); let cursor = null; const items = []; let first = null;
+      do {
+        const page = await api("backup", { cursor });
+        if (!cursor) first = page;
+        items.push(...page.items); cursor = page.nextCursor;
+        if (statusEl) statusEl.textContent = `Reading… ${items.length} shipment(s)`;
+      } while (cursor);
+      const counts = { shipments: items.length, events: items.reduce((a, i) => a + i.events.length, 0), locations: items.reduce((a, i) => a + i.locations.length, 0) };
+      const checksum = await sha256Hex(JSON.stringify(items));
+      const file = { format: "hyperion-backup-v1", createdAt: new Date().toISOString(), startedAt: first.startedAt, counts, checksum,
+        checksumOf: "SHA-256 of JSON.stringify(shipments)", couriers: first.couriers, shipments: items };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: "application/json" }));
+      const a = document.createElement("a"); a.href = url; a.download = `hyperion-backup-${file.createdAt.slice(0, 19).replace(/[:T]/g, "-")}.json`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      await api("backupDone", { ...counts, checksum });
+      state.backupAt = Date.now();
+      const msg = `Backup saved: ${counts.shipments} shipments, ${counts.events} events, ${counts.locations} locations · SHA-256 ${checksum.slice(0, 12)}…`;
+      if (statusEl) statusEl.textContent = msg;
+      $("migrateBtn").disabled = false; $("migrateBtn").title = "";
+      host.showToast("Full backup downloaded. Keep the file somewhere safe.", "success");
+    });
+  }
+  $("backupBtn").addEventListener("click", () => runBackup($("backupBtn")));
+  $("bannerBackupBtn").addEventListener("click", () => runBackup($("bannerBackupBtn")));
+
   $("migrateBtn").addEventListener("click", () => guarded("migrate", $("migrateBtn"), async () => {
+    if (!state.backupAt) { host.showToast("Download a full backup first.", "error"); return; }
     let cursor = null; let changed = 0; let scanned = 0;
     do { const r = await api("migrate", { cursor }); cursor = r.nextCursor; changed += r.changed; scanned += r.scanned; $("migrationText").textContent = `Migrating… scanned ${scanned}, updated ${changed}`; } while (cursor);
     host.showToast(`Migration complete: ${changed} shipment(s) updated`, "success"); loadDashboard();
@@ -218,7 +279,7 @@ export function initControlCenter(host) {
     $("shipmentsContainer").innerHTML = `<div class="table-wrap"><table class="shipments-table responsive"><thead><tr><th>Tracking ID</th><th>Courier</th><th>Status</th><th>Route</th><th>Current location</th><th>Updated</th><th>Actions</th></tr></thead><tbody>${rows.map((s) => {
       const cr = host.findCourier(s.courier);
       return `<tr>
-        <td data-label="Tracking ID"><strong>${esc(s.id)}</strong>${s.archived ? ' <span class="pill neutral">archived</span>' : ""}</td>
+        <td data-label="Tracking ID"><strong>${esc(s.id)}</strong>${s.archived ? ' <span class="pill neutral">archived</span>' : ""}${s.publicMap ? ' <span class="pill public" title="Shown on the public homepage (masked)">homepage</span>' : ""}</td>
         <td data-label="Courier">${esc(cr?.name || s.courier || "—")}</td>
         <td data-label="Status">${s.statusCode ? pill(s.statusCode) : `<span class="pill neutral">${esc(s.status || "Unknown")}</span>`}</td>
         <td data-label="Route">${esc(s.origin || "—")} → ${esc(s.destination || "—")}</td>
@@ -367,6 +428,7 @@ export function initControlCenter(host) {
     $("routeHint").textContent = [s.originCoordsSource && `Origin point: ${s.originCoordsSource}`, s.destinationCoordsSource && `Destination point: ${s.destinationCoordsSource}`].filter(Boolean).join(" · ") || "No route points recorded yet.";
     const vis = { ...DEFAULT_VISIBILITY, ...(s.visibility || {}) };
     document.querySelectorAll("[data-vis]").forEach((c) => { c.checked = vis[c.dataset.vis] !== false; });
+    $("publicMapInput").checked = s.publicMap === true;
     const writeOnly = ["locForm", "statusForm", "etaForm", "routeForm", "visForm"];
     writeOnly.forEach((f) => $(f).querySelectorAll("button, input, select").forEach((el) => { el.disabled = !can("write") && !can("location"); }));
     await ensureAdminMap();
@@ -411,7 +473,16 @@ export function initControlCenter(host) {
   enablePairPaste("locLat", "locLng"); enablePairPaste("evLat", "evLng"); enablePairPaste("latitude", "longitude");
   enablePairPaste("oLat", "oLng"); enablePairPaste("dLat", "dLng");
   for (const [a, b, err] of [["locLat", "locLng", "locCoordErr"], ["evLat", "evLng", "evCoordErr"], ["latitude", "longitude", "createCoordErr"]]) {
-    for (const id of [a, b]) $(id)?.addEventListener("blur", () => { if ($(a).value || $(b).value || $(err).textContent) checkCoords(a, b, err); });
+    for (const id of [a, b]) {
+      // Don't complain about the partner field while the admin is moving into it (that message used to appear
+      // mid-entry and then vanish on the next click, shifting the form so the click missed the button).
+      $(id)?.addEventListener("blur", (e) => {
+        if (e.relatedTarget && (e.relatedTarget.id === a || e.relatedTarget.id === b)) return;
+        if ($(a).value || $(b).value || $(err).textContent) checkCoords(a, b, err);
+      });
+      // An existing error is re-checked while typing, so it clears as soon as the pair is valid.
+      $(id)?.addEventListener("input", () => { if ($(err)?.textContent) checkCoords(a, b, err); });
+    }
   }
   $("locNow").addEventListener("click", () => { $("locTime").value = nowLocalInput(); });
   $("locForm").addEventListener("submit", (e) => {
@@ -462,7 +533,9 @@ export function initControlCenter(host) {
   $("visForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const visibility = {}; document.querySelectorAll("[data-vis]").forEach((c) => { visibility[c.dataset.vis] = c.checked; });
-    mutateSelected("vis", e.submitter, "setVisibility", { visibility }, "Client visibility saved");
+    const publicMap = $("publicMapInput").checked;
+    if (publicMap && !state.sel.shipment.publicMap && !confirm("Show this shipment on the public homepage? Only a masked code, city-level route, status and event titles are shown.")) return;
+    mutateSelected("vis", e.submitter, "update", { changes: { visibility, publicMap } }, publicMap ? "Visibility saved · shown on homepage" : "Visibility saved");
   });
 
   // ---------- events ----------

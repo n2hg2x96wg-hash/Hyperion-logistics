@@ -23,13 +23,25 @@ export function __setStoreForTests(store) {
   storePromise = store ? Promise.resolve(store) : null;
 }
 
-/** Fields derived on every write so efficient prefix queries work. */
+import { deriveCountry } from "../geo.js";
+
+/** Fields derived on every write so efficient prefix queries and country statistics work. */
 export function derivedFields(s) {
   const lower = (v) => (typeof v === "string" ? v.toLowerCase() : "");
   return {
     destinationLower: lower(s.destination),
     locationLower: lower(s.location || s.currentLocation),
     originLower: lower(s.origin),
-    clientRefLower: lower(s.clientRef)
+    clientRefLower: lower(s.clientRef),
+    ...countryFields(s)
+  };
+}
+
+/** ISO-2 countries from recorded coordinates first, then place text. null when unknown (never guessed further). */
+export function countryFields(s) {
+  return {
+    originCountry: deriveCountry(s.originLat, s.originLng, s.origin),
+    destinationCountry: deriveCountry(s.destinationLat, s.destinationLng, s.destination),
+    currentCountry: deriveCountry(s.latitude, s.longitude, s.location || s.currentLocation)
   };
 }

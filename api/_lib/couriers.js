@@ -7,7 +7,8 @@
 //
 // Records are never deleted: "archive" hides a courier from new shipments and can be undone. Shipments that
 // already reference a courier keep working whatever its state.
-import { CARRIERS, builtInCarrier, carrierId } from "../../shared/carriers.js";
+import { CARRIERS, CARRIER_CATEGORIES, builtInCarrier, carrierId, carrierCategory, carrierLogoUrl, carrierIntegration } from "../../shared/carriers.js";
+import { listProviders } from "./providers/index.js";
 import { ValidationError } from "./validate.js";
 import { ServiceError } from "./service.js";
 import { getStore } from "./store/index.js";
@@ -48,6 +49,12 @@ export function parseCourierInput(input = {}, { creating }) {
   if (!out.prefix) throw new ValidationError("Tracking prefix is required.", "prefix");
   if (!PREFIX_RE.test(out.prefix)) throw new ValidationError("Tracking prefix must be 1–8 letters or numbers (for example DHL).", "prefix");
   out.type = input.type === "custom" ? "custom" : "carrier";
+  if (input.category !== undefined && input.category !== "") {
+    if (!CARRIER_CATEGORIES[input.category]) throw new ValidationError("Category must be Express & Parcel, Ocean Freight, Regional Logistics or Custom Transport.", "category");
+    out.category = input.category;
+  }
+  out.description = text(input.description, 200, "description", "Description");
+  out.coverage = text(input.coverage, 80, "coverage", "Coverage");
   out.brandColor = text(input.brandColor, 7, "brandColor", "Brand color");
   if (out.brandColor && !COLOR_RE.test(out.brandColor)) throw new ValidationError("Brand color must be a hex color such as #0ea5e9.", "brandColor");
   out.phone = text(input.phone, 40, "phone", "Phone");
@@ -75,6 +82,8 @@ const view = (rec) => ({
   email: rec.email && rec.email !== "--" ? rec.email : (rec.contact?.email || ""),
   website: rec.website && rec.website !== "--" ? rec.website : (rec.contact?.website || ""),
   trackingUrl: rec.trackingUrl || "", region: rec.region || "", apiEndpoint: rec.apiEndpoint || "", note: rec.note || "",
+  category: carrierCategory(rec), description: rec.description || "", coverage: rec.coverage || "",
+  lastProviderUpdateAt: rec.lastProviderUpdateAt || null,
   active: rec.active !== false && rec.archived !== true, archived: rec.archived === true,
   builtIn: !!builtInCarrier(rec.id), stored: !!rec.docId, updatedAt: rec.updatedAt || null
 });
@@ -157,4 +166,28 @@ export async function setCourierState(identity, input = {}) {
   else await store.createCourier(id, { id, name: base.name, prefix: base.prefix, type: base.type, ...patch, createdAt: now, createdBy: identity.sub }, entry);
   const label = { active: "enabled", inactive: "disabled", archived: "archived" }[state];
   return { ok: true, message: `Courier ${label}.` };
+}
+
+/** Public carrier directory: active carriers only, no contact emails, API endpoints or internal notes. */
+export async function publicCarriers() {
+  const configuredProviders = listProviders().filter((p) => p.configured).map((p) => p.id);
+  return (await listCouriers()).filter((c) => c.active).map((c) => ({
+    id: c.id, name: c.name, category: c.category, categoryLabel: CARRIER_CATEGORIES[c.category], custom: c.type === "custom",
+    brandColor: c.brandColor, logoUrl: carrierLogoUrl(c), description: c.description, coverage: c.coverage,
+    website: c.type === "custom" ? null : (c.website && !/\.example(\/|$)/i.test(c.website) ? c.website : null),
+    note: c.type === "custom" ? (c.note || "Custom option arranged by Hyperion.") : "",
+    integration: carrierIntegration(c, { configuredProviders })
+  }));
+}
+
+/** Records that a signed provider update arrived for a carrier whose id matches the adapter (enables "live"). */
+export async function markProviderUpdate(id) {
+  const store = await getStore();
+  const key = carrierId(id);
+  if (!builtInCarrier(key) && !(await store.findCourierDoc(key))) return; // adapter is not a carrier (e.g. "generic")
+  const now = new Date().toISOString();
+  const existing = await store.findCourierDoc(key);
+  if (existing?.lastProviderUpdateAt && Date.now() - Date.parse(existing.lastProviderUpdateAt) < 3600_000) return;
+  if (existing) await store.updateCourier(existing.docId, { lastProviderUpdateAt: now });
+  else { const b = builtInCarrier(key); await store.createCourier(key, { id: key, name: b.name, prefix: b.prefix, type: b.type, lastProviderUpdateAt: now }).catch(() => {}); }
 }

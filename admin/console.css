@@ -1,0 +1,139 @@
+/* Admin console theme (loaded after admin.html's original styles). Visual layer only: every id, class and
+   handler from the original admin keeps working. Desktop: sidebar + workspace. Mobile: top bar + drawer. */
+body.console { font-family: var(--hy-font); color: var(--hy-text); padding: 0; min-height: 100vh;
+  background: radial-gradient(1100px 520px at 85% -10%, rgba(37, 99, 235, 0.16), transparent 60%), var(--hy-bg-0); }
+body.console .container { max-width: none; margin: 0; display: grid; grid-template-columns: 252px minmax(0, 1fr); grid-template-rows: auto auto 1fr; min-height: 100vh; }
+body.console .container.hidden { display: none; }
+body.console .header { grid-column: 1; grid-row: 1 / span 3; margin: 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column;
+  background: rgba(6, 12, 30, 0.92); border-right: 1px solid var(--hy-line); padding: 18px 14px; }
+body.console .header-top { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 14px; }
+body.console .logo-icon { width: 38px; height: 38px; border-radius: 11px; font-size: 0; background: linear-gradient(135deg, #2563eb, #38bdf8); box-shadow: var(--hy-glow); }
+body.console .logo-icon::after { content: ""; width: 18px; height: 18px; background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 3 7v10l9 5 9-5V7l-9-5Z'/%3E%3Cpath d='M3 7l9 5 9-5M12 12v10'/%3E%3C/svg%3E"); }
+body.console .logo-text h2 { font-size: 16px; background: none; -webkit-text-fill-color: var(--hy-text); color: var(--hy-text); }
+body.console .logo-text p { color: var(--hy-muted); font-size: 11.5px; }
+body.console .breadcrumb { color: var(--hy-muted); font-size: 12px; margin-top: 6px; }
+body.console .btn-logout { order: 3; background: transparent; border: 1px solid var(--hy-line-strong); color: var(--hy-text-2); }
+body.console .view-toggle { flex-direction: column; flex-wrap: nowrap; overflow: visible; gap: 2px; margin: 0; padding: 0; }
+body.console .toggle-btn { text-align: left; border: 0; background: transparent; color: var(--hy-text-2); padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; box-shadow: none; white-space: nowrap; }
+body.console .toggle-btn:hover { background: rgba(96, 165, 250, 0.08); color: var(--hy-text); }
+body.console .toggle-btn.active { background: linear-gradient(90deg, rgba(59, 130, 246, 0.24), rgba(59, 130, 246, 0.06)); color: #fff; box-shadow: inset 3px 0 0 var(--hy-blue-2); border: 0; }
+body.console .nav-section { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: #5f7193; font-weight: 800; padding: 14px 12px 6px; }
+body.console .ws-bar, body.console .content { grid-column: 2; }
+body.console .ws-bar { margin: 18px 24px 0; background: var(--hy-surface-strong); border: 1px solid var(--hy-line); color: var(--hy-text); }
+body.console .ws-bar label, body.console .ws-bar .ws-current { color: var(--hy-text-2); }
+body.console .content { padding: 22px 24px 60px; gap: 22px; }
+body.console .console-menu { display: none; }
+
+/* cards & typography */
+body.console .form-card, body.console .stats-card, body.console .shipments-card, body.console .clients-card {
+  background: var(--hy-surface-strong); border: 1px solid var(--hy-line); box-shadow: var(--hy-shadow); border-radius: var(--hy-radius-l); color: var(--hy-text); padding: 26px; }
+body.console .card-header { border-bottom-color: var(--hy-line); }
+body.console .card-header h3, body.console .empty-state h3, body.console h4, body.console .section-label, body.console .stat-value, body.console .kpi .kpi-value { color: var(--hy-text); }
+body.console .card-header p, body.console .hint, body.console .field-hint, body.console .stat-label, body.console .kpi .kpi-label, body.console small { color: var(--hy-muted); }
+body.console .section-label { border-top-color: var(--hy-line); }
+body.console label { color: var(--hy-text-2); }
+body.console .dash-cols h4, body.console .panel h4, body.console .quick-actions h4 { color: var(--hy-muted); }
+
+/* forms */
+body.console input, body.console select, body.console textarea { background: rgba(5, 10, 24, 0.7); border: 1px solid var(--hy-line-strong); color: var(--hy-text); border-radius: 10px; }
+body.console input:focus, body.console select:focus, body.console textarea:focus { border-color: var(--hy-blue-2); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22); }
+body.console input::placeholder, body.console textarea::placeholder { color: #5f7193; }
+body.console input[readonly] { opacity: .75; }
+body.console select option { background: #0d1a3a; color: var(--hy-text); }
+body.console input[type="checkbox"] { background: none; }
+
+/* buttons */
+body.console .btn-save, body.console .btn-primary { background: linear-gradient(135deg, #2563eb, #3b82f6); box-shadow: 0 8px 22px rgba(37, 99, 235, 0.3); color: #fff; }
+body.console .btn-reset { background: transparent; border: 1px solid var(--hy-line-strong); color: var(--hy-text-2); }
+body.console .btn-reset:hover { background: rgba(96, 165, 250, 0.08); }
+body.console .btn-action { background: rgba(13, 26, 58, 0.9); border: 1px solid var(--hy-line-strong); color: var(--hy-text-2); }
+body.console .btn-action:hover { border-color: var(--hy-blue-2); color: #fff; background: rgba(59, 130, 246, 0.14); }
+body.console .btn-action.btn-danger, body.console .btn-action.btn-delete-client { background: rgba(127, 29, 29, 0.25); border-color: rgba(248, 113, 113, 0.35); color: #fecaca; }
+body.console .btn-warn { background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.4); color: #fde68a; }
+body.console .btn:disabled, body.console .btn-action:disabled { opacity: .55; cursor: not-allowed; }
+
+/* tiles, panels, feeds */
+body.console .kpi, body.console .stat-item, body.console .courier-stat, body.console .summary-grid > div, body.console .panel, body.console .trk-summary > div {
+  background: rgba(8, 18, 42, 0.7); border: 1px solid var(--hy-line); color: var(--hy-text); }
+body.console .kpi.good .kpi-value { color: var(--hy-ok); } body.console .kpi.warn .kpi-value { color: var(--hy-warn); } body.console .kpi.bad .kpi-value { color: var(--hy-bad); }
+body.console .panel-primary { border-color: rgba(96, 165, 250, 0.45); box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.15); }
+body.console .feed li { border-bottom-color: var(--hy-line); color: var(--hy-text); }
+body.console .feed .code { color: var(--hy-blue-2); }
+body.console .banner.info { background: rgba(37, 99, 235, 0.12); border-color: rgba(96, 165, 250, 0.35); color: #bfdbfe; }
+body.console .banner.warn { background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.35); color: #fde68a; }
+body.console .sys-chip { background: rgba(13, 26, 58, 0.9); color: var(--hy-text-2); border: 1px solid var(--hy-line); }
+body.console .ev-list li { border-bottom-color: var(--hy-line); }
+body.console .audit-diff { color: var(--hy-text-2); }
+body.console .coord-group { border-color: var(--hy-line); }
+body.console .preview-wrap { background: var(--hy-bg-0); border: 1px solid var(--hy-line); }
+body.console .admin-map { background: #071330; border: 1px solid var(--hy-line); }
+
+/* tables */
+body.console .shipments-table thead, body.console .client-table thead, body.console .courier-table thead { background: rgba(5, 10, 24, 0.6); border-bottom-color: var(--hy-line); }
+body.console .shipments-table th { color: var(--hy-muted); }
+body.console .shipments-table td { color: var(--hy-text); border-bottom-color: var(--hy-line); }
+body.console .shipments-table tbody tr:hover { background: rgba(59, 130, 246, 0.06); }
+body.console tr.is-archived td { opacity: .6; }
+
+/* pills & badges */
+body.console .pill, body.console .status-badge { background: rgba(148, 163, 184, 0.16); color: #e2e8f0; }
+body.console .pill.info, body.console .status-in-transit, body.console .status-out-for-delivery { background: rgba(96, 165, 250, 0.16); color: #bfdbfe; }
+body.console .pill.success, body.console .status-delivered, body.console .status-badge.positive { background: rgba(52, 211, 153, 0.16); color: #a7f3d0; }
+body.console .pill.warn, body.console .status-delayed, body.console .status-at-facility, body.console .status-customs-inspection { background: rgba(251, 191, 36, 0.16); color: #fde68a; }
+body.console .pill.danger, body.console .status-exception, body.console .status-cancelled, body.console .status-badge.negative { background: rgba(248, 113, 113, 0.16); color: #fecaca; }
+body.console .pill.public { background: rgba(56, 189, 248, 0.16); color: #bae6fd; }
+
+/* modals, login, toasts */
+body.console .modal-overlay { background: rgba(2, 6, 23, 0.72); backdrop-filter: blur(4px); }
+body.console .modal-card { background: #0b1736; border: 1px solid var(--hy-line-strong); color: var(--hy-text); }
+body.console .login-overlay { background: radial-gradient(900px 500px at 70% 0%, rgba(37, 99, 235, 0.25), transparent 60%), var(--hy-bg-0); }
+body.console .login-box { background: #0b1736; border: 1px solid var(--hy-line-strong); color: var(--hy-text); }
+body.console .login-box h2 { color: var(--hy-text); } body.console .login-box p { color: var(--hy-muted); }
+body.console .delete-explain, body.console .delete-cols > div { background: rgba(8, 18, 42, 0.7); border-color: var(--hy-line); color: var(--hy-text); }
+
+/* global tracking view */
+body.console .globe-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+body.console .globe-layout .cc-stage { min-height: 560px; }
+body.console .globe-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+body.console .globe-tools select { width: auto; min-width: 200px; }
+@media (max-width: 1100px) { body.console .globe-layout { grid-template-columns: 1fr; } body.console .globe-layout .cc-stage { min-height: 0; height: min(62svh, 460px); } }
+
+/* mobile: top bar + slide-out drawer */
+@media (max-width: 900px) {
+  body.console .container { display: block; }
+  body.console .header { position: sticky; top: 0; z-index: 60; height: auto; padding: 10px 14px; flex-direction: row; flex-wrap: wrap; align-items: center; border-right: 0; border-bottom: 1px solid var(--hy-line); }
+  body.console .header-top { flex-direction: row; align-items: center; justify-content: space-between; flex: 1; margin: 0; }
+  body.console .header-top .breadcrumb { display: none; }
+  body.console .logo-text p { display: none; }
+  body.console .console-menu { display: inline-grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; border: 1px solid var(--hy-line-strong); background: transparent; color: var(--hy-text); }
+  body.console .btn-logout { order: 0; padding: 8px 12px; }
+  body.console .view-toggle { display: none; width: 100%; max-height: calc(100svh - 70px); overflow-y: auto; padding: 8px 0 6px; }
+  body.console .view-toggle.open { display: flex; }
+  body.console .toggle-btn { padding: 13px 12px; font-size: 15px; }
+  body.console .ws-bar { margin: 14px 12px 0; }
+  body.console .content { padding: 14px 12px 90px; }
+  body.console .form-card, body.console .stats-card, body.console .shipments-card, body.console .clients-card { padding: 16px; }
+}
+@media (max-width: 900px) {
+  body.console .header-top { flex-wrap: nowrap; gap: 8px; }
+  body.console .header-top > div:first-child { flex: 1; min-width: 0; }
+  body.console .logo-text h2 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.console .btn-logout { order: 1; }
+  body.console .console-menu { order: 2; flex: none; }
+}
+/* very small phones (320px): let grids and the brand shrink instead of overflowing */
+body.console .logo, body.console .logo-text { min-width: 0; }
+body.console .dash-cols { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+body.console .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+body.console .panel-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+body.console .tool-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+body.console .summary-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+@media (max-width: 360px) { body.console .logo-icon { width: 32px; height: 32px; } body.console .btn-logout { padding: 7px 9px; font-size: 12px; } }
+@media (max-width: 900px) {
+  body.console .sticky-actions { background: rgba(8, 18, 42, 0.96); border-top-color: var(--hy-line); margin: 20px -16px -16px; padding-left: 16px; }
+}
+@media (max-width: 400px) {
+  body.console .logo-text h2 { font-size: 0; }
+  body.console .logo-text h2::after { content: "Admin"; font-size: 15px; }
+  body.console .sticky-actions { padding-right: 76px; }
+}
