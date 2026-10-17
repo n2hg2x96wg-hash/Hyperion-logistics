@@ -120,14 +120,13 @@ for (const w of WIDTHS) {
     await page.locator("#carriers .cr-tile").first().waitFor();
     const carH = await page.$eval("#carriers", (el) => el.getBoundingClientRect().height);
     assert.ok(carH < 1600, `carrier section is ${Math.round(carH)}px tall`);
-    // every tile states how its updates arrive; nothing claims a partnership or live API by default
-    const tiles = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => t.querySelector(".cr-chip")?.textContent.trim()));
-    assert.ok(tiles.length > 0 && tiles.every((t) => ["Manual updates", "Official tracking link"].includes(t)), JSON.stringify(tiles));
-    assert.equal(await page.locator("#carrierDirectory .cr-chip.partner, #carrierDirectory .cr-chip.live").count(), 0);
-    assert.equal(await page.locator("#carrierLegend .cr-legend li").count(), 4, "legend explains the four states");
+    // public directory identifies carriers only: no internal update methods, no partnership or live-API claims
+    const carriersText = await page.textContent("#carriers");
+    for (const t of ["Manual updates", "Live API", "Official tracking link", "How updates reach", "Verified partner"]) assert.ok(!carriersText.includes(t), `public carriers show "${t}"`);
+    assert.equal(await page.locator("#carrierLegend, .cr-legend").count(), 0);
     await page.locator("#carriers .cr-tile").first().click();
     assert.ok(await page.isVisible("#cr-detail"));
-    assert.match(await page.textContent("#cr-detail"), /How updates reach Hyperion[\s\S]*Relationship[\s\S]*not a partnership/);
+    assert.ok(!/(Manual updates|Live API|How updates reach)/.test(await page.textContent("#cr-detail")));
     if (w <= 720) assert.ok(await page.isVisible("[data-more]"), "phones show a 'Show all' button");
     assert.deepEqual(errors, []);
     await ctx.close();

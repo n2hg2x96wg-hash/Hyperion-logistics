@@ -247,3 +247,14 @@ test("homepage: logistics journey section follows the freight showcase, with an 
   assert.ok(refs.length >= 10);
   for (const f of refs) assert.ok(fs.existsSync(new URL(`../${f}`, import.meta.url)), `missing ${f}`);
 });
+
+test("public carrier directory shows no internal update methods; admin list keeps them; API unchanged", async () => {
+  const ui = fs.readFileSync(new URL("../ui/carriers.js", import.meta.url), "utf8");
+  for (const t of ["Manual updates", "Live API", "Official tracking link", "How updates reach"]) assert.ok(!ui.includes(t), `ui/carriers.js still renders "${t}"`);
+  assert.ok(!fs.readFileSync(new URL("../index.html", import.meta.url), "utf8").includes('"Live API"'));
+  const admin = fs.readFileSync(new URL("../admin.html", import.meta.url), "utf8");
+  assert.match(admin, /<th>Updates<\/th>/); assert.match(admin, /Manual \(operations\)/);
+  const { __clearPublicCache } = await import("../api/public.js"); __clearPublicCache();
+  const list = (await (await fetch(`${base}/api/public?view=carriers`)).json()).carriers;
+  assert.ok(list.length > 0 && list.every((c) => c.integration && typeof c.partner === "boolean"), "public API response shape unchanged");
+});

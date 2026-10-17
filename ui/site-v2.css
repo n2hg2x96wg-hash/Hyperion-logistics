@@ -186,7 +186,7 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 @media (max-width: 768px) { .site-footer { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); } }
 
 /* ---------- freight showcase (homepage, after global activity) ---------- */
-.freight { padding: 32px 0 88px; }
+.freight { padding: 32px 0 56px; }
 .freight-stage { position: relative; isolation: isolate; overflow: hidden; min-height: clamp(560px, 46vw, 680px); display: flex; align-items: center;
   background: radial-gradient(900px 500px at 20% 40%, rgba(29, 78, 216, 0.22), transparent 70%), linear-gradient(180deg, #071330 0%, #0a1a3d 55%, #040b1f 100%); }
 .freight-media { position: absolute; inset: 0; z-index: -2; display: block; }
@@ -264,8 +264,12 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .journey-frame { position: relative; margin: 0; border-radius: 20px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.16);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.45); max-width: 760px; justify-self: end; width: 100%;
   background: linear-gradient(135deg, #0f1f48, #071029); }
-.journey-parallax { aspect-ratio: 1179 / 638; overflow: hidden; }
-.journey-media, .journey-media img { display: block; width: 100%; height: 100%; }
+.journey-parallax { position: relative; aspect-ratio: 1179 / 638; overflow: hidden; }
+/* tiny blurred preview of the same photo (about 1 KB, inline) so the frame is never an empty box while the photo loads */
+.journey-parallax::before { content: ""; position: absolute; inset: -24px; filter: blur(16px); transform: scale(1.05);
+  background: url("data:image/jpeg;base64,/9j/2wBDAA4KCw0LCQ4NDA0QDw4RFiQXFhQUFiwgIRokNC43NjMuMjI6QVNGOj1OPjIySGJJTlZYXV5dOEVmbWVabFNbXVn/2wBDAQ8QEBYTFioXFypZOzI7WVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVn/wAARCAARACADASIAAhEBAxEB/8QAGAAAAwEBAAAAAAAAAAAAAAAAAAMGBQT/xAAuEAACAQMCAgYLAAAAAAAAAAABAgMABBEFEiFRBiJBYXGyExYxMzQ1NnJzdMH/xAAVAQEBAAAAAAAAAAAAAAAAAAADAv/EABkRAAMBAQEAAAAAAAAAAAAAAAABAjFBIf/aAAwDAQACEQMRAD8Anr9IW1i63KozcNu39gz7c8u/FUXRCe2trS79JNFGpmAUswGeHZSZ9Ji1Wa+uVfbLDuVFzkOe+uO20q9Z1ke3h2rKJGRipBGBwHLjUS/SqRYXV1El2sKwly0bOXBGFxzFTOs9I7u1nYIQkKsQrKBk44cc0h7qX1nusqFkaAABT1FUDJGPClXWo2c1mRavuZJBkOvXPEkt/KSqeEzK0dY/E3H7L+Za2rj3I8aKKJaxHiJqX6rb8Q8tYmofMbj7xRRT8QPT/9k=") center / cover no-repeat; }
+.journey-frame.is-missing .journey-parallax::before { display: none; }
+.journey-media, .journey-media img { position: relative; display: block; width: 100%; height: 100%; }
 .journey-media img { object-fit: cover; object-position: 60% 50%; }
 .journey-frame figcaption { position: absolute; right: 12px; bottom: 10px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.8);
   background: rgba(3, 7, 18, 0.55); padding: 4px 8px; border-radius: 6px; }
@@ -283,7 +287,8 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 html.hx-motion .journey-route[data-reveal] path { stroke-dashoffset: 1; transition: stroke-dashoffset 1.6s cubic-bezier(.2, .7, .2, 1); }
 html.hx-motion .journey-route[data-reveal].is-visible path { stroke-dashoffset: 0; }
 html.hx-motion .journey-frame[data-reveal="clip"] { transition: clip-path 1.1s cubic-bezier(.16, .84, .24, 1), opacity .6s ease; }
-html.hx-motion .journey-frame[data-reveal="clip"]:not(.is-visible) { opacity: 0; transform: none; clip-path: inset(10% 8% 10% 8% round 20px); }
+/* the image is never hidden: it opens out from a slightly cropped frame, so there is no empty moment while scrolling */
+html.hx-motion .journey-frame[data-reveal="clip"]:not(.is-visible) { opacity: 1; transform: none; clip-path: inset(7% 6% 7% 6% round 20px); }
 html.hx-motion .journey-frame[data-reveal="clip"].is-visible { opacity: 1; clip-path: inset(0 round 20px); }
 html.hx-motion .journey-frame .journey-media img { transition: transform 1.4s cubic-bezier(.16, .84, .24, 1); transform: scale(1.12); }
 html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1.03); }
@@ -307,5 +312,6 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
   .journey { padding: 8px 0 60px; }
   .journey-route { height: 48px; }
   .journey-parallax { aspect-ratio: 4 / 3; }
+  .journey-parallax::before { background-image: url("data:image/jpeg;base64,/9j/2wBDAA4KCw0LCQ4NDA0QDw4RFiQXFhQUFiwgIRokNC43NjMuMjI6QVNGOj1OPjIySGJJTlZYXV5dOEVmbWVabFNbXVn/2wBDAQ8QEBYTFioXFypZOzI7WVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVn/wAARCAASABgDASIAAhEBAxEB/8QAGAABAAMBAAAAAAAAAAAAAAAAAAQFBgP/xAAnEAACAQMCBgEFAAAAAAAAAAABAgMABBEFIQYSEyIxQRUjUWFxgf/EABYBAQEBAAAAAAAAAAAAAAAAAAIBA//EABgRAAMBAQAAAAAAAAAAAAAAAAABAhEh/9oADAMBAAIRAxEAPwCZwg8UejBWdFJmYAEgZ8eqsri5hS8MCwuWMXU5xjlG+MH3WPsdOuBPbyTWHUhikdmRgM+dsb7V0gvpfn9TLFlkZRlQe1UGM/0bYpKs6iOd4yRq3Et1bTsFAjhDEIwUEsAcb5/XqlQ764snsVe3eOYLIFLso5s7kmlZu2NSi8umZeUBiB9gazURJ4lvMnyuD+dhSlKA0Ut/9K/uBH2AOB27eqUpSIf/2Q=="); }
   .journey-media img { object-position: 50% 50%; }
 }
