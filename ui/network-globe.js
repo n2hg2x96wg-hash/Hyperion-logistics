@@ -61,7 +61,8 @@ function landDots(count) {
         }
       }
       const out = []; const golden = Math.PI * (3 - Math.sqrt(5)); let i = 0;
-      const idle = window.requestIdleCallback || ((fn) => setTimeout(() => fn({ timeRemaining: () => 8 }), 1));
+      // idle slices, but with a deadline so busy pages (or slow devices) still finish the dots
+      const idle = window.requestIdleCallback ? (fn) => window.requestIdleCallback(fn, { timeout: 120 }) : (fn) => setTimeout(() => fn({ timeRemaining: () => 8 }), 1);
       const chunk = (deadline) => {
         const stop = performance.now() + Math.max(4, deadline.timeRemaining?.() ?? 8);
         for (; i < count && performance.now() < stop; i++) {
@@ -283,8 +284,9 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   if (!ctx) { root.dataset.state = "fallback"; root.classList.add("no-globe"); }
   else {
     resize();
-    landDots(narrow() ? 5200 : 8200).then((d) => { dots = d; root.dataset.state = reduced ? "static" : "ready"; draw(); })
-      .catch(() => { root.dataset.state = reduced ? "static" : "ready"; root.classList.add("no-land"); draw(); });
+    root.dataset.state = reduced ? "static" : "ready"; // routes and cards work at once; the land dots fade in when sampled
+    landDots(narrow() ? 5200 : 8200).then((d) => { dots = d; root.dataset.land = "ready"; draw(); })
+      .catch(() => { root.classList.add("no-land"); draw(); });
   }
   if (reduced) { if (toggle) toggle.hidden = true; if (next) next.hidden = false; }
   else if (next) next.hidden = true;

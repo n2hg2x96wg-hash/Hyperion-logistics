@@ -720,7 +720,7 @@ test("homepage network globe: worldwide connections rotate with no admin data, p
   assert.equal(first.split(" ").length, 3, first);
   await page.waitForFunction((f) => document.getElementById("freightNetwork").dataset.routes !== f, first, { timeout: 10000 });
   const seen = new Set(first.split(" "));
-  for (let i = 0; i < 4; i++) { await page.waitForTimeout(800); (await page.getAttribute("#freightNetwork", "data-routes")).split(" ").forEach((k) => seen.add(k)); }
+  for (let i = 0; i < 12 && seen.size < 6; i++) { await page.waitForTimeout(800); (await page.getAttribute("#freightNetwork", "data-routes")).split(" ").forEach((k) => seen.add(k)); }
   assert.ok(seen.size >= 5, `several connections over time: ${[...seen]}`);
   const text = (await page.textContent("#freightNetwork")).replace(/\s+/g, " ");
   assert.match(text, /Worldwide freight connections/); assert.match(text, /Network visualisation of international freight corridors — not live shipments\./);
@@ -785,7 +785,7 @@ test("shipment map opens on the shipment (not the world), with labels, a themed 
     assert.match(await page.textContent(".hx-routesum"), /Houston.*Lisbon/s);
     assert.match(await page.textContent(".hx-map-note"), /Latest recorded location shown \(approximate, city level\)\. Lines connect recorded places; they aren't a tracked path\./);
     // the street map is optional; tiles are blocked here, so it falls back to the outline with a note
-    await page.click(".hx-map-ctl button:has-text('Street map')");
+    await page.click(".hx-map-ctl button[aria-pressed]");
     await page.waitForFunction(() => /street map isn't available/.test(document.querySelector('[data-slot="mapnote"]').textContent), null, { timeout: 15000 });
     assert.match(await page.getAttribute(".hx-map", "class"), /hx-base-outline/);
     assert.deepEqual(errors, []);
