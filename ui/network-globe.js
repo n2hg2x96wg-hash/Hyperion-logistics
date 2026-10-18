@@ -172,17 +172,19 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     draw();
   }
   // rotate a unit-sphere (or lifted) vector into view space: x right, y up, z toward the viewer
+  // view rotation, computed once per frame (not per point)
+  const rot = { cl: 1, sl: 0, cp: 1, sp: 0 };
+  function setRotation() { const l0 = -view.lng * RAD; const p0 = view.lat * RAD; rot.cl = Math.cos(l0); rot.sl = Math.sin(l0); rot.cp = Math.cos(p0); rot.sp = Math.sin(p0); }
+  // rotate a unit-sphere (or lifted) vector into view space: x right, y up, z toward the viewer
   function project(p) {
-    const l0 = view.lng * RAD; const p0 = view.lat * RAD;
-    const cl = Math.cos(-l0), sl = Math.sin(-l0);
-    const x1 = p[0] * cl - p[1] * sl; const y1 = p[0] * sl + p[1] * cl; const z1 = p[2];
-    const cp = Math.cos(p0), sp = Math.sin(p0);
+    const x1 = p[0] * rot.cl - p[1] * rot.sl; const y1 = p[0] * rot.sl + p[1] * rot.cl; const z1 = p[2];
     // after the longitude turn the viewer looks along +x; tilt by latitude
-    const depth = x1 * cp + z1 * sp; const up = -x1 * sp + z1 * cp;
-    return [y1, up, depth];
+    return [y1, -x1 * rot.sp + z1 * rot.cp, x1 * rot.cp + z1 * rot.sp];
   }
+  const bucketPaths = [[], [], [], []];
   function draw() {
     if (!ctx || !size) return;
+    setRotation();
     const R = size * 0.42; const cx = size / 2; const cy = size / 2;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, size, size);
     // atmosphere
@@ -193,16 +195,21 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     const sea = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.4, R * 0.1, cx, cy, R);
     sea.addColorStop(0, palette.sea1); sea.addColorStop(1, palette.sea2);
     ctx.fillStyle = sea; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    // land dots, bucketed by depth so there are only a few fill calls
+    // land dots: one pass sorts the front-facing dots into four depth buckets, then four fills
     if (dots) {
-      ctx.fillStyle = palette.dot; const s = Math.max(1.4, size / 330);
+      const s = Math.max(1.4, size / 330); const h = s / 2;
+      const { cl, sl, cp, sp } = rot;
+      for (const b of bucketPaths) b.length = 0;
+      for (const d of dots) {
+        const x1 = d[0] * cl - d[1] * sl; const z = x1 * cp + d[2] * sp; if (z <= 0) continue;
+        const y1 = d[0] * sl + d[1] * cl; const up = -x1 * sp + d[2] * cp;
+        bucketPaths[z >= 0.75 ? 3 : (z * 4) | 0].push(cx + y1 * R - h, cy - up * R - h);
+      }
+      ctx.fillStyle = palette.dot;
       for (let b = 0; b < 4; b++) {
+        const list = bucketPaths[b]; if (!list.length) continue;
         ctx.globalAlpha = 0.32 + b * 0.22; ctx.beginPath();
-        for (const d of dots) {
-          const [x, y, z] = project(d); if (z <= 0) continue;
-          if (Math.min(3, Math.floor(z * 4)) !== b) continue;
-          ctx.rect(cx + x * R - s / 2, cy - y * R - s / 2, s, s);
-        }
+        for (let i = 0; i < list.length; i += 2) ctx.rect(list[i], list[i + 1], s, s);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -260,6 +267,7 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   function frame(now) {
     raf = 0;
     if (!running()) return;
+    if (last && now - last < 30) { raf = requestAnimationFrame(frame); return; } // ~30 fps is plenty for slow motion
     const dt = last ? Math.min(64, now - last) : 16; last = now; clock += dt;
     if (clock >= nextSwap) { swap(); nextSwap = clock + interval * (0.85 + random() * 0.3); }
     routes = routes.filter((r) => r.dying == null || clock - r.dying < 720);
