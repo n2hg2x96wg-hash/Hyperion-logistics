@@ -492,7 +492,7 @@ test("tracker: 3D starts by itself when the scene is in view, with a loading sta
   assert.match(core, /if \(e\.pointerType !== "touch"\) goal\.pitch/, "touch drags only rotate sideways");
   assert.match(read("tracker/tracker.css"), /touch-action: pan-y;/);
   // lazily imported modules are not loaded by other unit tests, so check that they parse
-  const lazy = ["tracker/scene3d.js", "tracker/tracker.js", "tracker/map.js", "ui/network.js", ...fs.readdirSync(new URL("../tracker/3d", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => `tracker/3d/${f}`),
+  const lazy = ["tracker/scene3d.js", "tracker/tracker.js", "tracker/map.js", "ui/network-globe.js", "ui/network-routes.js", ...fs.readdirSync(new URL("../tracker/3d", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => `tracker/3d/${f}`),
     ...fs.readdirSync(new URL("../tracker/3d/scenes", import.meta.url)).map((f) => `tracker/3d/scenes/${f}`)];
   for (const f of lazy) assert.equal(spawnSync(process.execPath, ["--check", new URL(`../${f}`, import.meta.url).pathname]).status, 0, f);
 });
@@ -502,7 +502,7 @@ test("homepage tracking form: ids kept, neutral placeholder, loading and error s
   for (const id of ['id="trackForm"', 'id="trackingInput"', 'id="trackHint"', 'id="error"', 'id="btn-text"', 'onclick="track()"', "btn-track"]) assert.ok(h.includes(id), id);
   assert.match(h, /placeholder="Enter your tracking number"/);
   assert.doesNotMatch(h, /HY-\d{3,}/, "no example code that could look like a real shipment");
-  assert.match(h, /label\.textContent = busy \? "Tracking…" : "Track shipment"/);
+  assert.match(h, /label\.textContent = busy \? "Tracking…" : s\.phase === "ready" && !s\.update \? "Shipment found" : "Track shipment"/);
   for (const k of ["invalid", "notfound", "error"]) assert.match(h, new RegExp(`${k}: "`), k);
   assert.match(read("ui/site-v2.css"), /\.track-field:focus-within \{/);
 });
@@ -522,7 +522,7 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
   assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).key, "air");
   assert.equal(stagePhoto({ status: { code: "SOMETHING_NEW" } }), null, "unknown status keeps the neutral drawing");
   // every status x mode gives a known scene; movement only for normal stages
-  const expectScene = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs", OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered", CANCELLED: "neutral" };
+  const expectScene = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs", OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered", DELAYED: "delayed", EXCEPTION: "hold", CANCELLED: "cancelled" };
   for (const code of Object.values(STATUS)) for (const carrier of [{ name: "Maersk" }, { name: "Emirates SkyCargo" }, { name: "DHL", serviceType: "Road freight" }, { name: "DHL" }, null]) {
     const r = stageScene({ status: { code }, carrier });
     assert.ok(SCENES.includes(r.scene), `${code}/${carrier?.name}: ${r.scene}`);
@@ -533,7 +533,10 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
   assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).scene, "air");
   assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, carrier: { name: "DHL", serviceType: "Road freight" } }).scene, "road");
   assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, ...courier }).scene, "neutral", "no recorded mode: no vehicle implied");
-  assert.deepEqual(stageScene({ status: { code: "EXCEPTION" }, progress: { stage: "AT_FACILITY" } }), { scene: "facility", animate: false, state: "held" }, "on hold: last confirmed stage, still");
+  assert.deepEqual(stageScene({ status: { code: "EXCEPTION" }, progress: { stage: "AT_FACILITY" } }), { scene: "hold", animate: false, state: "held" }, "on hold: its own still scene, never a moving stage");
+  assert.deepEqual(stageScene({ status: { code: "DELAYED" }, progress: { stage: "IN_TRANSIT" } }), { scene: "delayed", animate: false, state: "held" });
+  assert.deepEqual(stageScene({ status: { code: "CANCELLED" } }), { scene: "cancelled", animate: false, state: "cancelled" });
+  for (const f of ["delayed", "hold", "cancelled"]) assert.match(read(`tracker/3d/scenes/${f}.js`), /mood: "(overcast|dim)"/, `${f} has its own still mood`);
   assert.deepEqual(stageScene({ status: { code: "SOMETHING_NEW" } }), { scene: "neutral", animate: false, state: "unknown" });
   for (const sc of SCENES) assert.match(modelCaption(sc), /^3D illustration of a typical .+ for this stage — not the actual facility, vehicle or parcel\.$/, sc);
   assert.match(modelCaption("ship", "held"), /without movement while the shipment is on hold/);
@@ -569,23 +572,63 @@ test("light theme: day scenes for hero and tracking band, map palette follows th
   assert.match(read("ui/globe/palette.js"), /data-theme|dataset\.theme/);
   for (const f of ["ui/globe/globe.js", "ui/globe/flatmap.js"]) assert.match(read(f), /onPalette\(/, f);
   const html = read("index.html");
-  assert.match(html, /<ul class="nw-cards" data-slot="nwcards"[^>]*hidden><\/ul>/, "route cards start hidden and are filled only from the public API");
-  assert.ok(!/freightRoutes|renderFreightRoutes/.test(html), "the old 3-item panel is replaced by the cards");
+  assert.ok(!/freightRoutes|renderFreightRoutes/.test(html), "the old 3-item panel stays removed");
+  assert.match(read("ui/theme-light.css"), /html\[data-theme="light"\] \.freight-network \{ --ng-sea-1/, "the network globe has a light palette");
+  assert.match(read("ui/network-globe.js"), /document\.addEventListener\("hx-theme", onTheme\)/, "the globe re-reads its palette on a theme switch");
+  assert.match(read("tracker/3d/core.js"), /document\.addEventListener\("hx-theme", onTheme\)/, "an open 3D scene is re-lit on a theme switch");
+  assert.match(read("tracker/map.js"), /document\.addEventListener\("hx-theme", onTheme\)/, "the shipment map follows the theme");
 });
 
-test("homepage network: published routes only, an illustrative state that says so, no live wording or edit times", async () => {
-  const src = read("ui/network.js");
-  assert.match(src, /Illustrative network — not live shipment activity/);
-  assert.match(src, /No published shipments available\./); assert.match(src, /Route data is temporarily unavailable\./);
-  assert.match(src, /Published shipment routes · /); assert.match(src, /Latest recorded milestone/);
-  const prose = src.replace(/\/\/.*$/gm, "").replace("not live shipment activity", "").replace("not a live position", "");
-  assert.ok(!/\b(live|active routes|gps)\b/i.test(prose), "never calls the map or cards live, active or GPS");
-  assert.ok(!/lastUpdated|updatedAt/.test(src.replace(/\/\/.*$/gm, "")), "no record-edit time shown");
-  assert.match(src, /latest\.set\(a\.routeKey, a\)/, "milestones come from the public activity (event times)");
+test("homepage network: a worldwide connections globe that needs no admin data and never claims live shipments", async () => {
+  const { HUBS, CONNECTIONS, REGIONS, hubById, distanceKm, createScheduler } = await import("../ui/network-routes.js");
+  const ids = new Set(HUBS.map((h) => h.id));
+  assert.equal(ids.size, HUBS.length, "unique hub ids");
+  for (const h of HUBS) { assert.ok(Math.abs(h.lat) <= 90 && Math.abs(h.lng) <= 180 && !(h.lat === 0 && h.lng === 0), h.id); assert.ok(REGIONS.includes(h.region), h.id); assert.ok(h.city && h.country, h.id); }
+  for (const [a, b] of CONNECTIONS) { assert.ok(ids.has(a) && ids.has(b), `${a}>${b}`); assert.notEqual(a, b); }
+  assert.equal(new Set(CONNECTIONS.map(([a, b]) => `${a}>${b}`)).size, CONNECTIONS.length, "no duplicate connections");
+  const used = new Set(CONNECTIONS.flat()); for (const h of HUBS) assert.ok(used.has(h.id), `${h.id} is used`);
+  for (const r of REGIONS) assert.ok(HUBS.some((h) => h.region === r), r);
+  assert.ok(HUBS.length >= 80 && CONNECTIONS.length >= 300, `a large network, not a fixed list: ${HUBS.length} hubs, ${CONNECTIONS.length} connections`);
+  for (const r of REGIONS) assert.ok(HUBS.filter((h) => h.region === r).length >= 5, `${r} is well represented`);
+  for (const id of ["lagos", "accra", "abidjan", "dakar", "casablanca", "cairo", "nairobi", "london", "frankfurt", "hamburg", "amsterdam", "antwerp", "rotterdam", "shanghai", "hongkong", "singapore", "tokyo", "dubai", "newyork", "toronto", "losangeles", "saopaulo", "buenosaires", "santiago", "sydney", "melbourne"]) assert.ok(ids.has(id), id);
+  const pairs = new Set(CONNECTIONS.map(([a, b]) => [hubById.get(a).region, hubById.get(b).region].sort().join("|")));
+  assert.ok(pairs.size >= 18, `many continent pairings: ${pairs.size}`);
+  assert.ok(CONNECTIONS.filter((c) => c.includes("lagos")).length >= 8, "Lagos is well connected");
+  for (const pair of [["shanghai", "newyork"], ["frankfurt", "london"], ["tokyo", "sydney"], ["dubai", "lagos"], ["singapore", "rotterdam"], ["toronto", "amsterdam"], ["hongkong", "singapore"], ["nairobi", "dubai"]])
+    assert.ok(CONNECTIONS.some((c) => c[0] === pair[0] && c[1] === pair[1]), pair.join(">"));
+  const km = distanceKm(hubById.get("lagos"), hubById.get("london")); assert.ok(km > 4900 && km < 5100, String(km));
+  // scheduler: no repeats inside its window, never a duplicate on screen, and the visible set mixes regions
+  let seed = 7; const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const sch = createScheduler({ random }); const seen = []; let visible = [];
+  const rp = ([a, b]) => [hubById.get(a).region, hubById.get(b).region].sort().join("|");
+  for (let i = 0; i < 300; i++) {
+    const c = sch.next(visible); const k = c.join(">");
+    assert.ok(!visible.some((v) => v.join(">") === k), "never shown twice at once");
+    assert.ok(!seen.slice(-24).includes(k), `no repeat within the window (${k})`);
+    assert.ok(!visible.some((v) => rp(v) === rp(c)), `no continent pairing twice on screen (${rp(c)})`);
+    seen.push(k); visible = [...visible.slice(-2), c];
+    if (visible.length === 3) assert.ok(new Set(visible.flatMap(([a, b]) => [hubById.get(a).region, hubById.get(b).region])).size >= 2, "regions are mixed");
+  }
+  assert.equal(new Set(seen).size, 300, "300 picks, 300 different connections");
+  // deterministic with a seeded random, varied without one
+  const run = (sd) => { let x = sd; const rnd = () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; const sc = createScheduler({ random: rnd }); return Array.from({ length: 10 }, () => sc.next().join(">")).join(","); };
+  assert.equal(run(11), run(11)); assert.notEqual(run(11), run(12));
+  // copy: a visualisation, never shipment data
+  const src = read("ui/network-globe.js"); const h = read("index.html");
+  assert.ok(!/not live shipments|Network visualisation/.test(h), "no disclaimer band around the globe (owner's choice); cards say 'Freight connection', never a shipment");
+  assert.ok(!/data-ng-toggle|data-ng-next|ng-btn|>Play<|>Pause</.test(h + src), "no play/pause or manual controls: it runs by itself");
+  assert.match(h, /Worldwide freight connections/);
+  const prose = (src + read("ui/network-routes.js")).replace(/\/\/.*$/gm, "");
+  assert.ok(!/\b(live|in transit|delivered|tracking (code|number)|shipments? (count|total)|active)\b/i.test(prose), "no live/status/code/count wording");
+  assert.ok(!/fetch\(|\/api\//.test(src), "the globe reads no shipment data");
+  assert.match(src, /new IntersectionObserver/, "pauses offscreen"); assert.match(src, /visibilitychange/, "pauses in a background tab");
+  assert.match(src, /prefersReducedMotion\(\)/); assert.match(src, /function stillSwap\(\)/, "reduced motion still changes routes, without movement");
+  assert.match(src, /li\.classList\.toggle\("is-focus"/, "the focused route's card is marked"); assert.match(src, /root\.dataset\.focus = focus/);
+  assert.ok(!/Illustrative network — not live shipment activity|nw-tag/.test(h), "the old orange disclaimer is gone");
+  // the real published-shipment feed stays separate (command centre), and still never shows record-edit times
   const cc = read("ui/globe/command-center.js");
   assert.match(cc, /o\.mode === "admin" \? r\.current\?\.recordedAt \|\| r\.updatedAt : activity\.find/, "public table never shows the record-edit time");
-  const h = read("index.html");
-  assert.match(h, /id="freightNetwork"/); assert.match(h, /network\.then\(\(n\) => n\.render\(d\)/); assert.match(h, /network\.then\(\(n\) => n\.error\(\)/);
+  assert.match(h, /import\("\.\/ui\/network-globe\.js"\)/); assert.ok(!/ui\/network\.js/.test(h));
 });
 
 test("tracking polish: heading, route line, 'Latest recorded milestone', a status explainer for every status", async () => {
@@ -595,7 +638,10 @@ test("tracking polish: heading, route line, 'Latest recorded milestone', a statu
   assert.ok(!/because|due to/i.test(Object.values(STATUS_HELP).join(" ")), "no invented reasons");
   const t = read("tracker/tracker.js");
   assert.match(t, /<div class="hx-od">/); assert.match(t, /What does “\$\{esc\(v\.status\.label\)\}” mean\?/);
-  assert.match(read("index.html"), /<h2 class="track-title">Track a shipment<\/h2>/);
+  assert.match(read("index.html"), /<h2 class="track-title">Track your shipment<\/h2>/);
+  const tp = read("track.html"); assert.match(tp, /<div id="error" class="error-message" role="alert"><\/div>/); assert.match(tp, /notfound: "Tracking number not found\."/);
+  assert.match(t, /function routeSummaryHtml\(v\)/); assert.match(t, /Lines connect recorded places; they aren't a tracked path\./);
+  assert.match(t, /data-slot="mapnote"/, "the map note has a place to render");
 });
 
 test("admin on iPhone: bottom tab bar, readable text, status breakdown from real counts, change history, e-mail field", () => {

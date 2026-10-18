@@ -438,7 +438,7 @@ export function initControlCenter(host) {
         <td data-label="Courier">${esc(cr?.name || s.courier || "—")}</td>
         <td data-label="Status">${s.statusCode ? pill(s.statusCode) : `<span class="pill neutral">${esc(s.status || "Unknown")}</span>`}</td>
         <td data-label="Route">${esc(s.origin || "—")} → ${esc(s.destination || "—")}</td>
-        <td data-label="Location">${esc(s.location || "—")}${s.hasCoordinates ? "" : ' <small style="color:#94a3b8">(no coords)</small>'}</td>
+        <td data-label="Location">${esc(s.location || "—")}${s.hasCoordinates ? "" : ' <small class="muted">(no coords)</small>'}</td>
         <td data-label="Updated">${esc(timeAgo(s.updatedAt) || "—")}</td>
         <td data-label="Actions" class="td-actions"><div class="row-actions">
           <button class="btn-action" data-act="track" data-code="${esc(s.id)}">Open</button>
@@ -779,7 +779,7 @@ export function initControlCenter(host) {
         <div class="panel-grid">
           <div class="panel"><h4>Account</h4><p>${esc($("whoami").textContent)}</p><p class="hint">Session lifetime ${s.session.ttlMinutes} min (renewed while active). Permissions: ${esc(state.perms.join(", "))}</p></div>
           <div class="panel"><h4>Database</h4><p><strong>${esc(s.store)}</strong></p><p class="hint">Shipments, events, locations and the audit log are written server-side only.</p></div>
-          <div class="panel"><h4>Map</h4><p>${esc(s.map.provider)}</p>${s.map.issues?.length ? `<p class="hint" style="color:#b91c1c">${s.map.issues.map(esc).join("<br>")}</p>` : ""}<p class="hint">Fallbacks: ${esc((s.map.fallbacks || []).join(", "))}. To use a keyed provider set MAP_PROVIDER (maptiler, stadia or mapbox) and MAP_TILE_KEY (a public, domain-restricted key) in the server environment.</p></div>
+          <div class="panel"><h4>Map</h4><p>${esc(s.map.provider)}</p>${s.map.issues?.length ? `<p class="hint is-danger">${s.map.issues.map(esc).join("<br>")}</p>` : ""}<p class="hint">Fallbacks: ${esc((s.map.fallbacks || []).join(", "))}. To use a keyed provider set MAP_PROVIDER (maptiler, stadia or mapbox) and MAP_TILE_KEY (a public, domain-restricted key) in the server environment.</p></div>
           <div class="panel"><h4>Realtime</h4><p>${s.realtime.sse ? "Server-sent events" : "Polling only"} · fallback polling every ${Math.round(s.realtime.pollMs / 1000)}s</p></div>
           <div class="panel"><h4>Notifications</h4><p>${yes(s.notifications.configured)}</p><p class="hint">${s.notifications.configured ? `Providers: ${esc(s.notifications.providers.join(", "))}` : "Nothing is sent. Set RESEND_API_KEY + NOTIFY_EMAIL_FROM (+ SITE_URL) to e-mail customers who have a notification address, or NOTIFY_WEBHOOK_URL to forward events."}</p></div>
           <div class="panel"><h4>Courier / GPS providers</h4>${s.providers.map((p) => `<p>${esc(p.id)} (${esc(p.source)}) ${yes(p.configured)}</p>`).join("")}<p class="hint">Webhook: POST /api/provider?provider=&lt;id&gt; with X-Hyperion-Signature.</p></div>

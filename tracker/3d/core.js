@@ -18,7 +18,11 @@ void main(){ vec3 d = normalize(vDir); float h = d.y;
 // Two lighting moods that follow the site theme; both keep the models clearly lit.
 const MOODS = {
   day: { top: "#3d7fd6", horizon: "#cfe3f5", ground: "#9aa6b2", sun: "#fff6e8", sunI: 3.0, hemiSky: "#dbeafe", hemiGround: "#7b8494", hemiI: 0.9, elev: 52, azim: 38, exposure: 1.0 },
-  dusk: { top: "#24477f", horizon: "#cfd6e2", ground: "#4b5563", sun: "#ffd6a0", sunI: 2.6, hemiSky: "#9db8e8", hemiGround: "#5b4a3f", hemiI: 0.85, elev: 24, azim: 58, exposure: 1.05 }
+  dusk: { top: "#24477f", horizon: "#cfd6e2", ground: "#4b5563", sun: "#ffd6a0", sunI: 2.6, hemiSky: "#9db8e8", hemiGround: "#5b4a3f", hemiI: 0.85, elev: 24, azim: 58, exposure: 1.05 },
+  // fixed moods for the paused stages (a scene can ask for one with def.mood): flat, grey light for a delay;
+  // low, cool light for a cancelled shipment. Both stay bright enough to read the models.
+  overcast: { top: "#7d8894", horizon: "#c9ced4", ground: "#6b7178", sun: "#e8ecf0", sunI: 1.2, hemiSky: "#d5dae0", hemiGround: "#6f747a", hemiI: 1.35, elev: 60, azim: 30, exposure: 1.0 },
+  dim: { top: "#2a3445", horizon: "#8f99a8", ground: "#3d434b", sun: "#c9d4e6", sunI: 1.7, hemiSky: "#9aaccb", hemiGround: "#3a3f46", hemiI: 1.2, elev: 34, azim: 20, exposure: 1.05 }
 };
 
 export function webglAvailable() {
@@ -32,7 +36,8 @@ export function webglAvailable() {
 export function createStage(THREE, container, def, { reducedMotion = false, animate = true, perfCheck = true } = {}) {
   const dark = document.documentElement.dataset.theme !== "light";
   const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
-  const mood = MOODS[dark ? "dusk" : "day"];
+  const themed = !MOODS[def.mood]; // stage scenes follow the site theme; paused stages keep their own mood
+  let mood = MOODS[def.mood] || MOODS[dark ? "dusk" : "day"];
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2));
@@ -55,7 +60,7 @@ export function createStage(THREE, container, def, { reducedMotion = false, anim
   scene.fog = new THREE.Fog(new THREE.Color(mood.horizon).lerp(new THREE.Color(mood.top), 0.15), fogNear, fogFar);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const envScene = new THREE.Scene(); envScene.add(new THREE.Mesh(sky.geometry, skyMat));
-  const env = pmrem.fromScene(envScene, 0.02); scene.environment = env.texture;
+  let env = pmrem.fromScene(envScene, 0.02); scene.environment = env.texture;
 
   const hemi = new THREE.HemisphereLight(mood.hemiSky, mood.hemiGround, mood.hemiI); scene.add(hemi);
   const sun = new THREE.DirectionalLight(mood.sun, mood.sunI);
@@ -64,6 +69,23 @@ export function createStage(THREE, container, def, { reducedMotion = false, anim
   sun.shadow.mapSize.set(coarse ? 1024 : 2048, coarse ? 1024 : 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = Math.max(0.04, ext * 0.0009); // scaled to the shadow texel size (no acne bands)
   Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext, near: 1, far: ext * 5 });
   scene.add(sun); scene.add(sun.target);
+
+  /** Re-light the open scene for a new mood (the site theme changed): sky, fog, lights, exposure and reflections. */
+  function applyMood(next) {
+    mood = next;
+    skyMat.uniforms.top.value.set(mood.top); skyMat.uniforms.horizon.value.set(mood.horizon); skyMat.uniforms.ground.value.set(mood.ground);
+    sunDir.setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - mood.elev), THREE.MathUtils.degToRad(mood.azim)); skyMat.uniforms.sunColor.value.set(mood.sun);
+    scene.fog.color.set(mood.horizon).lerp(new THREE.Color(mood.top), 0.15);
+    hemi.color.set(mood.hemiSky); hemi.groundColor.set(mood.hemiGround); hemi.intensity = mood.hemiI;
+    sun.color.set(mood.sun); sun.intensity = mood.sunI; sun.position.copy(sunDir).multiplyScalar(ext * 2.2);
+    renderer.toneMappingExposure = mood.exposure;
+    const old = env; env = pmrem.fromScene(envScene, 0.02); scene.environment = env.texture; old.dispose();
+    container.dataset.mood = Object.keys(MOODS).find((k) => MOODS[k] === mood) || "";
+    request();
+  }
+  const onTheme = (e) => { if (themed) applyMood(MOODS[(e?.detail ?? document.documentElement.dataset.theme) === "light" ? "day" : "dusk"]); };
+  document.addEventListener("hx-theme", onTheme);
+  container.dataset.mood = Object.keys(MOODS).find((k) => MOODS[k] === mood) || "";
 
   const camera = new THREE.PerspectiveCamera(36, 2, 0.3, 2500);
   const materials = createMaterials(THREE, renderer);
@@ -163,7 +185,7 @@ export function createStage(THREE, container, def, { reducedMotion = false, anim
     dispose() {
       if (disposed) return; disposed = true;
       if (raf) cancelAnimationFrame(raf);
-      ro?.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", onVis);
+      ro?.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", onVis); document.removeEventListener("hx-theme", onTheme);
       scene.traverse((o) => { o.geometry?.dispose(); const m = o.material; (Array.isArray(m) ? m : m ? [m] : []).forEach((x) => x.dispose()); });
       materials.dispose(); env.dispose(); pmrem.dispose();
       renderer.dispose(); renderer.forceContextLoss?.(); canvas.remove();

@@ -851,7 +851,7 @@
             <table class="ops-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Point</th><th scope="col">Stored value</th><th scope="col">Problem</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
               <tbody id="locCheckRows"></tbody></table>
           </div>
-          <p class="loc-check-note">Read-only check. Nothing is changed automatically: a fix is applied only when you confirm it, through the normal audited update.</p>
+          <p class="loc-check-note">Read-only check. <details class="more"><summary>More info</summary>Nothing is changed automatically: a fix is applied only when you confirm it, through the normal audited update.</details></p>
         </section>
         <div class="dash-cols" data-reveal>
           <div>
@@ -863,7 +863,7 @@
             <h4>Recent tracking events &amp; status changes</h4><ul class="feed" id="dashEvents"></ul>
           </div>
         </div>
-        <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">System status</h4>
+        <h4 class="sub-h">System status</h4>
         <div class="sys-row" id="sysStatus"></div>
         <div class="quick-actions">
           <h4>Quick Actions</h4>
@@ -1146,9 +1146,9 @@
             <label class="check-row"><input type="checkbox" id="evVisible" checked>Visible to client</label>
             <label class="check-row"><input type="checkbox" id="evApply" checked><span>Also make this the shipment’s current status and map position <small>(only applied if it is newer than the current information)</small></span></label>
             <div class="panel-actions"><button class="btn btn-primary inline hx-press" type="submit">ADD TRACKING EVENT</button><button type="button" class="btn-action" id="evNow">Set time to now</button></div>
-            <p class="hint">Date and time use your browser’s local time zone. Future-dated events are rejected. Coordinates are added to the route history shown on the client map.</p>
+            <p class="hint">Uses your local time zone. <details class="more"><summary>More info</summary>Future-dated events are rejected. Coordinates are added to the route history shown on the client map.</details></p>
           </form>
-          <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">Event history</h4>
+          <h4 class="sub-h">Event history</h4>
           <ul class="ev-list" id="evList"></ul>
           <h4 class="ev-history-title">Change history</h4>
           <p class="hint">Every saved change to this shipment, from the activity log (read only). Times here are when the change was saved.</p>
@@ -1178,7 +1178,7 @@
         <div class="card-header"><h3>Settings &amp; Integrations</h3><p>Read-only view of server configuration. Secrets are never displayed.</p></div>
         <div class="panel" id="backupPanel" style="margin-bottom:18px">
           <h4>Backup</h4>
-          <p class="hint">Downloads every shipment with its tracking events and location history, plus carriers, as one JSON file with a SHA-256 checksum. Read-only: nothing is changed. Required before running a data migration (valid for 2 hours).</p>
+          <p class="hint">Downloads all shipments and carriers as one JSON file. Read-only. <details class="more"><summary>More info</summary>Includes tracking events and location history, with a SHA-256 checksum. Nothing is changed. Required before running a data migration (valid for 2 hours).</details></p>
           <div class="tool-actions" style="margin:10px 0 0"><button class="btn btn-primary inline" type="button" id="backupBtn">Download full backup</button><span class="hint" id="backupStatus"></span></div>
         </div>
         <div id="settingsBody"></div>
@@ -1212,7 +1212,7 @@
           <div class="courier-stat"><span>Loading clients...</span><strong>--</strong></div>
         </div>
         <form id="clientForm" style="margin-top:16px;">
-          <h4 id="clientFormTitle" style="font-size:14px; margin-bottom:12px; color:#1e293b;">Create Client</h4>
+          <h4 id="clientFormTitle" class="form-h">Create Client</h4>
           <div class="client-form-grid">
             <input id="clientName" type="text" placeholder="Client Name" required>
             <input id="clientEmail" type="email" placeholder="Client Email" required>
@@ -1317,7 +1317,7 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="courierModal">
+  <div class="modal-overlay" id="courierModal" role="dialog" aria-modal="true" aria-labelledby="courierModalTitle">
     <div class="modal-card">
       <div class="card-header">
         <h3 id="courierModalTitle">Add New Courier</h3>
@@ -1369,7 +1369,7 @@
           <div class="form-group" style="grid-column: 1 / -1;">
             <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0"><input type="checkbox" id="courierPartnerInput" style="width:auto;margin:0"> Verified partnership</label>
             <input id="courierPartnerEvidenceInput" type="text" maxlength="200" placeholder="Evidence (internal): contract reference, date, who confirmed it" aria-label="Partnership evidence (internal)">
-            <small class="field-hint">Tick only for a confirmed business partnership. The public directory then shows "Verified partner"; the evidence is never shown publicly. Leave unticked for carriers that are only listed.</small>
+            <small class="field-hint">Tick only for a confirmed business partnership. <details class="more"><summary>More info</summary>The public directory then shows "Verified partner"; the evidence is never shown publicly. Leave unticked for carriers that are only listed.</details></small>
           </div>
           <div class="form-group">
             <label for="courierRegionInput">Country / region</label>
@@ -1417,10 +1417,10 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="shipmentModal">
+  <div class="modal-overlay" id="shipmentModal" role="dialog" aria-modal="true" aria-labelledby="shipmentModalTitle">
     <div class="modal-card">
       <div class="card-header">
-        <h3>Edit Shipment</h3>
+        <h3 id="shipmentModalTitle">Edit Shipment</h3>
         <p>Changes are validated, saved to the database and recorded in the activity log</p>
       </div>
       <form id="shipmentForm">

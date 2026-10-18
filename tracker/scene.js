@@ -154,7 +154,8 @@ const SCENE_BY_STATUS = { CREATED: "processing", PROCESSING: "processing", PICKE
 const SCENE_BY_MODE = { ship: "ship", plane: "air", truck: "road" };
 const SCENE_TEXT = { processing: "warehouse where shipments are prepared", collection: "dispatch dock where shipments are collected", ship: "container vessel at sea",
   air: "cargo aircraft at an airport", road: "freight truck on a highway", neutral: "pallet of parcels", facility: "distribution centre",
-  customs: "cargo customs inspection area", delivery: "delivery van on a residential street", delivered: "parcel on a front porch" };
+  customs: "cargo customs inspection area", delivery: "delivery van on a residential street", delivered: "parcel on a front porch",
+  delayed: "truck staging yard where loads wait", hold: "cargo hold bay where shipments wait for attention", cancelled: "closed loading dock" };
 
 function sceneFor(code, view) {
   if (code === "IN_TRANSIT") return SCENE_BY_MODE[shipmentMode(view)] || "neutral"; // no recorded mode: no vehicle is implied
@@ -162,15 +163,17 @@ function sceneFor(code, view) {
 }
 
 /**
- * { scene, animate, state } for the recorded status. On hold (delayed / exception) shows the last confirmed stage's
- * scene, or the neutral one, without movement; cancelled and unknown statuses get the neutral scene, also still.
+ * { scene, animate, state } for the recorded status. The paused statuses each get their own still scene so they can't
+ * be mistaken for normal movement: delayed → a staging yard, exception (on hold) → a hold bay, cancelled → a closed
+ * dock. Unknown statuses get the neutral scene, also still.
  */
 export function stageScene(view) {
   const code = view?.status?.code;
-  if (code === "CANCELLED") return { scene: "neutral", animate: false, state: "cancelled" };
+  if (code === "CANCELLED") return { scene: "cancelled", animate: false, state: "cancelled" };
+  if (code === "DELAYED") return { scene: "delayed", animate: false, state: "held" };
+  if (code === "EXCEPTION") return { scene: "hold", animate: false, state: "held" };
   const direct = sceneFor(code, view);
   if (direct) return { scene: direct, animate: true, state: "normal" };
-  if (code === "DELAYED" || code === "EXCEPTION") return { scene: sceneFor(view?.progress?.stage, view) || "neutral", animate: false, state: "held" };
   return { scene: "neutral", animate: false, state: "unknown" };
 }
 export function modelCaption(scene, state = "normal") {

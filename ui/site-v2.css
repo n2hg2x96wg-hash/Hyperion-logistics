@@ -402,62 +402,39 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
   .journey-media img { object-position: 50% 50%; }
 }
 
-/* ---------- freight: international shipping network (ui/network.js) ---------- */
-.freight-network { margin: 28px 0 0; padding: 20px; border-radius: 22px; border: 1px solid rgba(96, 165, 250, 0.18);
-  background: radial-gradient(120% 90% at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%), linear-gradient(180deg, #0b1838, #060d22);
+/* ---------- freight: worldwide freight connections globe (ui/network-globe.js) ---------- */
+.freight-network { --ng-sea-1: #12306a; --ng-sea-2: #040a1d; --ng-rim: rgba(56, 189, 248, 0.42); --ng-dot: #8cc4ff; --ng-arc: #5fd3ff;
+  --ng-glow: rgba(56, 189, 248, 0.3); --ng-marker: #fbbf24; --ng-city: #e7eefb; --ng-halo: #050b1f;
+  margin: 36px 0 0; padding: clamp(18px, 3vw, 32px); border-radius: 24px; border: 1px solid rgba(96, 165, 250, 0.16); position: relative; overflow: hidden;
+  background: radial-gradient(70% 80% at 30% 50%, rgba(37, 99, 235, 0.18), transparent 70%), radial-gradient(1px 1px at 12% 20%, rgba(255,255,255,.5), transparent),
+    radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.35), transparent), radial-gradient(1px 1px at 88% 70%, rgba(255,255,255,.4), transparent),
+    radial-gradient(1px 1px at 40% 88%, rgba(255,255,255,.3), transparent), linear-gradient(180deg, #071233, #030817);
   box-shadow: 0 30px 70px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-.nw-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px; margin-bottom: 12px; }
-.nw-head h3 { margin: 0; font-size: clamp(18px, 2.2vw, 22px); color: #fff; letter-spacing: -0.01em; }
-.nw-tag { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: #93c5fd; }
-.freight-network:is([data-state="illustrative"], [data-state="error"]) .nw-tag { color: #fbbf24; }
-.nw-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: #cbd5e1; }
-.nw-legend[hidden] { display: none; }
-.nw-legend li { display: inline-flex; align-items: center; gap: 6px; }
-.nw-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
-.nw-legend .k-origin { border: 2px solid #60a5fa; } .nw-legend .k-current { background: #22c55e; } .nw-legend .k-destination { border: 2px solid #f8fafc; }
-.nw-legend .k-line { width: 18px; height: 0; border-radius: 0; border-top: 3px solid #60a5fa; } .nw-legend .k-dash { width: 18px; height: 0; border-radius: 0; border-top: 2px dashed #94a3b8; }
-.nw-map { display: block; width: 100%; height: auto; border-radius: 14px; }
-.nw-sea-1 { stop-color: #0c1f4a; } .nw-sea-2 { stop-color: #050c22; }
-.nw-land { fill: #17305e; stroke: #3a5e9e; stroke-width: 0.5; stroke-opacity: 0.6; }
-.nw-arc { fill: none; stroke-linecap: round; }
-.nw-arc.is-travelled { stroke: #7cc0ff; stroke-width: 2.6; filter: url(#nwGlow); }
-.nw-arc.is-hot { stroke-width: 3.6; stroke: #bfe0ff; } .nw-arc.is-remaining, .nw-arc.is-planned { stroke: #94a3b8; stroke-width: 1.8; stroke-dasharray: 0.012 0.012; }
-.nw-arc.is-illustrative { stroke: rgba(147, 197, 253, 0.45); stroke-width: 1.6; stroke-dasharray: 0.01 0.012; }
-.nw-dot.is-origin { fill: #0a1733; stroke: #60a5fa; stroke-width: 2.4; } .nw-dot.is-destination { fill: #0a1733; stroke: #f8fafc; stroke-width: 2.4; }
-.nw-dot.is-current { fill: #22c55e; stroke: #fff; stroke-width: 1.5; filter: url(#nwGlow); } .nw-dot.is-illustrative { fill: rgba(147, 197, 253, 0.55); }
-.nw-label { font: 600 12px var(--hy-font, system-ui); fill: #e2e8f0; paint-order: stroke; stroke: #0a1733; stroke-width: 3px; }
-.nw-note { margin: 10px 2px 0; font-size: 13px; color: #a5b4cf; }
-@media (prefers-reduced-motion: no-preference) {
-  .freight-network.is-drawing .nw-arc.is-travelled, .freight-network.is-drawing .nw-arc.is-illustrative { animation: nw-draw 1.8s cubic-bezier(.3,.6,.2,1) both; }
-  .freight-network.is-drawing .nw-arc.is-travelled { stroke-dasharray: 1; }
-  .nw-dot.is-current { animation: nw-pulse 2.4s ease-in-out 3; transform-box: fill-box; transform-origin: center; }
-}
-@keyframes nw-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes nw-pulse { 50% { transform: scale(1.5); } }
-/* country-to-country cards for the published routes */
-.nw-cards { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
-.nw-cards[hidden] { display: none; }
-.nw-card { min-width: 0; display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.18);
-  background: linear-gradient(180deg, rgba(20, 36, 74, 0.9), rgba(11, 22, 50, 0.9)); color: #e6ecf8; transition: border-color .2s ease, transform .2s ease; }
-.nw-card:hover, .nw-card:focus-within { border-color: rgba(125, 192, 255, 0.55); transform: translateY(-2px); }
-.nw-card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.nw-ref { font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .03em; color: #fff; margin-right: auto; }
-.nw-mode { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(96, 165, 250, 0.16); color: #93c5fd; flex: none; }
-.nw-mode svg { width: 18px; height: 18px; }
-.nw-pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(96, 165, 250, 0.18); color: #bfdbfe; white-space: nowrap; }
-.nw-pill.tone-success { background: rgba(52, 211, 153, 0.18); color: #a7f3d0; } .nw-pill.tone-warn { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
-.nw-pill.tone-danger { background: rgba(248, 113, 113, 0.18); color: #fecaca; } .nw-pill.tone-neutral { background: rgba(148, 163, 184, 0.18); color: #e2e8f0; }
-/* origin above destination, joined by a short vertical route line (no mid-word breaks in narrow cards) */
-.nw-card-route { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 10px; row-gap: 2px; font-size: 15px; font-weight: 700; color: #fff; }
-.nw-card-route > span { grid-column: 2; min-width: 0; overflow-wrap: break-word; }
-.nw-card-route > span:first-child { grid-row: 1; } .nw-card-route > span:last-child { grid-row: 3; }
-.nw-card-route i { grid-column: 1; grid-row: 1 / 4; justify-self: center; width: 2px; margin: 8px 0; background: repeating-linear-gradient(180deg, #7dd3fc 0 5px, transparent 5px 9px); position: relative; }
-.nw-card-route i::before, .nw-card-route i::after { content: ""; position: absolute; left: 50%; width: 9px; height: 9px; border-radius: 50%; transform: translate(-50%, -50%); }
-.nw-card-route i::before { top: 0; border: 2px solid #60a5fa; background: #0b1838; } .nw-card-route i::after { top: 100%; border: 2px solid #f8fafc; background: #0b1838; }
-.nw-card-mile { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgba(2, 6, 23, 0.35); }
-.nw-card-mile small { font-size: 12px; color: #a5b4cf; } .nw-card-mile strong { font-size: 14px; color: #fff; } .nw-card-mile time { font-size: 13px; color: #cbd5e1; }
-.nw-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.nw-chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.3); color: #cbd5e1; }
-.nw-card-foot a { font-size: 13px; font-weight: 700; color: #93c5fd; min-height: 32px; display: inline-flex; align-items: center; }
-@media (prefers-reduced-motion: reduce) { .nw-card { transition: none; } .nw-card:hover { transform: none; } }
-@media (max-width: 640px) { .freight-network { padding: 14px; border-radius: 16px; } .nw-label { font-size: 15px; } }
+.ng-head { position: relative; z-index: 1; }
+.ng-head .eyebrow { margin: 0 0 4px; }
+.ng-head h3 { margin: 0; font-size: clamp(21px, 3vw, 30px); color: #fff; letter-spacing: -0.02em; line-height: 1.1; }
+.ng-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: clamp(8px, 3vw, 36px); margin-top: 4px; }
+.ng-globe { position: relative; max-width: 620px; width: 100%; justify-self: center; }
+.ng-globe canvas { display: block; width: 100%; }
+.freight-network[data-state="loading"] .ng-globe canvas { opacity: 0; } .ng-globe canvas { transition: opacity .8s ease; }
+.freight-network.no-globe .ng-globe { display: none; } .freight-network.no-globe .ng-body { grid-template-columns: 1fr; }
+.ng-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; align-content: center; min-height: 0; position: relative; }
+.ng-cards .ng-card.is-out { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; } /* leaving cards fade over the list, so its height never jumps */
+.ng-card { display: grid; gap: 10px; align-content: center; min-height: 142px; padding: 16px 18px; border-radius: 18px; color: #e6ecf8;
+  background: linear-gradient(160deg, rgba(30, 58, 120, 0.55), rgba(10, 20, 48, 0.72)); border: 1px solid rgba(125, 192, 255, 0.2);
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06); backdrop-filter: blur(6px);
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1), border-color .2s ease; }
+.ng-card.is-in { opacity: 0; transform: translateY(14px) scale(.98); } .ng-card.is-out { opacity: 0; transform: translateY(-10px) scale(.98); }
+.ng-card:hover { border-color: rgba(125, 211, 252, 0.6); }
+.ng-card.is-focus { border-color: rgba(95, 211, 255, 0.65); box-shadow: 0 14px 34px rgba(2, 6, 23, 0.35), 0 0 0 1px rgba(95, 211, 255, 0.25), 0 0 26px rgba(56, 189, 248, 0.18); }
+.ng-kind { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc; }
+.ng-route { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: center; gap: 8px; }
+.ng-city { display: grid; gap: 1px; min-width: 0; } .ng-city:last-child { text-align: right; }
+.ng-city small { font-size: 12px; color: #8ea3c4; } .ng-city strong { font-size: 17px; color: #fff; overflow-wrap: break-word; } .ng-city span { font-size: 13px; color: #b6c4dc; overflow-wrap: break-word; }
+.ng-route i { height: 2px; position: relative; background: linear-gradient(90deg, #fbbf24, #5fd3ff); border-radius: 2px; }
+.ng-route i::after { content: ""; position: absolute; right: -2px; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: #5fd3ff; transform: translateY(-50%); box-shadow: 0 0 8px #5fd3ff; }
+.ng-dist { font-size: 13px; color: #94a7c6; }
+@media (max-width: 860px) { .ng-body { grid-template-columns: 1fr; } .ng-globe { max-width: 520px; } }
+@media (max-width: 640px) { .freight-network { border-radius: 18px; padding: 16px 12px 14px; } .ng-globe { margin: -6px -4px 0; width: calc(100% + 8px); max-width: none; }
+  .ng-card { padding: 14px; min-height: 132px; } .ng-city strong { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .ng-card, .ng-globe canvas { transition: none; } }

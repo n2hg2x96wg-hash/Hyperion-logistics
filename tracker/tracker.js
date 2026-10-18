@@ -240,6 +240,24 @@ export function createTracker(root, opts = {}) {
     return `${head}<div class="hx-progress-bar" role="progressbar" aria-label="Shipment progress" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${cur + 1}" aria-valuetext="Stage ${cur + 1} of ${n}: ${esc(label)}"><span data-p="${frac(cur)}" style="--hx-p:${frac(cur)}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
   }
 
+  /** Origin → destination with the recorded stage, above the map (no percentage: the stage is the only fact). */
+  const MODE_SVG = {
+    ship: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/><path d="M5 14 4 10h16l-1 4"/><path d="M8 10V6h4v4M12 7h4v3"/></svg>',
+    plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z"/></svg>',
+    truck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>'
+  };
+  function routeSummaryHtml(v) {
+    if (!v.origin && !v.destination) return "";
+    const p = v.progress; const n = p?.steps?.length || 0; const i = p ? p.steps.findIndex((x) => x.code === p.stage) : -1;
+    const frac = p?.stage === "DELIVERED" ? 1 : i <= 0 || n < 2 ? 0 : i / (n - 1);
+    const mode = presentation(v).mode; const icon = mode ? MODE_SVG[mode] : "";
+    const eta = v.eta?.state === "date" ? fmtDate(v.eta.date, "medium") : v.eta?.state === "delivered" && v.eta.deliveredAt ? fmtDateTime(v.eta.deliveredAt) : "";
+    return `<div class="hx-routesum"><div class="hx-rsum-end"><small>From</small><strong>${esc(v.origin || "Origin not set")}</strong></div>
+      <div class="hx-rsum-line" aria-hidden="true"><i style="--hx-p:${p?.cancelled ? 0 : frac}"></i>${icon ? `<span class="hx-rsum-mode" style="--hx-p:${p?.cancelled ? 0 : frac}">${icon}</span>` : ""}</div>
+      <div class="hx-rsum-end is-dest"><small>To</small><strong>${esc(v.destination || "Destination not set")}</strong></div>
+      ${i >= 0 || eta ? `<div class="hx-rsum-meta">${i >= 0 ? `<span>${p.cancelled ? "Cancelled" : `Stage ${i + 1} of ${n} · ${esc(p.steps[i].label)}${p.held ? " · on hold" : ""}`}</span>` : ""}${eta ? `<span>${v.eta.state === "delivered" ? "Delivered" : "Estimated delivery"} ${esc(eta)}</span>` : ""}</div>` : ""}</div>`;
+  }
+
   function routeHtml(v, reveal) {
     const stops = routeStops(v);
     if (stops.length < 2) return "";
@@ -350,8 +368,11 @@ export function createTracker(root, opts = {}) {
         ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(v.exception.label)}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}</div></div>` : ""}
         ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
       </section>
+      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div>
+        ${routeSummaryHtml(v)}
+        <div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div>
+        <p class="hx-map-note"><span data-slot="mapnote"></span> <span class="hx-map-cap">Lines connect recorded places; they aren't a tracked path.</span></p></section>` : ""}
       ${routeHtml(v, reveal)}
-      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div><div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div></section>` : ""}
       ${timelineHtml(v.timeline, reveal)}
       <section class="hx-card hx-details" ${R()}>
         <h3 class="hx-h">Shipment details</h3>
@@ -434,7 +455,9 @@ export function createTracker(root, opts = {}) {
   const withState = (data, ls) => {
     if (!data.current) return data;
     const verified = verifiedFeed(state.view);
-    return { ...data, current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? SOURCE_TEXT[state.view.currentLocation.source] : null, updatedAt: verified ? data.current.updatedAt : null } };
+    const moving = ["IN_TRANSIT", "OUT_FOR_DELIVERY"].includes(state.view?.status?.code);
+    return { ...data, mode: moving ? presentation(state.view).mode : null,
+      current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? SOURCE_TEXT[state.view.currentLocation.source] : null, updatedAt: verified ? data.current.updatedAt : null } };
   };
 
   // ---------- map ----------
@@ -444,7 +467,7 @@ export function createTracker(root, opts = {}) {
     let text;
     if (c && ls?.state === "live") text = `Live — position reported ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when}).`;
     else if (c && ls?.state === "recent") text = `Recently updated — position reported ${when}.`;
-    else if (c) text = "Last known location shown.";
+    else if (c) text = verifiedFeed(state.view) ? "Last known location shown." : "Latest recorded location shown (approximate, city level).";
     else if (data.trail?.length) text = "Live location unavailable — showing the most recent recorded route points.";
     else if (data.origin || data.destination) text = "No location has been recorded yet — showing origin and destination only.";
     else text = "";
@@ -464,13 +487,14 @@ export function createTracker(root, opts = {}) {
     const token = ++mapToken;
     try {
       mapMod = mapMod || await import("./map.js");
-      const api = await mapMod.createMap(el, { onStatus: (s) => {
+      const api = await mapMod.createMap(el, { initial: withState(state.view?.map || data, locState()), onStatus: (s) => {
         // No tiles from any provider: never leave a blank map. Show a clear panel with the recorded facts instead.
         if (s === "tiles-unavailable") showMapUnavailable(el, state.view?.map || data);
         if (s === "tiles-ok") el.querySelector(".hx-map-fallback")?.remove();
+        if (s === "street-unavailable") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = "The street map isn't available right now; showing the outline map."; }
       } });
       if (destroyed || token !== mapToken || !el.isConnected) { api.destroy(); return; }
-      map = { el, api }; api.update(withState(state.view?.map || data, locState()));
+      map = { el, api };
     } catch { mapFailed = true; fallbackMap(el, data); }
   }
   function mapFallbackHtml(data) {
