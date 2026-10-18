@@ -1,5 +1,6 @@
 // Dark flat world map (Leaflet). The reliable fallback for the 3D globe: same Natural Earth country shapes,
 // same planned-route arcs and recorded-position markers, no tile provider needed.
+import { mapPalette, onPalette } from "./palette.js";
 import { loadLeaflet } from "../../tracker/map.js";
 import { loadCountries, routeSegments, TONE_COLORS } from "./geo.js";
 
@@ -23,10 +24,12 @@ export async function createFlatMap(el, { onSelect } = {}) {
     zoomSnap: 0.25, preferCanvas: true, maxBounds: [[-75, -260], [85, 260]], scrollWheelZoom: false });
   map.attributionControl.setPrefix(false).addAttribution("Natural Earth");
   L.control.zoom({ position: "topright" }).addTo(map);
+  const pal = mapPalette(); const lands = [];
   for (const k of [-360, 0, 360]) { // neighbouring world copies so routes across the Pacific have land around them
-    L.geoJSON(countries, { interactive: false, coordsToLatLng: (c) => L.latLng(c[1], c[0] + k),
-      style: { color: "#2f4f8f", weight: 0.6, fillColor: "#13254d", fillOpacity: 0.95 } }).addTo(map);
+    lands.push(L.geoJSON(countries, { interactive: false, coordsToLatLng: (c) => L.latLng(c[1], c[0] + k),
+      style: { color: pal.border, weight: 0.6, fillColor: pal.land, fillOpacity: 0.95 } }).addTo(map));
   }
+  const offPalette = onPalette((p) => lands.forEach((g) => g.setStyle({ color: p.border, fillColor: p.land })));
   map.setView([18, 12], el.clientWidth < 520 ? 1 : 1.75);
   map.on("click", () => map.scrollWheelZoom.enable());
   const layer = L.layerGroup().addTo(map);
@@ -83,6 +86,6 @@ export async function createFlatMap(el, { onSelect } = {}) {
       if (pts.length > 1) map.fitBounds(pts, pad); else if (pts.length) map.setView(pts[0], 4);
     },
     resize() { map.invalidateSize(); },
-    destroy() { ro?.disconnect(); try { map.remove(); } catch { /* ignore */ } }
+    destroy() { offPalette(); ro?.disconnect(); try { map.remove(); } catch { /* ignore */ } }
   };
 }

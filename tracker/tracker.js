@@ -7,7 +7,7 @@
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
 import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
-import { presentation, sceneSvg, routeStops } from "./scene.js";
+import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageModel, modelCaption, routeOverlaySvg } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -252,9 +252,13 @@ export function createTracker(root, opts = {}) {
     const pr = presentation(v);
     const loc = v.currentLocation?.name;
     const when = ls?.updatedAt || v.lastUpdated;
-    return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}"><div class="hx-scene-stage">${sceneSvg(pr)}</div>
+    const photo = stagePhoto(v); const model = stageModel(v);
+    const media = photo ? stagePhotoHtml(photo) + (photo.key === "ship" ? routeOverlaySvg(v) : "") : sceneSvg(pr);
+    return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}"${model ? ` data-model="${esc(model)}"` : ""}>
+      <div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>
       <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}${when ? ` · <time datetime="${esc(when)}">${esc(fmtDateTime(when))}</time>` : ""}</span>
-      <small>Illustration of the current shipment stage.</small></figcaption></figure>`;
+      <small data-slot="scenecap">${photo?.key === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage."}</small>
+      ${model ? `<button type="button" class="hx-btn-sec hx-3d-open hx-press" data-act="3d" aria-controls="hx3d"><span aria-hidden="true">⟳</span> Explore in 3D</button>` : ""}</figcaption></figure>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
@@ -303,6 +307,7 @@ export function createTracker(root, opts = {}) {
     const loc = v.currentLocation; const ls = locState(v);
     const ago = v.lastUpdated ? timeAgo(v.lastUpdated, Date.now() + serverOffset) : null;
 
+    viewer3d?.dispose(); viewer3d = null; // a re-render (new data) starts again from the photo
     // Keep the live map element (and its Leaflet instance) across re-renders: updates move markers, never rebuild the map.
     const keepMap = v.map && map ? map.el : null;
     if (keepMap) keepMap.remove();
@@ -465,6 +470,37 @@ export function createTracker(root, opts = {}) {
   }
   function destroyMap() { mapToken++; if (map) { map.api.destroy(); map = null; } }
 
+  // ---------- optional 3D model (loaded only when asked for; the photo stays if 3D is unavailable) ----------
+  let viewer3d = null; let scene3dMod = null;
+  async function open3d(btn) {
+    const fig = btn.closest(".hx-scene"); const slot = fig?.querySelector('[data-slot="3d"]'); const model = fig?.dataset.model;
+    if (!slot || !model || viewer3d) return;
+    btn.disabled = true; btn.setAttribute("aria-busy", "true");
+    slot.hidden = false; slot.id = "hx3d";
+    slot.innerHTML = `<div class="hx-3d-status" role="status">Loading 3D view…</div>`;
+    try {
+      scene3dMod = scene3dMod || await import("./scene3d.js");
+      viewer3d = await scene3dMod.createViewer(slot, model, { reducedMotion: reducedMotion() });
+      slot.insertAdjacentHTML("beforeend", `<div class="hx-3d-bar"><span class="hx-3d-hint">Drag to rotate · pinch or scroll to zoom</span>
+        <button type="button" class="hx-btn-sec" data-act="3d-reset">Reset view</button><button type="button" class="hx-btn-sec" data-act="3d-close">Close 3D</button></div>`);
+      slot.querySelector(".hx-3d-status")?.remove();
+      fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(model);
+      fig.classList.add("is-3d"); btn.hidden = true;
+      slot.querySelector("canvas")?.focus({ preventScroll: true });
+    } catch {
+      viewer3d = null;
+      slot.innerHTML = `<div class="hx-3d-status is-error" role="status">3D view isn't available on this device. <button type="button" class="hx-link" data-act="3d-close">Back to the picture</button></div>`;
+    } finally { btn.disabled = false; btn.removeAttribute("aria-busy"); }
+  }
+  function close3d(focusButton) {
+    viewer3d?.dispose(); viewer3d = null;
+    const fig = root.querySelector(".hx-scene"); if (!fig) return;
+    const slot = fig.querySelector('[data-slot="3d"]'); if (slot) { slot.hidden = true; slot.innerHTML = ""; }
+    fig.classList.remove("is-3d");
+    const cap = fig.querySelector('[data-slot="scenecap"]'); if (cap) cap.textContent = fig.dataset.photo === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage.";
+    const b = fig.querySelector(".hx-3d-open"); if (b) { b.hidden = false; if (focusButton) b.focus({ preventScroll: true }); }
+  }
+
   async function copyCode(btn, code) {
     let ok = false;
     try { await navigator.clipboard.writeText(code); ok = true; }
@@ -478,6 +514,7 @@ export function createTracker(root, opts = {}) {
   }
 
   function reset() {
+    viewer3d?.dispose(); viewer3d = null;
     if (abort) abort.abort();
     abort = null; inflightCode = null;
     stopRealtime(); destroyMap();
@@ -496,6 +533,9 @@ export function createTracker(root, opts = {}) {
       });
     }
     if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
+    if (act === "3d" && state.view) open3d(e.target.closest("[data-act]"));
+    if (act === "3d-reset") viewer3d?.reset();
+    if (act === "3d-close") close3d(true);
     if (act === "order" && state.view) {
       timelineOrder = e.target.closest("[data-order]").dataset.order;
       const card = root.querySelector(".hx-tl-card");
@@ -524,7 +564,7 @@ export function createTracker(root, opts = {}) {
     expire() { const had = !!state.code; reset(); if (had) { setPhase("expired"); renderMessage("expired"); } else { root.innerHTML = ""; setPhase("idle"); } },
     destroy() {
       destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect();
-      root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave);
+      root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave); viewer3d?.dispose(); viewer3d = null;
       document.removeEventListener("visibilitychange", visibilityHandler); root.innerHTML = "";
     }
   };

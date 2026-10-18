@@ -117,3 +117,71 @@ export function routeStops(view) {
   if (!delivered) while (current > 0 && stops[current].kind === "destination") current--;
   return stops.map((x, i) => ({ ...x, state: i < current ? "done" : i === current ? "current" : "upcoming" }));
 }
+
+// ---------- owner's stage photos (assets/stages, see CREDITS.md) and the optional 3D model per stage ----------
+// Photos illustrate the kind of place or vehicle for the recorded stage; they never claim to show the actual facility,
+// vessel or parcel. Stages without a fitting photo keep the drawn illustration above.
+const PHOTOS = {
+  dc: { file: "dc", widths: [720, 1179], w: 1179, h: 704, alt: "Illustration: a large distribution centre with trucks at its loading bays" },
+  bays: { file: "bays", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: warehouse loading bays with dock doors" },
+  forklift: { file: "forklift", widths: [342], w: 342, h: 250, alt: "Illustration: forklifts moving containers inside a logistics facility" },
+  campus: { file: "campus", widths: [720, 1099], w: 1099, h: 638, alt: "Illustration: a secured logistics campus with a gated entrance" },
+  ship: { file: "ship", widths: [342], w: 342, h: 250, alt: "Illustration: a container ship at sea, seen from above" },
+  air: { file: "air", widths: [342], w: 342, h: 250, alt: "Illustration: a cargo aircraft being loaded at an airport" },
+  dusk: { file: "dusk", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: a distribution warehouse with a delivery van in front" }
+};
+const PHOTO_BY_STATUS = { CREATED: "dc", PROCESSING: "bays", AT_FACILITY: "forklift", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk" };
+const MODEL_TEXT = { warehouse: "warehouse", ship: "vessel", plane: "aircraft", delivery: "delivery van" };
+
+/** Photo for the recorded stage, or null when the drawn illustration should be used. */
+export function stagePhoto(view) {
+  const code = view?.status?.code;
+  const { stage, mode } = presentation(view);
+  let key = PHOTO_BY_STATUS[code] || null;
+  if (stage === "transit" && mode === "ship") key = "ship";
+  if (stage === "transit" && mode === "plane") key = "air";
+  return key ? { key, ...PHOTOS[key] } : null;
+}
+
+/** Which 3D model can be explored for this stage (null = none). */
+export function stageModel(view) {
+  const { stage, mode } = presentation(view);
+  if (["registered", "processing", "facility"].includes(stage)) return "warehouse";
+  if (stage === "transit" && (mode === "ship" || mode === "plane")) return mode;
+  if (stage === "out-for-delivery") return "delivery";
+  return null;
+}
+export const modelCaption = (model) => `3D model of a typical ${MODEL_TEXT[model]} for this stage, not the actual facility or vehicle.`;
+
+/** <picture> markup for a stage photo; fixed width/height so nothing shifts while it loads. */
+export function stagePhotoHtml(p) {
+  const set = (ext) => p.widths.map((w) => `/assets/stages/${p.file}-${w}.${ext} ${w}w`).join(", ");
+  const largest = p.widths[p.widths.length - 1];
+  return `<picture class="hx-scene-photo is-${p.key}"><source type="image/avif" srcset="${set("avif")}" sizes="(max-width: 720px) 100vw, 600px">`
+    + `<source type="image/webp" srcset="${set("webp")}" sizes="(max-width: 720px) 100vw, 600px">`
+    + `<img src="/assets/stages/${p.file}-${largest}.jpg" srcset="${set("jpg")}" sizes="(max-width: 720px) 100vw, 600px" width="${p.w}" height="${p.h}" alt="${p.alt}" decoding="async" onerror="this.closest('picture').classList.add('is-missing')"></picture>`;
+}
+
+/**
+ * Recorded checkpoints drawn over the ship photo: a schematic left-to-right line (never geography), completed solid,
+ * still-to-come dashed, the current checkpoint highlighted. At most 4 labels; a "+N" marker stands for the rest.
+ */
+export function routeOverlaySvg(view) {
+  const stops = routeStops(view);
+  if (stops.length < 2) return "";
+  const MAX = 4; const hidden = Math.max(0, stops.length - MAX);
+  const shown = hidden ? [stops[0], ...stops.slice(-(MAX - 1))] : stops;
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const short = (s) => { const t = String(s).split(",")[0].trim(); return t.length > 16 ? `${t.slice(0, 15)}…` : t; };
+  const n = shown.length; const x = (i) => 40 + (i * 520) / (n - 1); const y = (i) => 150 - Math.sin((i / (n - 1)) * Math.PI) * 70;
+  let path = ""; let dashed = "";
+  for (let i = 1; i < n; i++) {
+    const seg = `M${x(i - 1).toFixed(1)} ${y(i - 1).toFixed(1)} Q${((x(i - 1) + x(i)) / 2).toFixed(1)} ${(Math.min(y(i - 1), y(i)) - 22).toFixed(1)} ${x(i).toFixed(1)} ${y(i).toFixed(1)}`;
+    if (shown[i].state === "upcoming") dashed += seg; else path += seg;
+  }
+  const dots = shown.map((s, i) => `<g class="ro-stop is-${s.state}"><circle cx="${x(i).toFixed(1)}" cy="${y(i).toFixed(1)}" r="${s.state === "current" ? 9 : 6}"/>`
+    + `<text x="${x(i).toFixed(1)}" y="${(y(i) + 26).toFixed(1)}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${esc(short(s.place))}</text></g>`).join("");
+  return `<svg class="hx-route-overlay" viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Recorded checkpoints: ${esc(shown.map((s) => s.place).join(", then "))}">
+    <path class="ro-done" d="${path}"/><path class="ro-next" d="${dashed}"/>${dots}
+    ${hidden ? `<text class="ro-more" x="300" y="226" text-anchor="middle">+${hidden} earlier checkpoint${hidden === 1 ? "" : "s"}</text>` : ""}</svg>`;
+}

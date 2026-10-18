@@ -49,6 +49,11 @@ before(async () => {
     location: "Atlantic Ocean", latitude: 35.1, longitude: -45.2, publicMap: true });
   await create("swapped", { origin: "Lagos, Nigeria", destination: "Accra, Ghana", originLat: 3.3792, originLng: 6.5244, destinationLat: 5.6037, destinationLng: -0.187 });
   await create("none", { origin: "Somewhere", destination: "Elsewhere" });
+  // a sea shipment with recorded checkpoints (for the stage photo, route overlay and 3D view)
+  await create("sea", { courier: "maersk", origin: "Shanghai, China", destination: "Rotterdam, Netherlands" });
+  for (const location of ["Port of Shanghai, China", "Port of Singapore", "Suez Canal, Egypt"])
+    assert.equal((await api(page, { action: "addEvent", code: codes.sea, statusCode: "IN_TRANSIT", location, description: "In transit", applyToShipment: true })).status, 200);
+  await create("hub", { courier: "dhl", statusCode: "AT_FACILITY", origin: "Lagos, Nigeria", destination: "London, United Kingdom" });
   await ctx.close();
 });
 after(async () => { await browser?.close(); server?.close(); });
@@ -56,11 +61,11 @@ after(async () => { await browser?.close(); server?.close(); });
 async function newContext({ width, height }) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: width < 500, hasTouch: width < 500 });
   const cdn = process.env.HX_CDN_DIR;
-  await ctx.route(/cdn\.jsdelivr\.net\/npm\/(leaflet|maplibre-gl)@[^/]+\/dist\/(.*)/, (r) => {
+  await ctx.route(/cdn\.jsdelivr\.net\/npm\/(leaflet|maplibre-gl|three)@[^/]+\/(dist|build)\/(.*)/, (r) => {
     if (!cdn) return r.continue();
-    const m = r.request().url().match(/npm\/(leaflet|maplibre-gl)@[^/]+\/dist\/([^?]+)/);
-    let f = m[2]; if (m[1] === "leaflet") f = f.replace(".min.", ".");
-    r.fulfill({ status: 200, contentType: f.endsWith("css") ? "text/css" : "text/javascript", body: fs.readFileSync(path.join(cdn, m[1], "dist", f)) });
+    const m = r.request().url().match(/npm\/(leaflet|maplibre-gl|three)@[^/]+\/(dist|build)\/([^?]+)/);
+    let f = m[3]; if (m[1] === "leaflet") f = f.replace(".min.", ".");
+    r.fulfill({ status: 200, contentType: f.endsWith("css") ? "text/css" : "text/javascript", body: fs.readFileSync(path.join(cdn, m[1], m[2], f)) });
   });
   // third-party widgets and the legacy client SDK are not under test
   await ctx.route(/gstatic\.com\/firebasejs/, (r) => r.fulfill({ status: 200, contentType: "text/javascript",
@@ -523,6 +528,109 @@ for (const theme of ["dark", "light"]) {
     await ctx.close();
   });
 }
+
+test("stage photo, recorded checkpoints over the ship and the explorable 3D model follow the real shipment", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-scene .hx-scene-photo img");
+  const fig = await page.$eval(".hx-scene", (f) => ({ photo: f.dataset.photo, model: f.dataset.model, src: f.querySelector("img").currentSrc || f.querySelector("img").src }));
+  assert.equal(fig.photo, "ship"); assert.equal(fig.model, "ship"); assert.match(fig.src, /assets\/stages\/ship-342\./);
+  await page.waitForFunction(() => { const i = document.querySelector(".hx-scene-photo img"); return i.complete && i.naturalWidth > 0; });
+  const labels = await page.$$eval(".hx-route-overlay text:not(.ro-more)", (t) => t.map((x) => x.textContent));
+  assert.equal(labels[0], "Shanghai"); assert.equal(labels.at(-1), "Rotterdam");
+  assert.ok(labels.includes("Suez Canal"), labels.join(","));
+  assert.equal(await page.locator(".hx-route-overlay .is-current").count(), 1);
+  assert.equal(await page.locator(".hx-route-overlay .is-upcoming text").textContent(), "Rotterdam", "destination still to come");
+  // open the 3D view, rotate, reset, close
+  await page.click('[data-act="3d"]');
+  await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
+  assert.match(await page.textContent('[data-slot="scenecap"]'), /3D model of a typical vessel for this stage, not the actual facility or vehicle\./);
+  await page.waitForTimeout(400);
+  const shot1 = await page.locator(".hx-3d-canvas").screenshot();
+  const b = await page.locator(".hx-3d-canvas").boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2 + 150, b.y + b.height / 2, { steps: 6 }); await page.mouse.up();
+  await page.waitForTimeout(300);
+  const shot2 = await page.locator(".hx-3d-canvas").screenshot();
+  assert.ok(!shot1.equals(shot2), "dragging rotates the model");
+  await page.click('[data-act="3d-reset"]'); await page.waitForTimeout(200);
+  await page.click('[data-act="3d-close"]');
+  assert.equal(await page.locator(".hx-3d-canvas").count(), 0, "closing frees the 3D canvas");
+  assert.ok(await page.isVisible(".hx-3d-open"), "button back after closing");
+  // the page still scrolls normally after using the 3D view
+  const y0 = await page.evaluate(() => scrollY); await page.mouse.wheel(0, 600); await page.waitForTimeout(300);
+  assert.ok(await page.evaluate(() => scrollY) > y0);
+  // a facility shipment gets the owner's facility photo and the warehouse model
+  await page.fill("#trackingInput", codes.hub); await page.keyboard.press("Enter");
+  await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.hub);
+  assert.deepEqual(await page.$eval(".hx-scene", (f) => [f.dataset.photo, f.dataset.model]), ["forklift", "warehouse"]);
+  // an in-transit courier shipment (no photo for vans) keeps the drawn illustration, and has no 3D model
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.good);
+  assert.equal(await page.locator(".hx-scene .hx-scene-svg").count(), 1);
+  assert.equal(await page.locator('[data-act="3d"]').count(), 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("3D view falls back to the photo with a clear message when WebGL is unavailable", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  await ctx.addInitScript(() => { const orig = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (t, ...a) { return /webgl/.test(t) ? null : orig.call(this, t, ...a); }; });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector('[data-act="3d"]');
+  await page.click('[data-act="3d"]');
+  await page.waitForFunction(() => /3D view isn't available on this device/.test(document.querySelector(".hx-3d")?.textContent || ""));
+  await page.click('.hx-3d [data-act="3d-close"]');
+  assert.ok(await page.isVisible(".hx-scene-photo img"), "the photo is still there");
+  assert.ok(await noOverflow(page));
+  await ctx.close();
+});
+
+test("homepage freight: recorded routes panel shows only published shipments and disappears when there are none", async () => {
+  let ctx = await newContext({ width: 390, height: 844 });
+  let page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => !document.getElementById("freightRoutes").hidden, null, { timeout: 10000 });
+  const items = await page.$$eval("#freightRoutes .fr-list li", (li) => li.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
+  assert.ok(items.length >= 1 && items.length <= 3);
+  assert.ok(items.some((t) => /Houston.*Lisbon/.test(t)), items.join(" | "));
+  assert.ok(!items.join(" ").includes(codes.good), "codes stay masked");
+  assert.ok(!/Lagos|Somewhere/.test(items.join(" ")), "unpublished shipments never appear");
+  assert.ok(await noOverflow(page));
+  await ctx.close();
+  ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
+  page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("activity").dataset.state === "empty");
+  assert.equal(await page.$eval("#freightRoutes", (b) => b.hidden), true);
+  await ctx.close();
+});
+
+test("light theme reaches every band: daylight hero, light freight copy, light tracking band and map", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.addInitScript(() => { try { localStorage.setItem("hx-theme", "light"); } catch {} });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/index.html?map=flat`);
+  const st = await page.evaluate(() => ({
+    hero: getComputedStyle(document.querySelector(".hero3-media")).backgroundImage,
+    h1: getComputedStyle(document.getElementById("heroTitle")).color,
+    freight: getComputedStyle(document.getElementById("freightTitle")).color,
+    card: getComputedStyle(document.querySelector(".track-card")).backgroundColor
+  }));
+  assert.match(st.hero, /scene-day\.svg/); assert.equal(st.h1, "rgb(11, 26, 61)"); assert.equal(st.freight, "rgb(11, 26, 61)");
+  assert.match(st.card, /rgba?\(255, 255, 255/);
+  await page.goto(`${base}/track.html`);
+  assert.match(await page.$eval(".track-band", (b) => getComputedStyle(b, "::before").backgroundImage), /scene-day\.svg/);
+  assert.equal(await page.$eval(".track-band h1", (h) => getComputedStyle(h).color), "rgb(11, 26, 61)");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
 
 test("authorization boundary: admin actions refuse public callers", async () => {
   const ctx = await newContext({ width: 1280, height: 900 });
