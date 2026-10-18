@@ -672,7 +672,7 @@ test("every recorded status gets its own 3D scene; on-hold and cancelled scenes 
   const cases = [["maersk", "IN_TRANSIT", null, "ship", "true"], ["emiratesskycargo", "IN_TRANSIT", null, "air", "true"], ["dhl", "IN_TRANSIT", "Road freight", "road", "true"],
     ["dhl", "IN_TRANSIT", null, "neutral", "true"], ["dhl", "CREATED", null, "processing", "true"], ["dhl", "PICKED_UP", null, "collection", "true"], ["dhl", "AT_FACILITY", null, "facility", "true"],
     ["dhl", "CUSTOMS", null, "customs", "true"], ["dhl", "OUT_FOR_DELIVERY", null, "delivery", "true"], ["dhl", "DELIVERED", null, "delivered", "true"],
-    ["dhl", "EXCEPTION", null, "neutral", "false"], ["dhl", "CANCELLED", null, "neutral", "false"]];
+    ["dhl", "DELAYED", null, "delayed", "false"], ["dhl", "EXCEPTION", null, "hold", "false"], ["dhl", "CANCELLED", null, "cancelled", "false"]];
   const made = [];
   for (const [courier, statusCode, serviceType, scene, animate] of cases) {
     const r = await api(page, { action: "create", shipment: { courier, statusCode, origin: "Lagos, Nigeria", destination: "Accra, Ghana", ...(serviceType ? { serviceType } : {}) } });
@@ -705,41 +705,92 @@ test("3D view on a slow device: declined after a short frame-time check, the pho
   await ctx.close();
 });
 
-test("homepage network: published routes with markers and labels, illustrative when none, unavailable on error", async () => {
+test("homepage network globe: worldwide connections rotate with no admin data, pause, reduced motion and fallback", async () => {
+  const empty = (r) => r.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) });
+  // no published shipments at all: the globe still shows connections, and they change over time
   let ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.addInitScript(() => { window.HX_NETWORK_INTERVAL_MS = 700; });
+  await ctx.route(/\/api\/public\?view=overview/, empty);
   let page = await ctx.newPage(); const errors = watchErrors(page);
   await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "routes", null, { timeout: 15000 });
-  const nw = await page.$eval("#freightNetwork", (e) => ({ tag: e.querySelector(".nw-tag").textContent, labels: [...e.querySelectorAll(".nw-label")].map((x) => x.textContent), arcs: e.querySelectorAll(".nw-arc").length,
-    dots: [...e.querySelectorAll(".nw-dot")].map((d) => d.getAttribute("class")), text: e.textContent }));
-  assert.match(nw.tag, /^Published shipment routes · \d+ · city level · tracking numbers masked$/);
-  assert.ok(nw.labels.some((l) => /Houston/.test(l)) && nw.labels.some((l) => /Lisbon/.test(l)), nw.labels.join(","));
-  assert.ok(!/Lagos|Somewhere/.test(nw.labels.join(" ")), "unpublished shipments never appear");
-  assert.ok(!nw.text.includes(codes.good) && !/\blive\b|GPS/i.test(nw.text), "no full codes, no live wording");
-  assert.ok(nw.arcs >= 1 && nw.dots.some((c) => /is-origin/.test(c)) && nw.dots.some((c) => /is-destination/.test(c)));
-  assert.equal(new Set(nw.labels).size, nw.labels.length, "labels are de-duplicated");
+  await page.locator("#freightNetwork").scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "ready", null, { timeout: 20000 });
+  const first = await page.getAttribute("#freightNetwork", "data-routes");
+  assert.equal(first.split(" ").length, 3, first);
+  await page.waitForFunction((f) => document.getElementById("freightNetwork").dataset.routes !== f, first, { timeout: 10000 });
+  const seen = new Set(first.split(" "));
+  for (let i = 0; i < 4; i++) { await page.waitForTimeout(800); (await page.getAttribute("#freightNetwork", "data-routes")).split(" ").forEach((k) => seen.add(k)); }
+  assert.ok(seen.size >= 5, `several connections over time: ${[...seen]}`);
+  const text = (await page.textContent("#freightNetwork")).replace(/\s+/g, " ");
+  assert.match(text, /Worldwide freight connections/); assert.match(text, /Network visualisation of international freight corridors — not live shipments\./);
+  assert.match(text, /Freight connection/); assert.match(text, /km apart/);
+  assert.ok(!/In Transit|Delivered|\bGPS\b|tracking number|Illustrative network/i.test(text), "no shipment statuses, codes or the old disclaimer");
+  assert.ok(!text.includes(codes.good) && !text.includes(codes.sea), "never shows tracking codes");
+  assert.ok(await page.$eval("#freightNetwork canvas", (c) => c.width > 0 && c.height > 0));
+  // pause stops the rotation
+  await page.click("[data-ng-toggle]");
+  assert.equal(await page.getAttribute("[data-ng-toggle]", "aria-pressed"), "true");
+  const paused = await page.getAttribute("#freightNetwork", "data-routes"); await page.waitForTimeout(2200);
+  assert.equal(await page.getAttribute("#freightNetwork", "data-routes"), paused, "paused routes stay put");
   assert.ok(await noOverflow(page)); assert.deepEqual(errors, []);
+  await shot(page, "network-globe-1280");
   await ctx.close();
+  // phone, light theme: two cards, no overflow
   ctx = await newContext({ width: 390, height: 844 });
-  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
-    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
+  await ctx.addInitScript(() => { try { localStorage.setItem("hx-theme", "light"); } catch {} });
   page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "illustrative", null, { timeout: 15000 });
-  assert.equal(await page.textContent("#freightNetwork .nw-tag"), "Illustrative network — not live shipment activity");
-  assert.equal(await page.textContent("#freightNetwork .nw-note"), "No published shipments available.");
-  assert.equal(await page.isVisible("#freightNetwork .nw-cards"), false, "no cards without published routes");
-  assert.equal(await page.locator("#freightNetwork .nw-label").count(), 0, "no route names in the illustration");
-  assert.equal(await page.isVisible("#freightNetwork .nw-legend"), false);
+  await page.locator("#freightNetwork").scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "ready", null, { timeout: 20000 });
+  assert.equal((await page.getAttribute("#freightNetwork", "data-routes")).split(" ").length, 2);
   assert.ok(await noOverflow(page));
+  await shot(page, "network-globe-390-light");
   await ctx.close();
+  // reduced motion: a still globe and a button for other routes
   ctx = await newContext({ width: 768, height: 900 });
-  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 503, contentType: "application/json", body: '{"error":"unavailable"}' }));
+  page = await ctx.newPage(); await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.locator("#freightNetwork").scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "static", null, { timeout: 20000 });
+  assert.equal(await page.isVisible("[data-ng-toggle]"), false);
+  const still = await page.getAttribute("#freightNetwork", "data-routes"); await page.waitForTimeout(1500);
+  assert.equal(await page.getAttribute("#freightNetwork", "data-routes"), still, "nothing rotates by itself");
+  await page.click("[data-ng-next]");
+  assert.notEqual(await page.getAttribute("#freightNetwork", "data-routes"), still);
+  await ctx.close();
+  // no canvas: the cards alone
+  ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.addInitScript(() => { HTMLCanvasElement.prototype.getContext = () => null; });
   page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "error", null, { timeout: 15000 });
-  assert.match(await page.textContent("#freightNetwork .nw-note"), /temporarily unavailable/);
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "fallback", null, { timeout: 20000 });
+  assert.ok((await page.locator("#freightNetwork .ng-card").count()) >= 2);
   await ctx.close();
+});
+
+test("shipment map opens on the shipment (not the world), with labels, a themed base and an optional street map", async () => {
+  for (const theme of ["dark", "light"]) {
+    const ctx = await newContext({ width: 1280, height: 900 });
+    await ctx.addInitScript((t) => { try { localStorage.setItem("hx-theme", t); } catch {} }, theme);
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/track.html?code=${codes.good}`);
+    await page.waitForSelector(".hx-map[data-zoom] .leaflet-marker-icon", { timeout: 20000 });
+    const m = await page.$eval(".hx-map", (e) => ({ zoom: Number(e.dataset.zoom), center: e.dataset.center.split(",").map(Number), cls: e.className,
+      labels: [...e.querySelectorAll(".hx-map-label")].map((x) => x.textContent), bg: getComputedStyle(e).backgroundImage }));
+    assert.ok(m.zoom > 2, `zoomed past the world view: ${m.zoom}`);
+    assert.ok(m.center[0] > 25 && m.center[0] < 45 && m.center[1] > -100 && m.center[1] < 0, `centred on the Atlantic route: ${m.center}`);
+    assert.match(m.cls, /hx-base-outline/);
+    assert.ok(m.labels.some((l) => /^Origin · Houston/.test(l)) && m.labels.some((l) => /^Destination · Lisbon/.test(l)) && m.labels.some((l) => /^Latest/.test(l)), m.labels.join("|"));
+    assert.match(await page.textContent(".hx-routesum"), /Houston.*Lisbon/s);
+    assert.match(await page.textContent(".hx-map-note"), /Latest recorded location shown \(approximate, city level\)\. Lines connect recorded places; they aren't a tracked path\./);
+    // the street map is optional; tiles are blocked here, so it falls back to the outline with a note
+    await page.click(".hx-map-ctl button:has-text('Street map')");
+    await page.waitForFunction(() => /street map isn't available/.test(document.querySelector('[data-slot="mapnote"]').textContent), null, { timeout: 15000 });
+    assert.match(await page.getAttribute(".hx-map", "class"), /hx-base-outline/);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  }
 });
 
 test("recorded vs. live: only a verified GPS / carrier position is labelled live", async () => {
@@ -805,48 +856,6 @@ test("homepage tracking form: loading, invalid, unknown and network-error states
     assert.deepEqual(errors, []);
     await ctx.close();
   }
-});
-
-test("homepage route cards: published routes only, masked, latest recorded milestone, mode only when recorded, one-route and empty states", async () => {
-  let ctx = await newContext({ width: 1280, height: 900 });
-  let page = await ctx.newPage(); const errors = watchErrors(page);
-  await page.goto(`${base}/admin.html`);
-  assert.equal((await api(page, { action: "login", password: process.env.ADMIN_PASSWORD })).status, 200);
-  const sea = await api(page, { action: "create", shipment: { courier: "maersk", statusCode: "IN_TRANSIT", origin: "Shanghai, China", destination: "Rotterdam, Netherlands",
-    originLat: 31.23, originLng: 121.47, destinationLat: 51.92, destinationLng: 4.48, publicMap: true } });
-  assert.equal(sea.status, 200);
-  (await import("../../api/public.js")).__clearPublicCache(); // the public overview is cached for 30 s
-  await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.querySelectorAll("#freightNetwork .nw-card").length >= 2, null, { timeout: 15000 });
-  const cards = await page.$$eval("#freightNetwork .nw-card", (li) => li.map((x) => ({ text: x.textContent.replace(/\s+/g, " ").trim(), mode: x.querySelector(".nw-mode")?.getAttribute("aria-label") || null })));
-  const all = cards.map((c) => c.text).join(" | ");
-  assert.ok(cards.length <= 6);
-  assert.ok(cards.some((c) => /Houston.*Lisbon/.test(c.text) && c.mode === null), "DHL: no mode guessed");
-  const seaCard = cards.find((c) => /Shanghai.*Rotterdam/.test(c.text));
-  assert.ok(seaCard && seaCard.mode === "Sea freight", "Maersk: sea freight");
-  assert.match(seaCard.text, /Latest recorded milestone/); assert.match(seaCard.text, /Recorded/);
-  assert.ok(!all.includes(codes.good) && !all.includes(sea.json.shipment.id), "codes stay masked");
-  assert.ok(!/Lagos|Somewhere/.test(all), "unpublished shipments never appear");
-  assert.ok(!/\blive\b|GPS|\bactive\b/i.test(all), "no live/active wording on cards");
-  assert.ok(await noOverflow(page)); assert.deepEqual(errors, []);
-  await ctx.close();
-  // exactly one published route
-  ctx = await newContext({ width: 390, height: 844 });
-  const one = { ref: "HY-12••56", key: "abc123abc123", status: { code: "IN_TRANSIT", label: "In Transit", tone: "info" }, originLabel: "Dubai, UAE", destinationLabel: "Lagos, Nigeria",
-    origin: { lat: 25.2, lng: 55.27 }, destination: { lat: 6.52, lng: 3.37 }, current: null, mode: "air" };
-  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
-    body: JSON.stringify({ routes: [one], activity: [{ ref: one.ref, routeKey: one.key, title: "Departed origin airport", tone: "info", at: "2026-10-01T08:00:00Z", from: "Dubai, UAE", to: "Lagos, Nigeria" }],
-      stats: { active: 1, inTransit: 1, delivered: 0, countriesActive: 2, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
-  page = await ctx.newPage();
-  await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.querySelectorAll("#freightNetwork .nw-card").length === 1, null, { timeout: 15000 });
-  const c = await page.$eval("#freightNetwork .nw-card", (x) => x.textContent.replace(/\s+/g, " "));
-  assert.match(c, /HY-12••56/); assert.match(c, /Departed origin airport/); assert.match(c, /Dubai, UAE.*Lagos, Nigeria/);
-  assert.equal(await page.getAttribute("#freightNetwork .nw-mode", "aria-label"), "Air freight");
-  assert.equal(await page.locator("#freightNetwork .nw-arc").count(), 1);
-  assert.ok(await noOverflow(page));
-  await shot(page, "network-one-route-390");
-  await ctx.close();
 });
 
 test("light theme reaches every band: daylight hero, light freight copy, light tracking band and map", async () => {
