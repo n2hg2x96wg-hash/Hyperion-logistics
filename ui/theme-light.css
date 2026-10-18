@@ -157,3 +157,15 @@ html[data-theme="light"] .track-page .hx-support:not(.hx-support-card) { color: 
 
 /* focus rings stay visible on light backgrounds */
 html[data-theme="light"] :is(a, button, input, select, textarea):focus-visible { outline-color: #2563eb; }
+
+/* freight network (light theme) */
+html[data-theme="light"] .freight-network { background: #fff; border-color: rgba(15, 40, 90, 0.12); box-shadow: 0 18px 40px rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] .nw-head h3 { color: #0b1a3d; } html[data-theme="light"] .nw-tag { color: #1d4ed8; }
+html[data-theme="light"] .freight-network:is([data-state="illustrative"], [data-state="error"]) .nw-tag { color: #b45309; }
+html[data-theme="light"] .nw-legend, html[data-theme="light"] .nw-note { color: #44557a; }
+html[data-theme="light"] .nw-sea { fill: #e7f0fb; } html[data-theme="light"] .nw-land { fill: #c9d6e8; stroke: #b3c3da; }
+html[data-theme="light"] .nw-arc.is-travelled { stroke: #2563eb; } html[data-theme="light"] .nw-arc.is-remaining, html[data-theme="light"] .nw-arc.is-planned { stroke: #64748b; }
+html[data-theme="light"] .nw-arc.is-illustrative { stroke: rgba(37, 99, 235, 0.4); } html[data-theme="light"] .nw-dot.is-illustrative { fill: rgba(37, 99, 235, 0.5); }
+html[data-theme="light"] .nw-dot.is-origin, html[data-theme="light"] .nw-dot.is-destination { fill: #fff; } html[data-theme="light"] .nw-dot.is-origin { stroke: #2563eb; } html[data-theme="light"] .nw-dot.is-destination { stroke: #0b1a3d; }
+html[data-theme="light"] .nw-label { fill: #0b1a3d; stroke: #e7f0fb; }
+html[data-theme="light"] .nw-legend .k-origin { border-color: #2563eb; } html[data-theme="light"] .nw-legend .k-destination { border-color: #0b1a3d; } html[data-theme="light"] .nw-legend .k-line { border-top-color: #2563eb; }

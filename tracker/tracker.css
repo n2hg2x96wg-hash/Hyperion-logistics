@@ -261,7 +261,7 @@ html.hx-motion .hx-mapcard[data-reveal]:not(.is-visible) { transform: scale(.985
 .hx-copy.is-done { color: #86efac; border-color: rgba(34,197,94,.5); }
 
 /* stage illustration: a small "3D" stage (perspective + soft light), decorative, fixed aspect ratio so nothing shifts */
-.hx-scene { margin: 18px 0 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+.hx-scene { margin: 18px 0 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; } /* the scene gets the full card width */
 .hx-scene-stage { position: relative; aspect-ratio: 5 / 2; border-radius: 14px; overflow: hidden; perspective: 900px; border: 1px solid var(--hx-line);
   --sc-sky-1: #0b1d4a; --sc-sky-2: #050c22; --sc-glow: rgba(56,189,248,.28); --sc-grid: rgba(96,165,250,.22); --sc-shadow: rgba(0,0,0,.45);
   --sc-front: #1e3a8a; --sc-side: #172f6e; --sc-top: #3b6fd8; --sc-line: rgba(191,219,254,.55); --sc-light: #e0f2fe; --sc-dark: #0b1530; }
@@ -293,7 +293,7 @@ html.hx-motion .hx-mapcard[data-reveal]:not(.is-visible) { transform: scale(.985
   .hx-scene-subject { animation: hx-float 6s ease-in-out 2 alternate; transform-box: fill-box; } /* two slow breaths, then still */
   @keyframes hx-float { from { transform: translateY(0); } to { transform: translateY(-4px); } }
 }
-@media (max-width: 720px) { .hx-scene { grid-template-columns: 1fr; gap: 10px; } .hx-scene-stage { aspect-ratio: 2 / 1; } }
+@media (max-width: 720px) { .hx-scene { gap: 10px; } .hx-scene-stage { aspect-ratio: 2 / 1; } }
 
 /* progress: stage markers that don't rely on colour alone */
 .hx-progress-label { font-weight: 700; color: var(--hx-text); }
@@ -409,7 +409,8 @@ html[data-theme="light"] .hx-refresh-note { color: #44557a; }
 .hx-route-overlay text { fill: #fff; font: 700 13px var(--hy-font, system-ui); paint-order: stroke; stroke: rgba(3, 12, 32, .85); stroke-width: 4px; }
 .hx-route-overlay .ro-more { font-size: 11px; font-weight: 600; }
 .hx-scene-media { min-width: 0; display: grid; gap: 8px; }
-.hx-scene[data-model] .hx-scene-stage { aspect-ratio: 16 / 9; } /* reserved up front, so the 3D view never shifts the page */
+.hx-scene[data-scene] .hx-scene-stage { aspect-ratio: 16 / 9; background: var(--sc-sky-2); } /* reserved up front, so the 3D view never shifts the page */
+.hx-scene[data-scene] .hx-scene-svg { height: 100%; }
 .hx-3d { position: absolute; inset: 0; z-index: 2; background: #1b2f5c; }
 .hx-3d[hidden] { display: none; }
 .hx-3d-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; cursor: grab; outline: none; } /* vertical swipes keep scrolling the page */
@@ -430,12 +431,15 @@ html[data-theme="light"] .hx-refresh-note { color: #44557a; }
 .hx-3d-btn:disabled { opacity: .45; cursor: default; }
 .hx-3d-bar[data-mode="loading"] .hx-3d-hint { visibility: hidden; }
 .hx-3d-bar[data-mode="photo"] .hx-3d-hint { display: none; }
-.hx-3d-bar[data-mode="photo"] .hx-3d-tools { display: none; }
-.hx-3d-bar[data-mode="fallback"] :is(.hx-3d-mode, .hx-3d-hint, .hx-3d-tools) { display: none; }
+.hx-3d-bar:not([data-mode="3d"]) .hx-3d-views:empty, .hx-3d-bar[data-mode="photo"] :is(.hx-3d-tools, .hx-3d-views) { display: none; }
+.hx-3d-views .hx-seg { min-height: 40px; } .hx-3d-views .hx-seg[aria-pressed="true"] { background: rgba(37, 99, 235, .22); color: var(--hx-text); }
+.hx-3d-bar[data-mode="fallback"] :is(.hx-3d-mode, .hx-3d-hint, .hx-3d-tools, .hx-3d-views) { display: none; }
 .hx-3d-note { margin: 0; font-size: 13px; color: var(--hx-muted); }
-@media (max-width: 720px) { .hx-scene[data-model] .hx-scene-stage { aspect-ratio: 4 / 3; } }
+@media (max-width: 720px) { .hx-scene[data-scene] .hx-scene-stage { aspect-ratio: 4 / 3; } }
 @media (prefers-reduced-motion: reduce) { .hx-spinner { animation-duration: 2.4s; } }
 html[data-theme="light"] .hx-3d { background: #dceaf8; }
 html[data-theme="light"] .hx-3d-btn { background: #f3f7fe; border-color: rgba(15, 40, 90, .14); color: #0b1a3d; }
 html[data-theme="light"] .hx-3d-btn:hover:not(:disabled) { border-color: #2563eb; color: #1d4ed8; }
 html[data-theme="light"] .hx-3d-hint, html[data-theme="light"] .hx-3d-note { color: #44557a; }
+html[data-theme="light"] .hx-3d-views .hx-seg[aria-pressed="true"] { background: #dbe7ff; color: #0b1a3d; }
+.hx-scene figcaption { grid-template-columns: minmax(0, 1fr); }

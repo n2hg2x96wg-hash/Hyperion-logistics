@@ -60,6 +60,8 @@ after(async () => { await browser?.close(); server?.close(); });
 
 async function newContext({ width, height }) {
   const ctx = await browser.newContext({ viewport: { width, height }, isMobile: width < 500, hasTouch: width < 500 });
+  // this browser draws WebGL in software, which the viewer would (correctly) decline as too slow; tests opt out of that check
+  await ctx.addInitScript(() => { window.HX_3D_PERF_CHECK = false; });
   const cdn = process.env.HX_CDN_DIR;
   await ctx.route(/cdn\.jsdelivr\.net\/npm\/(leaflet|maplibre-gl|three)@[^/]+\/(dist|build)\/(.*)/, (r) => {
     if (!cdn) return r.continue();
@@ -411,10 +413,11 @@ for (const w of [390, 768, 1280]) {
     await page.goto(`${base}/track.html`);
     await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
     await page.waitForSelector(".hx-scene");
-    const scene = await page.$eval(".hx-scene", (f) => ({ stage: f.dataset.stage, mode: f.dataset.mode, text: f.textContent.replace(/\s+/g, " "), h: f.querySelector(".hx-scene-stage").getBoundingClientRect().height }));
+    const scene = await page.$eval(".hx-scene", (f) => ({ stage: f.dataset.stage, mode: f.dataset.mode, scene: f.dataset.scene, text: f.textContent.replace(/\s+/g, " "), h: f.querySelector(".hx-scene-stage").getBoundingClientRect().height }));
     assert.equal(scene.stage, "transit", "IN_TRANSIT -> transit stage");
-    assert.equal(scene.mode, "van", "DHL is an express carrier in the catalogue");
-    assert.match(scene.text, /Illustration of the current shipment stage\./);
+    assert.equal(scene.mode, "none", "DHL runs several modes: no vehicle is guessed without a recorded service type");
+    assert.equal(scene.scene, "neutral");
+    assert.match(scene.text, /Illustration of the current shipment stage\.|3D illustration of a typical pallet of parcels/);
     assert.ok(scene.h > 100, "illustration has its reserved size");
     const head = await page.textContent(".hx-progress-head");
     assert.match(head, /Stage \d of \d/); assert.ok(!head.includes("%"), "no percentage");
@@ -539,7 +542,7 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.goto(`${base}/track.html`);
   await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
   await page.waitForSelector(".hx-scene .hx-scene-photo img");
-  const fig = await page.$eval(".hx-scene", (f) => ({ photo: f.dataset.photo, model: f.dataset.model, src: f.querySelector("img").currentSrc || f.querySelector("img").src }));
+  const fig = await page.$eval(".hx-scene", (f) => ({ photo: f.dataset.photo, model: f.dataset.scene, src: f.querySelector("img").currentSrc || f.querySelector("img").src }));
   assert.equal(fig.photo, "ship"); assert.equal(fig.model, "ship"); assert.match(fig.src, /assets\/stages\/ship-342\./);
   await page.waitForFunction(() => { const i = document.querySelector(".hx-scene-photo img"); return i.complete && i.naturalWidth > 0; });
   const labels = await page.$$eval(".hx-route-overlay text:not(.ro-more)", (t) => t.map((x) => x.textContent));
@@ -550,7 +553,8 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   // the 3D view starts by itself (no click): loading state, then the canvas over the reserved stage
   await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
   await page.waitForFunction(() => document.querySelector(".hx-scene").classList.contains("is-3d") && !document.querySelector(".hx-3d-loading"));
-  assert.match(await page.textContent('[data-slot="scenecap"]'), /3D model of a typical vessel for this stage, not the actual facility or vehicle\./);
+  assert.match(await page.textContent('[data-slot="scenecap"]'), /3D illustration of a typical container vessel at sea for this stage — not the actual facility, vehicle or parcel\./);
+  assert.deepEqual(await page.$$eval(".hx-3d-views .hx-seg", (b) => b.map((x) => x.textContent)), ["Overview", "Bridge", "Bow"]);
   assert.equal(await page.getAttribute('[data-act="3d"]', "aria-pressed"), "true");
   await page.waitForTimeout(400);
   const shot1 = await page.locator(".hx-3d-canvas").screenshot();
@@ -563,7 +567,12 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.click('[data-act="3d-zoom-in"]'); await page.waitForTimeout(200);
   const shot3 = await page.locator(".hx-3d-canvas").screenshot();
   assert.ok(!shot3.equals(shot2), "zoom button zooms");
+  await page.click('.hx-3d-views [data-view="bridge"]'); await page.waitForTimeout(900);
+  const shot4 = await page.locator(".hx-3d-canvas").screenshot();
+  assert.ok(!shot4.equals(shot3), "a camera view moves the camera");
+  assert.equal(await page.getAttribute('.hx-3d-views [data-view="bridge"]', "aria-pressed"), "true");
   await page.click('[data-act="3d-reset"]'); await page.waitForTimeout(200);
+  assert.equal(await page.getAttribute('.hx-3d-views [data-view="overview"]', "aria-pressed"), "true", "reset returns to the first view");
   // the wheel scrolls the page unless the canvas was clicked/focused first
   await page.evaluate(() => document.activeElement?.blur());
   await page.evaluate(() => { window.__wheelPrevented = null; addEventListener("wheel", (e) => { window.__wheelPrevented = e.defaultPrevented; }, { once: true }); });
@@ -578,16 +587,16 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   assert.equal(await page.getAttribute('[data-act="3d-close"]', "aria-pressed"), "true");
   await page.click('[data-act="3d"]');
   await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
-  // a facility shipment gets the owner's facility photo and the warehouse model
+  // a facility shipment gets the owner's aerial facility photo and the distribution-centre scene
   await page.fill("#trackingInput", codes.hub); await page.keyboard.press("Enter");
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.hub);
-  assert.deepEqual(await page.$eval(".hx-scene", (f) => [f.dataset.photo, f.dataset.model]), ["forklift", "warehouse"]);
-  // an in-transit courier shipment (no photo for vans) keeps the drawn illustration, and has no 3D model
+  assert.deepEqual(await page.$eval(".hx-scene", (f) => [f.dataset.photo, f.dataset.scene]), ["aerial", "facility"]);
+  await page.waitForSelector(".hx-scene.is-3d .hx-3d-canvas", { timeout: 20000 });
+  // an in-transit courier shipment with no recorded mode: the drawing as poster and the neutral scene, no vehicle
   await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.good);
   assert.equal(await page.locator(".hx-scene .hx-scene-svg").count(), 1);
-  assert.equal(await page.locator('[data-act="3d"]').count(), 0);
-  assert.equal(await page.locator(".hx-3d-canvas").count(), 0, "no 3D canvas for stages without a model");
+  assert.equal(await page.$eval(".hx-scene", (f) => f.dataset.scene), "neutral");
   assert.deepEqual(errors, []);
   await ctx.close();
 });
@@ -641,6 +650,7 @@ test("3D view: loading state while Three.js downloads, photo fallback when the C
 
 test("reduced motion: the 3D model still loads but stays still", async () => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+  await ctx.addInitScript(() => { window.HX_3D_PERF_CHECK = false; });
   const cdn = process.env.HX_CDN_DIR;
   if (cdn) await ctx.route(/cdn\.jsdelivr\.net\/npm\/three@[^/]+\/build\/(.*)/, (r) => r.fulfill({ status: 200, contentType: "text/javascript", body: fs.readFileSync(path.join(cdn, "three", "build", r.request().url().match(/build\/([^?]+)/)[1])) }));
   const page = await ctx.newPage();
@@ -651,6 +661,82 @@ test("reduced motion: the 3D model still loads but stays still", async () => {
   const a = await page.locator(".hx-3d-canvas").screenshot(); await page.waitForTimeout(700);
   const b = await page.locator(".hx-3d-canvas").screenshot();
   assert.ok(a.equals(b), "no idle animation with reduced motion");
+  await ctx.close();
+});
+
+test("every recorded status gets its own 3D scene; on-hold and cancelled scenes stay still; unknown modes imply no vehicle", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/admin.html`);
+  assert.equal((await api(page, { action: "login", password: process.env.ADMIN_PASSWORD })).status, 200);
+  const cases = [["maersk", "IN_TRANSIT", null, "ship", "true"], ["emiratesskycargo", "IN_TRANSIT", null, "air", "true"], ["dhl", "IN_TRANSIT", "Road freight", "road", "true"],
+    ["dhl", "IN_TRANSIT", null, "neutral", "true"], ["dhl", "CREATED", null, "processing", "true"], ["dhl", "PICKED_UP", null, "collection", "true"], ["dhl", "AT_FACILITY", null, "facility", "true"],
+    ["dhl", "CUSTOMS", null, "customs", "true"], ["dhl", "OUT_FOR_DELIVERY", null, "delivery", "true"], ["dhl", "DELIVERED", null, "delivered", "true"],
+    ["dhl", "EXCEPTION", null, "neutral", "false"], ["dhl", "CANCELLED", null, "neutral", "false"]];
+  const made = [];
+  for (const [courier, statusCode, serviceType, scene, animate] of cases) {
+    const r = await api(page, { action: "create", shipment: { courier, statusCode, origin: "Lagos, Nigeria", destination: "Accra, Ghana", ...(serviceType ? { serviceType } : {}) } });
+    assert.equal(r.status, 200, JSON.stringify(r.json)); made.push([r.json.shipment.id, scene, animate, statusCode]);
+  }
+  for (const [code, scene, animate, statusCode] of made) {
+    await page.goto(`${base}/track.html`);
+    await page.fill("#trackingInput", code); await page.keyboard.press("Enter");
+    await page.waitForSelector(".hx-scene.is-3d .hx-3d-canvas", { timeout: 30000 });
+    const f = await page.$eval(".hx-scene", (x) => ({ scene: x.dataset.scene, animate: x.dataset.animate, cap: x.querySelector("[data-slot=scenecap]").textContent }));
+    assert.equal(f.scene, scene, statusCode); assert.equal(f.animate, animate, statusCode);
+    assert.match(f.cap, /3D illustration of a typical .+ — not the actual facility, vehicle or parcel\./, statusCode);
+    if (animate === "false") assert.match(f.cap, /without movement/, statusCode);
+    if (SHOTS) await page.locator(".hx-scene").screenshot({ path: path.join(SHOTS, `scene-${statusCode}-${scene}.png`) });
+  }
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("3D view on a slow device: declined after a short frame-time check, the photo stays with a clear note", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  // a device that can only draw ~4 frames a second: every animation frame arrives 220 ms late
+  await ctx.addInitScript(() => { window.HX_3D_PERF_CHECK = true; window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 220); });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-3d-note:not([hidden])", { timeout: 40000 });
+  assert.match(await page.textContent(".hx-3d-note"), /turned off to keep this page smooth/);
+  assert.ok(await page.isVisible(".hx-scene-photo img")); assert.equal(await page.locator(".hx-3d-canvas").count(), 0);
+  await ctx.close();
+});
+
+test("homepage network: published routes with markers and labels, illustrative when none, unavailable on error", async () => {
+  let ctx = await newContext({ width: 1280, height: 900 });
+  let page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "routes", null, { timeout: 15000 });
+  const nw = await page.$eval("#freightNetwork", (e) => ({ tag: e.querySelector(".nw-tag").textContent, labels: [...e.querySelectorAll(".nw-label")].map((x) => x.textContent), arcs: e.querySelectorAll(".nw-arc").length,
+    dots: [...e.querySelectorAll(".nw-dot")].map((d) => d.getAttribute("class")), text: e.textContent }));
+  assert.match(nw.tag, /published shipments? · city level · tracking numbers masked/);
+  assert.ok(nw.labels.some((l) => /Houston/.test(l)) && nw.labels.some((l) => /Lisbon/.test(l)), nw.labels.join(","));
+  assert.ok(!/Lagos|Somewhere/.test(nw.labels.join(" ")), "unpublished shipments never appear");
+  assert.ok(!nw.text.includes(codes.good) && !/\blive\b|GPS/i.test(nw.text), "no full codes, no live wording");
+  assert.ok(nw.arcs >= 1 && nw.dots.some((c) => /is-origin/.test(c)) && nw.dots.some((c) => /is-destination/.test(c)));
+  assert.equal(new Set(nw.labels).size, nw.labels.length, "labels are de-duplicated");
+  assert.ok(await noOverflow(page)); assert.deepEqual(errors, []);
+  await ctx.close();
+  ctx = await newContext({ width: 390, height: 844 });
+  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
+  page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "illustrative", null, { timeout: 15000 });
+  assert.equal(await page.textContent("#freightNetwork .nw-tag"), "Illustrative network — not shipment data");
+  assert.equal(await page.locator("#freightNetwork .nw-label").count(), 0, "no route names in the illustration");
+  assert.equal(await page.isVisible("#freightNetwork .nw-legend"), false);
+  assert.ok(await noOverflow(page));
+  await ctx.close();
+  ctx = await newContext({ width: 768, height: 900 });
+  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 503, contentType: "application/json", body: '{"error":"unavailable"}' }));
+  page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "error", null, { timeout: 15000 });
+  assert.match(await page.textContent("#freightNetwork .nw-note"), /temporarily unavailable/);
   await ctx.close();
 });
 

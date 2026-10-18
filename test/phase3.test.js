@@ -377,7 +377,10 @@ test("tracking presentation: the stage comes from the recorded status, the vehic
   assert.equal(presentation({}).stage, "neutral");
   assert.equal(shipmentMode({ carrier: { name: "Maersk" } }), "ship");
   assert.equal(shipmentMode({ carrier: { name: "Emirates SkyCargo" } }), "plane");
-  assert.equal(shipmentMode({ carrier: { name: "DHL" } }), "van");
+  for (const name of ["DHL", "FedEx", "UPS", "2GoExpress"]) assert.equal(shipmentMode({ carrier: { name } }), null, `${name}: multi-mode carrier, no guessed vehicle`);
+  assert.equal(shipmentMode({ carrier: { name: "DHL", serviceType: "Air freight" } }), "plane");
+  assert.equal(shipmentMode({ carrier: { name: "DHL", serviceType: "Road freight" } }), "truck");
+  assert.equal(shipmentMode({ carrier: { name: "DHL", serviceType: "Express" } }), null, "express says nothing about the mode");
   assert.equal(shipmentMode({ carrier: { name: "DHL", serviceType: "Ocean freight (FCL)" } }), "ship", "recorded service type wins");
   assert.equal(shipmentMode({ carrier: { name: "Some Local Mover", custom: true } }), null, "custom carrier: no guessed vehicle");
   assert.equal(shipmentMode({ carrier: { name: "Unknown Co" } }), null);
@@ -478,16 +481,19 @@ test("tracker: 3D starts by itself when the scene is in view, with a loading sta
   assert.match(t, /v3io = new IntersectionObserver\(/, "lazy: starts when the scene scrolls into view");
   assert.match(t, /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\);/, "the 3D module is loaded lazily");
   assert.match(t, /Loading 3D view…/);
-  assert.match(t, /const V3_TIMEOUT = 12000;/);
+  assert.match(t, /const V3_TIMEOUT = 15000;/);
   assert.match(t, /Showing photo — 3D view isn't available on this device\./);
-  for (const a of ["3d", "3d-close", "3d-reset", "3d-zoom-in", "3d-zoom-out"]) assert.ok(t.includes(`data-act="${a}"`) || t.includes(`act === "${a}"`), a);
+  assert.match(t, /Showing photo — 3D view turned off to keep this page smooth on this device\./, "slow devices get the photo");
+  for (const a of ["3d", "3d-close", "3d-reset", "3d-zoom-in", "3d-zoom-out", "3d-view"]) assert.ok(t.includes(`data-act="${a}"`) || t.includes(`act === "${a}"`), a);
   assert.doesNotMatch(t, /Explore in 3D/);
-  const s3d = read("tracker/scene3d.js");
-  assert.match(s3d, /if \(document\.activeElement !== canvas\) return;/, "wheel never hijacks page scrolling");
-  assert.match(s3d, /if \(e\.pointerType !== "touch"\) view\.pitch/, "touch drags only rotate sideways");
+  const core = read("tracker/3d/core.js");
+  assert.match(core, /if \(document\.activeElement !== canvas\) return;/, "wheel never hijacks page scrolling");
+  assert.match(core, /if \(e\.pointerType !== "touch"\) goal\.pitch/, "touch drags only rotate sideways");
   assert.match(read("tracker/tracker.css"), /touch-action: pan-y;/);
   // lazily imported modules are not loaded by other unit tests, so check that they parse
-  for (const f of ["tracker/scene3d.js", "tracker/tracker.js", "tracker/map.js"]) assert.equal(spawnSync(process.execPath, ["--check", new URL(`../${f}`, import.meta.url).pathname]).status, 0, f);
+  const lazy = ["tracker/scene3d.js", "tracker/tracker.js", "tracker/map.js", "ui/network.js", ...fs.readdirSync(new URL("../tracker/3d", import.meta.url)).filter((f) => f.endsWith(".js")).map((f) => `tracker/3d/${f}`),
+    ...fs.readdirSync(new URL("../tracker/3d/scenes", import.meta.url)).map((f) => `tracker/3d/scenes/${f}`)];
+  for (const f of lazy) assert.equal(spawnSync(process.execPath, ["--check", new URL(`../${f}`, import.meta.url).pathname]).status, 0, f);
 });
 
 test("homepage tracking form: ids kept, neutral placeholder, loading and error states", () => {
@@ -500,11 +506,12 @@ test("homepage tracking form: ids kept, neutral placeholder, loading and error s
   assert.match(read("ui/site-v2.css"), /\.track-field:focus-within \{/);
 });
 
-test("stage photos and 3D models: every status maps safely, files exist, captions are honest, Three.js only on demand", async () => {
-  const { stagePhoto, stageModel, routeOverlaySvg, modelCaption } = await import("../tracker/scene.js");
+test("stage photos and 3D scenes: every status maps safely, files exist, captions are honest, Three.js only on demand", async () => {
+  const { stagePhoto, stageScene, routeOverlaySvg, modelCaption } = await import("../tracker/scene.js");
+  const { SCENES } = await import("../tracker/scene3d.js");
   const { STATUS } = await import("../shared/status.js");
   const sea = { carrier: { name: "Maersk" } }; const courier = { carrier: { name: "DHL" } };
-  const expectPhoto = { CREATED: "dc", PROCESSING: "bays", AT_FACILITY: "forklift", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk", PICKED_UP: null, IN_TRANSIT: null, DELIVERED: null, DELAYED: null, EXCEPTION: null, CANCELLED: null };
+  const expectPhoto = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk", PICKED_UP: null, IN_TRANSIT: null, DELIVERED: null, DELAYED: null, EXCEPTION: null, CANCELLED: null };
   for (const code of Object.values(STATUS)) {
     assert.equal(stagePhoto({ status: { code }, ...courier })?.key ?? null, expectPhoto[code], code);
     const p = stagePhoto({ status: { code }, ...courier });
@@ -513,11 +520,22 @@ test("stage photos and 3D models: every status maps safely, files exist, caption
   assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, ...sea }).key, "ship");
   assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).key, "air");
   assert.equal(stagePhoto({ status: { code: "SOMETHING_NEW" } }), null, "unknown status keeps the neutral drawing");
-  assert.equal(stageModel({ status: { code: "AT_FACILITY" } }), "warehouse");
-  assert.equal(stageModel({ status: { code: "IN_TRANSIT" }, ...sea }), "ship");
-  assert.equal(stageModel({ status: { code: "IN_TRANSIT" }, ...courier }), null);
-  for (const code of ["DELIVERED", "DELAYED", "EXCEPTION", "CANCELLED", "SOMETHING_NEW"]) assert.equal(stageModel({ status: { code } }), null, code);
-  assert.match(modelCaption("warehouse"), /typical warehouse for this stage, not the actual facility or vehicle/);
+  // every status x mode gives a known scene; movement only for normal stages
+  const expectScene = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs", OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered", CANCELLED: "neutral" };
+  for (const code of Object.values(STATUS)) for (const carrier of [{ name: "Maersk" }, { name: "Emirates SkyCargo" }, { name: "DHL", serviceType: "Road freight" }, { name: "DHL" }, null]) {
+    const r = stageScene({ status: { code }, carrier });
+    assert.ok(SCENES.includes(r.scene), `${code}/${carrier?.name}: ${r.scene}`);
+    if (expectScene[code]) assert.equal(r.scene, expectScene[code], code);
+    if (["DELAYED", "EXCEPTION", "CANCELLED"].includes(code)) assert.equal(r.animate, false, `${code} is shown without movement`);
+  }
+  assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, ...sea }).scene, "ship");
+  assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).scene, "air");
+  assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, carrier: { name: "DHL", serviceType: "Road freight" } }).scene, "road");
+  assert.equal(stageScene({ status: { code: "IN_TRANSIT" }, ...courier }).scene, "neutral", "no recorded mode: no vehicle implied");
+  assert.deepEqual(stageScene({ status: { code: "EXCEPTION" }, progress: { stage: "AT_FACILITY" } }), { scene: "facility", animate: false, state: "held" }, "on hold: last confirmed stage, still");
+  assert.deepEqual(stageScene({ status: { code: "SOMETHING_NEW" } }), { scene: "neutral", animate: false, state: "unknown" });
+  for (const sc of SCENES) assert.match(modelCaption(sc), /^3D illustration of a typical .+ for this stage — not the actual facility, vehicle or parcel\.$/, sc);
+  assert.match(modelCaption("ship", "held"), /without movement while the shipment is on hold/);
   // overlay: labels only from recorded places, schematic (no coordinates), at most 4 + "N earlier"
   const svg = routeOverlaySvg({ status: { code: "IN_TRANSIT" }, origin: "Shanghai, China", destination: "Rotterdam, Netherlands",
     timeline: ["A", "B", "C", "D"].map((p, i) => ({ location: `Port ${p}`, timestamp: `2026-10-0${i + 1}T00:00:00Z`, title: "In Transit" })) });
@@ -526,11 +544,20 @@ test("stage photos and 3D models: every status maps safely, files exist, caption
   assert.equal(routeOverlaySvg({ status: { code: "CREATED" }, timeline: [] }), "", "no route without recorded places");
   const s3d = read("tracker/scene3d.js");
   assert.match(s3d, /const THREE_URL = "https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/build\/three\.module\.min\.js";/);
-  assert.ok(!/^import /m.test(s3d), "no static imports: Three.js loads only when a visitor opens the 3D view");
-  assert.match(s3d, /if \(!webglAvailable\(\)\) throw/); assert.match(s3d, /renderer\.dispose\(\)/);
+  assert.ok(!/^import /m.test(s3d), "no static imports: Three.js loads only when the scene is shown");
+  assert.match(s3d, /if \(!core\.webglAvailable\(\)\) throw/);
+  const core = read("tracker/3d/core.js"); assert.match(core, /renderer\.dispose\(\)/); assert.match(core, /err\.code = "slow"/);
+  for (const f of fs.readdirSync(new URL("../tracker/3d/scenes", import.meta.url))) {
+    const src = read(`tracker/3d/scenes/${f}`);
+    assert.ok(!/^import /m.test(src), `${f}: THREE comes in as a parameter`);
+    assert.ok(!/localStorage|sessionStorage|document\.cookie|fetch\(/.test(src), `${f}: no storage or network`);
+    assert.ok(!/<text|fillText|TextGeometry/.test(src), `${f}: no lettering (no names, numbers or brands)`);
+    assert.ok(SCENES.includes(f.replace(".js", "")), f);
+  }
   assert.match(read("tracker/tracker.js"), /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\)/);
   assert.ok(!/localStorage|sessionStorage|document\.cookie/.test(s3d));
-  assert.match(read("assets/stages/CREDITS.md"), /rights to be confirmed/i);
+  const credits = read("assets/stages/CREDITS.md");
+  assert.match(credits, /rights to be confirmed/i); assert.match(credits, /`dock-\*`/); assert.match(credits, /`aerial-\*`/); assert.match(credits, /built entirely in code/);
 });
 
 test("light theme: day scenes for hero and tracking band, map palette follows the theme, no forced dark bands", () => {
@@ -543,4 +570,14 @@ test("light theme: day scenes for hero and tracking band, map palette follows th
   const html = read("index.html");
   assert.match(html, /<aside class="freight-routes" id="freightRoutes" hidden/);
   assert.match(html, /renderFreightRoutes\(d\?\.routes\)/, "freight panel is fed only by the public API response");
+});
+
+test("homepage network: published routes only, an illustrative state that says so, no live wording or edit times", async () => {
+  const src = read("ui/network.js");
+  assert.match(src, /Illustrative network — not shipment data/);
+  assert.match(src, /Route data is temporarily unavailable/);
+  assert.ok(!/\b(live|active routes|gps)\b/i.test(src.replace(/\/\/.*$/gm, "")), "never calls the map live, active or GPS");
+  assert.ok(!/stats\?\.lastUpdated\)/.test(src) && !/toLocaleString/.test(src), "no record-edit time shown as an update time");
+  const h = read("index.html");
+  assert.match(h, /id="freightNetwork"/); assert.match(h, /network\.then\(\(n\) => n\.render\(d\)/); assert.match(h, /network\.then\(\(n\) => n\.error\(\)/);
 });
