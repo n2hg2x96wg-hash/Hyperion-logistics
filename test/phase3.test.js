@@ -439,8 +439,9 @@ test("admin: tracking numbers copyable, archive/delete set apart, a real-data 'n
   assert.match(center, /<span class="row-actions-risky">/);
   assert.match(center, /copy: \(\) => copyCode\(code\)/);
   assert.match(center, /const attention = \(t\.delayed \|\| 0\) \+ \(t\.exceptions \|\| 0\);/, "derived only from the existing totals");
-  // the existing confirmations for destructive actions are kept
-  assert.match(center, /confirm\(`Permanently delete \$\{code\}/); assert.match(center, /confirm\(`Archive \$\{code\}\?/);
+  // destructive actions still need confirmation (in-page dialog; deleting needs the code typed)
+  assert.match(center, /confirmDialog\(\{ title: `Permanently delete \$\{code\}\?`[^)]*typed: code \}\)/); assert.match(center, /confirmDialog\(\{ title: `Archive \$\{code\}\?`/);
+  assert.ok(!/confirm\(`(Archive|Permanently delete)/.test(center), "no browser confirm for archive/delete");
   const admin = read("admin.html");
   for (const id of ["loginForm", "loginPassword", "loginBtn", "appRoot", "loginOverlay"]) assert.ok(admin.includes(`id="${id}"`), id);
   assert.match(admin, /toast\.setAttribute\("role", type === "error" \? "alert" : "status"\)/);
@@ -469,7 +470,7 @@ test("tracker: no back-office timestamps or labels for clients; only verified fe
   assert.match(t, /const LIVE_SOURCES = new Set\(\["gps", "carrier_api"\]\);/);
   assert.match(t, /if \(!verifiedFeed\(v\)\) \{ const s = ls\.state === "none" \? "none" : "last";/, "manual locations never read as live or recent");
   assert.match(t, /const latest = v\.timeline\?\.\[0\] \|\| null;/, "the latest milestone is the newest recorded event");
-  assert.match(t, /🕒 Latest milestone/);
+  assert.match(t, /🕒 Latest recorded milestone/);
   assert.match(t, /<time datetime="\$\{esc\(t\.timestamp\)\}">/, "event times stay in the timeline");
   assert.match(read("tracker/map.js"), /cur\?\.updatedAt \? `Reported \$\{fmt\(cur\.updatedAt\)\}` : null/);
   const cc = read("ui/globe/command-center.js");
@@ -568,16 +569,41 @@ test("light theme: day scenes for hero and tracking band, map palette follows th
   assert.match(read("ui/globe/palette.js"), /data-theme|dataset\.theme/);
   for (const f of ["ui/globe/globe.js", "ui/globe/flatmap.js"]) assert.match(read(f), /onPalette\(/, f);
   const html = read("index.html");
-  assert.match(html, /<aside class="freight-routes" id="freightRoutes" hidden/);
-  assert.match(html, /renderFreightRoutes\(d\?\.routes\)/, "freight panel is fed only by the public API response");
+  assert.match(html, /<ul class="nw-cards" data-slot="nwcards"[^>]*hidden><\/ul>/, "route cards start hidden and are filled only from the public API");
+  assert.ok(!/freightRoutes|renderFreightRoutes/.test(html), "the old 3-item panel is replaced by the cards");
 });
 
 test("homepage network: published routes only, an illustrative state that says so, no live wording or edit times", async () => {
   const src = read("ui/network.js");
-  assert.match(src, /Illustrative network — not shipment data/);
-  assert.match(src, /Route data is temporarily unavailable/);
-  assert.ok(!/\b(live|active routes|gps)\b/i.test(src.replace(/\/\/.*$/gm, "")), "never calls the map live, active or GPS");
-  assert.ok(!/stats\?\.lastUpdated\)/.test(src) && !/toLocaleString/.test(src), "no record-edit time shown as an update time");
+  assert.match(src, /Illustrative network — not live shipment activity/);
+  assert.match(src, /No published shipments available\./); assert.match(src, /Route data is temporarily unavailable\./);
+  assert.match(src, /Published shipment routes · /); assert.match(src, /Latest recorded milestone/);
+  const prose = src.replace(/\/\/.*$/gm, "").replace("not live shipment activity", "").replace("not a live position", "");
+  assert.ok(!/\b(live|active routes|gps)\b/i.test(prose), "never calls the map or cards live, active or GPS");
+  assert.ok(!/lastUpdated|updatedAt/.test(src.replace(/\/\/.*$/gm, "")), "no record-edit time shown");
+  assert.match(src, /latest\.set\(a\.routeKey, a\)/, "milestones come from the public activity (event times)");
+  const cc = read("ui/globe/command-center.js");
+  assert.match(cc, /o\.mode === "admin" \? r\.current\?\.recordedAt \|\| r\.updatedAt : activity\.find/, "public table never shows the record-edit time");
   const h = read("index.html");
   assert.match(h, /id="freightNetwork"/); assert.match(h, /network\.then\(\(n\) => n\.render\(d\)/); assert.match(h, /network\.then\(\(n\) => n\.error\(\)/);
+});
+
+test("tracking polish: heading, route line, 'Latest recorded milestone', a status explainer for every status", async () => {
+  const { STATUS_HELP } = await import("../tracker/scene.js");
+  const { STATUS } = await import("../shared/status.js");
+  for (const code of Object.values(STATUS)) assert.ok(STATUS_HELP[code] && STATUS_HELP[code].length > 20, code);
+  assert.ok(!/because|due to/i.test(Object.values(STATUS_HELP).join(" ")), "no invented reasons");
+  const t = read("tracker/tracker.js");
+  assert.match(t, /<div class="hx-od">/); assert.match(t, /What does “\$\{esc\(v\.status\.label\)\}” mean\?/);
+  assert.match(read("index.html"), /<h2 class="track-title">Track a shipment<\/h2>/);
+});
+
+test("admin on iPhone: bottom tab bar, readable text, status breakdown from real counts, change history, e-mail field", () => {
+  const h = read("admin.html"); const c = read("admin/center.js"); const css = read("admin/console.css");
+  for (const tab of ["dashboard", "shipments", "tracking", "more"]) assert.ok(h.includes(`data-tab="${tab}"`), tab);
+  assert.match(css, /body\.console \.tabbar button \{[^}]*min-height: 56px/); assert.match(css, /font-size: 13px !important/);
+  assert.match(c, /const by = d\.byStatus \|\| \{\}/, "status breakdown uses the server's counts");
+  assert.match(c, /if \(can\("clients"\)\) api\("listClients"\)/, "client count only for permitted admins");
+  assert.match(c, /api\("audit", \{ limit: 50, code \}\)/, "change history reuses the audit log");
+  assert.match(h, /id="notifyEmail"/); assert.match(h, /id="shipmentNotifyEmailInput"/); assert.match(c, /cmp\("notifyEmail"/);
 });

@@ -1,23 +1,16 @@
 // Stage illustration for a tracking result. Everything shown is derived from the shipment's real data:
 //   stage <- the recorded status code (shared/status.js codes)
-//   mode  <- the recorded service type, or the carrier's catalogue category (shared/carriers.js)
+//   mode  <- the recorded service type, or a single-mode carrier's catalogue category (shared/mode.js)
 // The picture is an illustration of the CURRENT STAGE, never a position: nothing moves along a route, and the caption
 // says so. Unknown statuses or modes fall back to a neutral parcel.
-import { CARRIERS, carrierCategory } from "../shared/carriers.js";
+import { transportMode } from "../shared/mode.js";
 
 const STAGE_BY_STATUS = {
   CREATED: "registered", PROCESSING: "processing", PICKED_UP: "transit", IN_TRANSIT: "transit",
   AT_FACILITY: "facility", CUSTOMS: "facility", OUT_FOR_DELIVERY: "out-for-delivery", DELIVERED: "delivered",
   DELAYED: "held", EXCEPTION: "held", CANCELLED: "cancelled"
 };
-// Only single-mode carriers say how a shipment travels: ocean lines sail, cargo airlines fly. Express, regional and
-// custom carriers run several modes, so their shipments need a recorded service type (air / sea / road) to get one.
-const MODE_BY_CATEGORY = { ocean: "ship", air: "plane" };
-const MODE_WORDS = [
-  [/\b(ocean|sea|vessel|maritime|fcl|lcl)\b/i, "ship"],
-  [/\b(air|flight|airfreight|air freight)\b/i, "plane"],
-  [/\b(road|truck|trucking|ground|ltl|ftl|haulage)\b/i, "truck"]
-];
+const SCENE_MODE = { sea: "ship", air: "plane", road: "truck" }; // shared/mode.js -> drawing / 3D vocabulary
 
 export const STAGE_TEXT = {
   registered: "Shipment registered", processing: "Processing", transit: "In transit", facility: "At a facility",
@@ -25,14 +18,10 @@ export const STAGE_TEXT = {
 };
 const MODE_TEXT = { ship: "sea freight", plane: "air freight", truck: "road freight" };
 
-/** Transport mode from recorded data only, or null when the data does not say. */
+/** Transport mode from recorded data only (shared/mode.js), or null when the data does not say. */
 export function shipmentMode(view) {
-  const svc = String(view?.carrier?.serviceType || "");
-  for (const [re, mode] of MODE_WORDS) if (re.test(svc)) return mode;
-  const name = String(view?.carrier?.name || "").trim().toLowerCase();
-  if (!name || view?.carrier?.custom) return null;
-  const c = CARRIERS.find((x) => x.name.toLowerCase() === name || x.id === name);
-  return c ? MODE_BY_CATEGORY[carrierCategory(c)] || null : null;
+  const m = transportMode({ serviceType: view?.carrier?.serviceType, carrierName: view?.carrier?.name, custom: view?.carrier?.custom });
+  return m ? SCENE_MODE[m] : null;
 }
 
 /** { stage, mode, label } for the illustration. */
@@ -143,6 +132,21 @@ export function stagePhoto(view) {
   if (stage === "transit" && mode === "plane") key = "air";
   return key ? { key, ...PHOTOS[key] } : null;
 }
+
+// ---------- plain-language meaning of each recorded status (general; never a claim about a specific shipment) ----------
+export const STATUS_HELP = {
+  CREATED: "The shipment has been registered with Hyperion. It may not have been collected yet.",
+  PROCESSING: "The shipment is being prepared for dispatch, for example documentation or booking with a carrier.",
+  PICKED_UP: "The shipment has been collected and handed over for transport.",
+  IN_TRANSIT: "The shipment is moving between recorded places. Positions are updated when a new milestone is recorded.",
+  AT_FACILITY: "The shipment is at a warehouse, hub or terminal between transport legs.",
+  CUSTOMS: "The shipment is going through customs or an inspection process. Timing depends on the authorities.",
+  OUT_FOR_DELIVERY: "The shipment is on its final delivery leg to the destination.",
+  DELIVERED: "The shipment has been recorded as delivered.",
+  DELAYED: "A delay has been recorded. Any explanation provided by our team is shown above; contact support for details.",
+  EXCEPTION: "An issue that needs attention has been recorded. Our team will follow up; contact support for details.",
+  CANCELLED: "The shipment has been cancelled and will not continue."
+};
 
 // ---------- 3D scene for the recorded stage (tracker/3d/scenes) ----------
 const SCENE_BY_STATUS = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs",

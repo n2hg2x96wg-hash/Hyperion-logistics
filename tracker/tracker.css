@@ -443,3 +443,14 @@ html[data-theme="light"] .hx-3d-btn:hover:not(:disabled) { border-color: #2563eb
 html[data-theme="light"] .hx-3d-hint, html[data-theme="light"] .hx-3d-note { color: #44557a; }
 html[data-theme="light"] .hx-3d-views .hx-seg[aria-pressed="true"] { background: #dbe7ff; color: #0b1a3d; }
 .hx-scene figcaption { grid-template-columns: minmax(0, 1fr); }
+
+/* origin -> destination under the tracking number, and the plain-language status explainer */
+.hx-od { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--hx-text); min-width: 0; }
+.hx-od span { min-width: 0; overflow-wrap: anywhere; }
+.hx-od i { flex: 0 0 28px; height: 2px; background: repeating-linear-gradient(90deg, #60a5fa 0 6px, transparent 6px 10px); position: relative; }
+.hx-od i::after { content: ""; position: absolute; right: -2px; top: -3px; border: 4px solid transparent; border-left-color: #60a5fa; }
+.hx-help summary { cursor: pointer; font-weight: 700; color: var(--hx-text); min-height: 32px; display: flex; align-items: center; }
+.hx-help summary:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; border-radius: 6px; }
+.hx-help p { margin: 8px 0 0; color: var(--hx-muted); font-size: 15px; line-height: 1.55; }
+html[data-theme="light"] .hx-od i { background: repeating-linear-gradient(90deg, #2563eb 0 6px, transparent 6px 10px); } html[data-theme="light"] .hx-od i::after { border-left-color: #2563eb; }
+html[data-theme="light"] .hx-help p { color: #44557a; }

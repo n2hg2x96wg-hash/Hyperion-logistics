@@ -22,6 +22,14 @@ export function cleanText(value, { max = 200, field = "field", required = false 
   return text;
 }
 
+/** Optional customer e-mail for milestone notifications: "" clears it. Lower-cased; one plain address only. */
+export function parseEmail(value, field = "notifyEmail") {
+  const text = cleanText(value, { max: 254, field }).toLowerCase();
+  if (!text) return "";
+  if (!/^[^\s@,;<>"]+@[^\s@,;<>"]+\.[a-z]{2,}$/.test(text)) throw new ValidationError("Enter a valid e-mail address", field);
+  return text;
+}
+
 /** Tracking code: trim, uppercase, strip whitespace. Returns null when it cannot be valid. */
 export function normalizeTrackingCode(input) {
   if (typeof input !== "string") return null;

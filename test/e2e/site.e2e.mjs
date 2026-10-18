@@ -425,7 +425,7 @@ for (const w of [390, 768, 1280]) {
     const route = await page.$$eval(".hx-rs", (li) => li.map((x) => ({ place: x.querySelector(".hx-rs-place").textContent, cls: x.className })));
     assert.equal(route[0].place, "Houston, United States"); assert.match(route[0].cls, /k-origin/);
     assert.equal(route.at(-1).place, "Lisbon, Portugal"); assert.match(route.at(-1).cls, /is-upcoming/, "destination upcoming while in transit");
-    assert.match(await page.textContent(".hx-fact-updated"), /Latest milestone/);
+    assert.match(await page.textContent(".hx-fact-updated"), /Latest recorded milestone/);
     const rootText = await page.textContent(".hx-tracker");
     assert.ok(!/Operations update|Recorded time|Last recorded update/.test(rootText), "no back-office labels or entry times for clients");
     assert.ok(!/Live tracking map/.test(rootText) && await page.locator(".hx-loc-badge").count() === 0, "a manually recorded location never reads as live");
@@ -712,7 +712,7 @@ test("homepage network: published routes with markers and labels, illustrative w
   await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "routes", null, { timeout: 15000 });
   const nw = await page.$eval("#freightNetwork", (e) => ({ tag: e.querySelector(".nw-tag").textContent, labels: [...e.querySelectorAll(".nw-label")].map((x) => x.textContent), arcs: e.querySelectorAll(".nw-arc").length,
     dots: [...e.querySelectorAll(".nw-dot")].map((d) => d.getAttribute("class")), text: e.textContent }));
-  assert.match(nw.tag, /published shipments? · city level · tracking numbers masked/);
+  assert.match(nw.tag, /^Published shipment routes · \d+ · city level · tracking numbers masked$/);
   assert.ok(nw.labels.some((l) => /Houston/.test(l)) && nw.labels.some((l) => /Lisbon/.test(l)), nw.labels.join(","));
   assert.ok(!/Lagos|Somewhere/.test(nw.labels.join(" ")), "unpublished shipments never appear");
   assert.ok(!nw.text.includes(codes.good) && !/\blive\b|GPS/i.test(nw.text), "no full codes, no live wording");
@@ -726,7 +726,9 @@ test("homepage network: published routes with markers and labels, illustrative w
   page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
   await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "illustrative", null, { timeout: 15000 });
-  assert.equal(await page.textContent("#freightNetwork .nw-tag"), "Illustrative network — not shipment data");
+  assert.equal(await page.textContent("#freightNetwork .nw-tag"), "Illustrative network — not live shipment activity");
+  assert.equal(await page.textContent("#freightNetwork .nw-note"), "No published shipments available.");
+  assert.equal(await page.isVisible("#freightNetwork .nw-cards"), false, "no cards without published routes");
   assert.equal(await page.locator("#freightNetwork .nw-label").count(), 0, "no route names in the illustration");
   assert.equal(await page.isVisible("#freightNetwork .nw-legend"), false);
   assert.ok(await noOverflow(page));
@@ -805,25 +807,45 @@ test("homepage tracking form: loading, invalid, unknown and network-error states
   }
 });
 
-test("homepage freight: recorded routes panel shows only published shipments and disappears when there are none", async () => {
-  let ctx = await newContext({ width: 390, height: 844 });
-  let page = await ctx.newPage();
+test("homepage route cards: published routes only, masked, latest recorded milestone, mode only when recorded, one-route and empty states", async () => {
+  let ctx = await newContext({ width: 1280, height: 900 });
+  let page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/admin.html`);
+  assert.equal((await api(page, { action: "login", password: process.env.ADMIN_PASSWORD })).status, 200);
+  const sea = await api(page, { action: "create", shipment: { courier: "maersk", statusCode: "IN_TRANSIT", origin: "Shanghai, China", destination: "Rotterdam, Netherlands",
+    originLat: 31.23, originLng: 121.47, destinationLat: 51.92, destinationLng: 4.48, publicMap: true } });
+  assert.equal(sea.status, 200);
+  (await import("../../api/public.js")).__clearPublicCache(); // the public overview is cached for 30 s
   await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => !document.getElementById("freightRoutes").hidden, null, { timeout: 10000 });
-  const items = await page.$$eval("#freightRoutes .fr-list li", (li) => li.map((x) => x.textContent.replace(/\s+/g, " ").trim()));
-  assert.ok(items.length >= 1 && items.length <= 3);
-  assert.ok(items.some((t) => /Houston.*Lisbon/.test(t)), items.join(" | "));
-  assert.ok(!items.join(" ").includes(codes.good), "codes stay masked");
-  assert.ok(!/Lagos|Somewhere/.test(items.join(" ")), "unpublished shipments never appear");
-  assert.ok(await noOverflow(page));
+  await page.waitForFunction(() => document.querySelectorAll("#freightNetwork .nw-card").length >= 2, null, { timeout: 15000 });
+  const cards = await page.$$eval("#freightNetwork .nw-card", (li) => li.map((x) => ({ text: x.textContent.replace(/\s+/g, " ").trim(), mode: x.querySelector(".nw-mode")?.getAttribute("aria-label") || null })));
+  const all = cards.map((c) => c.text).join(" | ");
+  assert.ok(cards.length <= 6);
+  assert.ok(cards.some((c) => /Houston.*Lisbon/.test(c.text) && c.mode === null), "DHL: no mode guessed");
+  const seaCard = cards.find((c) => /Shanghai.*Rotterdam/.test(c.text));
+  assert.ok(seaCard && seaCard.mode === "Sea freight", "Maersk: sea freight");
+  assert.match(seaCard.text, /Latest recorded milestone/); assert.match(seaCard.text, /Recorded/);
+  assert.ok(!all.includes(codes.good) && !all.includes(sea.json.shipment.id), "codes stay masked");
+  assert.ok(!/Lagos|Somewhere/.test(all), "unpublished shipments never appear");
+  assert.ok(!/\blive\b|GPS|\bactive\b/i.test(all), "no live/active wording on cards");
+  assert.ok(await noOverflow(page)); assert.deepEqual(errors, []);
   await ctx.close();
-  ctx = await newContext({ width: 1280, height: 900 });
+  // exactly one published route
+  ctx = await newContext({ width: 390, height: 844 });
+  const one = { ref: "HY-12••56", key: "abc123abc123", status: { code: "IN_TRANSIT", label: "In Transit", tone: "info" }, originLabel: "Dubai, UAE", destinationLabel: "Lagos, Nigeria",
+    origin: { lat: 25.2, lng: 55.27 }, destination: { lat: 6.52, lng: 3.37 }, current: null, mode: "air" };
   await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
-    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
+    body: JSON.stringify({ routes: [one], activity: [{ ref: one.ref, routeKey: one.key, title: "Departed origin airport", tone: "info", at: "2026-10-01T08:00:00Z", from: "Dubai, UAE", to: "Lagos, Nigeria" }],
+      stats: { active: 1, inTransit: 1, delivered: 0, countriesActive: 2, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) }));
   page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
-  await page.waitForFunction(() => document.getElementById("activity").dataset.state === "empty");
-  assert.equal(await page.$eval("#freightRoutes", (b) => b.hidden), true);
+  await page.waitForFunction(() => document.querySelectorAll("#freightNetwork .nw-card").length === 1, null, { timeout: 15000 });
+  const c = await page.$eval("#freightNetwork .nw-card", (x) => x.textContent.replace(/\s+/g, " "));
+  assert.match(c, /HY-12••56/); assert.match(c, /Departed origin airport/); assert.match(c, /Dubai, UAE.*Lagos, Nigeria/);
+  assert.equal(await page.getAttribute("#freightNetwork .nw-mode", "aria-label"), "Air freight");
+  assert.equal(await page.locator("#freightNetwork .nw-arc").count(), 1);
+  assert.ok(await noOverflow(page));
+  await shot(page, "network-one-route-390");
   await ctx.close();
 });
 
@@ -845,6 +867,54 @@ test("light theme reaches every band: daylight hero, light freight copy, light t
   assert.equal(await page.$eval(".track-band h1", (h) => getComputedStyle(h).color), "rgb(11, 26, 61)");
   assert.deepEqual(errors, []);
   await ctx.close();
+});
+
+test("admin on iPhone: bottom tab bar, readable text, status breakdown, e-mail field, typed delete confirmation, change history", async () => {
+  for (const theme of ["dark", "light"]) {
+    const ctx = await newContext({ width: 390, height: 844 });
+    if (theme === "light") await ctx.addInitScript(() => { try { localStorage.setItem("hx-theme", "light"); } catch {} });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/admin.html`);
+    await page.fill("#loginPassword", process.env.ADMIN_PASSWORD); await page.click("#loginBtn");
+    await page.waitForSelector("#kpiGrid .kpi", { timeout: 15000 });
+    assert.ok(await page.isVisible("#tabBar"));
+    assert.equal(await page.getAttribute('#tabBar [data-tab="dashboard"]', "aria-current"), "page");
+    const tabs = await page.$$eval("#tabBar button", (b) => b.map((x) => x.getBoundingClientRect().height));
+    assert.ok(tabs.every((h) => h >= 56), `tab heights ${tabs}`);
+    await page.waitForSelector("#dashStatus .status-bar");
+    const small = await page.evaluate(() => [...document.querySelectorAll("#view-dashboard *")].filter((e) => e.offsetParent && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+      .map((e) => [e.tagName + "." + e.className, parseFloat(getComputedStyle(e).fontSize)]).filter(([, f]) => f < 13));
+    assert.deepEqual(small, [], "no text below 13px on the overview");
+    // create with a notification address through the form, then find it in the list
+    await page.click('#tabBar [data-tab="more"]'); await page.click("#btn-create");
+    await page.selectOption("#courier", "dhl"); await page.fill("#origin", `Tema, Ghana ${theme}`); await page.fill("#destination", "Lome, Togo"); await page.fill("#notifyEmail", "Customer@Example.com");
+    await page.click('#view-create button[type="submit"]');
+    await page.waitForFunction(() => /[A-Z]+-\d{6}/.test(document.getElementById("wsCurrent")?.textContent || "") || document.querySelector(".toast"), null, { timeout: 15000 });
+    const list = await api(page, { action: "list", q: "", limit: 50 });
+    const made = list.json.items.find((i) => i.origin === `Tema, Ghana ${theme}` && i.destination === "Lome, Togo" && !i.archived);
+    const full = await api(page, { action: "get", code: made.id });
+    assert.equal(full.json.shipment.notifyEmail, "customer@example.com");
+    // typed confirmation guards deletion; cancel keeps the record
+    await page.click('#tabBar [data-tab="shipments"]');
+    await page.fill("#fCode", made.id); await page.click("#fSearch");
+    await page.waitForSelector(`[data-act="delete"][data-code="${made.id}"]`, { timeout: 15000 });
+    await page.click(`[data-act="delete"][data-code="${made.id}"]`);
+    await page.waitForSelector("#confirmModal.show");
+    assert.ok(await page.isDisabled("#confirmOk"), "needs the code typed");
+    await page.fill("#confirmType", "WRONG"); assert.ok(await page.isDisabled("#confirmOk"));
+    await page.click("#confirmCancel");
+    assert.equal((await api(page, { action: "get", code: made.id })).status, 200, "cancel keeps the shipment");
+    // change history in the workspace
+    await page.click('#tabBar [data-tab="tracking"]'); await page.fill("#wsCode", made.id); await page.click("#wsLoad");
+    await page.waitForSelector("#trkSummary .trk-actions");
+    await page.click('#tabBar [data-tab="more"]'); await page.click("#btn-events");
+    await page.waitForFunction(() => /shipment\.created/.test(document.getElementById("evHistory").textContent), null, { timeout: 15000 });
+    assert.ok(await noOverflow(page), `overflow ${theme}`);
+    await shot(page, `admin-events-${theme}-390`);
+    await api(page, { action: "delete", code: made.id, confirm: made.id });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  }
 });
 
 test("authorization boundary: admin actions refuse public callers", async () => {

@@ -9,6 +9,7 @@
 //     and a position was actually recorded. Nothing is interpolated or simulated.
 // Statistics use all non-archived records (counts only) with the counting rules documented in `rules`.
 import crypto from "node:crypto";
+import { transportMode } from "../../shared/mode.js";
 import {
   STATUS, STATUS_META, EVENT_SOURCES, IN_TRANSIT_GROUP, resolveShipmentStatus, resolveVisibility, statusLabel, statusTone
 } from "../../shared/status.js";
@@ -100,6 +101,9 @@ function routeFor(s, now) {
     originLabel: cityLabel(s.origin), destinationLabel: cityLabel(s.destination),
     ...(({ originCountry, destinationCountry }) => ({ originCountry, destinationCountry }))(countryFields(s)),
     origin, destination, current,
+    // derived at read time with the tracking page's rule; null unless the recorded service type or a single-mode
+    // carrier says it, and only when the shipment shows its carrier to clients
+    mode: vis.carrier ? transportMode({ serviceType: s.serviceType, carrierId: s.courier }) : null,
     updatedAt: isoOk(s.updatedAt)
   };
 }

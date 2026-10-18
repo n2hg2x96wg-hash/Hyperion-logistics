@@ -7,7 +7,7 @@ import {
   STATUS, STATUS_META, MANUAL_SOURCES, EXCEPTION_TYPES, resolveShipmentStatus, resolveVisibility, VISIBILITY_KEYS, normalizeStatus
 } from "../../shared/status.js";
 import {
-  ValidationError, cleanText, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
+  ValidationError, cleanText, parseEmail, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
   parseDateOnly, parseExceptionType, parseVisibility, parsePackage, parseCoordinatePair, parsePastTimestamp
 } from "./validate.js";
 import { buildClientView } from "./client-view.js";
@@ -45,6 +45,7 @@ export function parsePatch(input = {}) {
     if (key in input) p[key] = cleanText(input[key], { max, field: key });
   }
   if ("location" in input) p.location = cleanText(input.location, { max: 160, field: "location" });
+  if ("notifyEmail" in input) p.notifyEmail = parseEmail(input.notifyEmail); // optional, admin-only, never shown to clients
   for (const [k, kind] of [["latitude", "latitude"], ["longitude", "longitude"], ["originLat", "latitude"], ["originLng", "longitude"],
     ["destinationLat", "latitude"], ["destinationLng", "longitude"]]) {
     if (k in input) p[k] = parseCoordinate(input[k], kind);
@@ -79,7 +80,7 @@ export function parsePatch(input = {}) {
 }
 
 const TRACKED = ["courier", "courierTrackingNumber", "serviceType", "clientRef", "origin", "destination", "distance", "fee", "notes",
-  "internalNotes", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package"];
+  "internalNotes", "notifyEmail", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package"];
 
 /**
  * Pure: given the current document and a validated patch, compute the next document plus the events,

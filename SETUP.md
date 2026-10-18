@@ -18,6 +18,14 @@ Vercel → your project → **Settings → Environment Variables** (Production):
 Optional: map tiles (see "Map provider" below), `NOTIFY_WEBHOOK_URL` (event notifications),
 `PROVIDER_GENERIC_SECRET` (courier/GPS webhook). See `.env.example`.
 
+Customer e-mail notifications (optional, off until configured):
+1. Create an account at resend.com, verify your sending domain, and create an API key.
+2. In Vercel set `RESEND_API_KEY`, `NOTIFY_EMAIL_FROM` (a sender on the verified domain, e.g.
+   `Hyperion Logistics <updates@yourdomain.com>`) and `SITE_URL` (your site address, for the tracking link), then redeploy.
+3. In the admin, add a **Customer email for notifications** to a shipment. That customer then gets one e-mail per new
+   recorded milestone (registered, picked up, in transit, at facility, delayed, out for delivery, delivered) that is
+   visible on the tracking page. Each milestone is sent at most once; shipments without an address are never e-mailed.
+
 ## 3. Deploy
 Merge the pull request (or **Redeploy** in Vercel). Then open:
 

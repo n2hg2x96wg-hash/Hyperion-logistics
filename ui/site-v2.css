@@ -96,7 +96,8 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 .hero3-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 36px; }
 .track-card { background: linear-gradient(180deg, rgba(13, 24, 52, 0.86), rgba(8, 15, 34, 0.86)); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px;
   padding: 20px; max-width: 620px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-.track-card label { display: block; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: #e2e8f0; margin: 0 0 10px 2px; }
+.track-title { margin: 0 0 12px 2px; font-size: 20px; line-height: 1.2; letter-spacing: -0.01em; color: #fff; }
+.track-card label { display: block; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: #cbd5e1; margin: 0 0 10px 2px; }
 .track-form2 { display: flex; gap: 10px; align-items: stretch; }
 .track-field { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; height: 56px; border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.32); background: rgba(2, 6, 23, 0.72); transition: border-color .15s ease, box-shadow .15s ease; }
@@ -401,34 +402,10 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
   .journey-media img { object-position: 50% 50%; }
 }
 
-/* ---------- freight: real published routes (only when operations has published shipments) ---------- */
-.freight-routes { max-width: 380px; margin-top: 28px; padding: 16px 18px; border-radius: 16px; background: rgba(6, 13, 32, 0.72); border: 1px solid rgba(148, 163, 184, 0.22);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #e6ecf8; }
-.freight-routes[hidden] { display: none; }
-.freight-routes h3 { margin: 0; font-size: 15px; color: #fff; }
-.fr-sub { margin: 2px 0 10px; font-size: 12px; color: #a5b4c8; }
-.fr-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.fr-list li, .freight-routes { min-width: 0; }
-.fr-list li { padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.16); }
-.fr-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
-.fr-top strong { font-variant-numeric: tabular-nums; letter-spacing: .03em; }
-.fr-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(96, 165, 250, 0.18); color: #bfdbfe; }
-.fr-pill.tone-success { background: rgba(52, 211, 153, 0.18); color: #a7f3d0; } .fr-pill.tone-warn { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
-.fr-pill.tone-danger { background: rgba(248, 113, 113, 0.18); color: #fecaca; } .fr-pill.tone-neutral { background: rgba(148, 163, 184, 0.18); color: #e2e8f0; }
-.fr-route { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 14px; font-weight: 700; color: #fff; min-width: 0; }
-.fr-route span { min-width: 0; overflow-wrap: anywhere; }
-.fr-route i { flex: 0 0 28px; min-width: 28px; height: 2px; background: repeating-linear-gradient(90deg, #7dd3fc 0 6px, transparent 6px 10px); position: relative; }
-.fr-route i::after { content: ""; position: absolute; right: -2px; top: -3px; border: 4px solid transparent; border-left-color: #7dd3fc; }
-.fr-now { margin-top: 4px; font-size: 12px; color: #a5b4c8; }
-.fr-more { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: #93c5fd !important; }
-@media (min-width: 1101px) {
-  .freight-inner { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; align-items: end; }
-  .freight-routes { margin: 0; align-self: center; }
-}
-@media (max-width: 900px) { .freight-routes { max-width: none; } }
-
 /* ---------- freight: international shipping network (ui/network.js) ---------- */
-.freight-network { margin: 28px 0 0; padding: 20px; border-radius: 20px; border: 1px solid rgba(148, 163, 184, 0.18); background: linear-gradient(180deg, rgba(13, 24, 52, 0.9), rgba(8, 15, 34, 0.9)); }
+.freight-network { margin: 28px 0 0; padding: 20px; border-radius: 22px; border: 1px solid rgba(96, 165, 250, 0.18);
+  background: radial-gradient(120% 90% at 50% 0%, rgba(37, 99, 235, 0.16), transparent 60%), linear-gradient(180deg, #0b1838, #060d22);
+  box-shadow: 0 30px 70px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
 .nw-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px; margin-bottom: 12px; }
 .nw-head h3 { margin: 0; font-size: clamp(18px, 2.2vw, 22px); color: #fff; letter-spacing: -0.01em; }
 .nw-tag { margin: 4px 0 0; font-size: 13px; font-weight: 600; color: #93c5fd; }
@@ -440,12 +417,14 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
 .nw-legend .k-origin { border: 2px solid #60a5fa; } .nw-legend .k-current { background: #22c55e; } .nw-legend .k-destination { border: 2px solid #f8fafc; }
 .nw-legend .k-line { width: 18px; height: 0; border-radius: 0; border-top: 3px solid #60a5fa; } .nw-legend .k-dash { width: 18px; height: 0; border-radius: 0; border-top: 2px dashed #94a3b8; }
 .nw-map { display: block; width: 100%; height: auto; border-radius: 14px; }
-.nw-sea { fill: #0a1733; } .nw-land { fill: #1d3263; stroke: #2c477f; stroke-width: 0.6; }
+.nw-sea-1 { stop-color: #0c1f4a; } .nw-sea-2 { stop-color: #050c22; }
+.nw-land { fill: #17305e; stroke: #3a5e9e; stroke-width: 0.5; stroke-opacity: 0.6; }
 .nw-arc { fill: none; stroke-linecap: round; }
-.nw-arc.is-travelled { stroke: #60a5fa; stroke-width: 2.6; } .nw-arc.is-remaining, .nw-arc.is-planned { stroke: #94a3b8; stroke-width: 1.8; stroke-dasharray: 0.012 0.012; }
+.nw-arc.is-travelled { stroke: #7cc0ff; stroke-width: 2.6; filter: url(#nwGlow); }
+.nw-arc.is-hot { stroke-width: 3.6; stroke: #bfe0ff; } .nw-arc.is-remaining, .nw-arc.is-planned { stroke: #94a3b8; stroke-width: 1.8; stroke-dasharray: 0.012 0.012; }
 .nw-arc.is-illustrative { stroke: rgba(147, 197, 253, 0.45); stroke-width: 1.6; stroke-dasharray: 0.01 0.012; }
 .nw-dot.is-origin { fill: #0a1733; stroke: #60a5fa; stroke-width: 2.4; } .nw-dot.is-destination { fill: #0a1733; stroke: #f8fafc; stroke-width: 2.4; }
-.nw-dot.is-current { fill: #22c55e; stroke: #fff; stroke-width: 1.5; } .nw-dot.is-illustrative { fill: rgba(147, 197, 253, 0.55); }
+.nw-dot.is-current { fill: #22c55e; stroke: #fff; stroke-width: 1.5; filter: url(#nwGlow); } .nw-dot.is-illustrative { fill: rgba(147, 197, 253, 0.55); }
 .nw-label { font: 600 12px var(--hy-font, system-ui); fill: #e2e8f0; paint-order: stroke; stroke: #0a1733; stroke-width: 3px; }
 .nw-note { margin: 10px 2px 0; font-size: 13px; color: #a5b4cf; }
 @media (prefers-reduced-motion: no-preference) {
@@ -455,4 +434,30 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
 }
 @keyframes nw-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 @keyframes nw-pulse { 50% { transform: scale(1.5); } }
+/* country-to-country cards for the published routes */
+.nw-cards { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.nw-cards[hidden] { display: none; }
+.nw-card { min-width: 0; display: grid; gap: 10px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(180deg, rgba(20, 36, 74, 0.9), rgba(11, 22, 50, 0.9)); color: #e6ecf8; transition: border-color .2s ease, transform .2s ease; }
+.nw-card:hover, .nw-card:focus-within { border-color: rgba(125, 192, 255, 0.55); transform: translateY(-2px); }
+.nw-card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.nw-ref { font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .03em; color: #fff; margin-right: auto; }
+.nw-mode { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(96, 165, 250, 0.16); color: #93c5fd; flex: none; }
+.nw-mode svg { width: 18px; height: 18px; }
+.nw-pill { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(96, 165, 250, 0.18); color: #bfdbfe; white-space: nowrap; }
+.nw-pill.tone-success { background: rgba(52, 211, 153, 0.18); color: #a7f3d0; } .nw-pill.tone-warn { background: rgba(251, 191, 36, 0.18); color: #fde68a; }
+.nw-pill.tone-danger { background: rgba(248, 113, 113, 0.18); color: #fecaca; } .nw-pill.tone-neutral { background: rgba(148, 163, 184, 0.18); color: #e2e8f0; }
+/* origin above destination, joined by a short vertical route line (no mid-word breaks in narrow cards) */
+.nw-card-route { display: grid; grid-template-columns: 14px minmax(0, 1fr); column-gap: 10px; row-gap: 2px; font-size: 15px; font-weight: 700; color: #fff; }
+.nw-card-route > span { grid-column: 2; min-width: 0; overflow-wrap: break-word; }
+.nw-card-route > span:first-child { grid-row: 1; } .nw-card-route > span:last-child { grid-row: 3; }
+.nw-card-route i { grid-column: 1; grid-row: 1 / 4; justify-self: center; width: 2px; margin: 8px 0; background: repeating-linear-gradient(180deg, #7dd3fc 0 5px, transparent 5px 9px); position: relative; }
+.nw-card-route i::before, .nw-card-route i::after { content: ""; position: absolute; left: 50%; width: 9px; height: 9px; border-radius: 50%; transform: translate(-50%, -50%); }
+.nw-card-route i::before { top: 0; border: 2px solid #60a5fa; background: #0b1838; } .nw-card-route i::after { top: 100%; border: 2px solid #f8fafc; background: #0b1838; }
+.nw-card-mile { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: rgba(2, 6, 23, 0.35); }
+.nw-card-mile small { font-size: 12px; color: #a5b4cf; } .nw-card-mile strong { font-size: 14px; color: #fff; } .nw-card-mile time { font-size: 13px; color: #cbd5e1; }
+.nw-card-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.nw-chip { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.3); color: #cbd5e1; }
+.nw-card-foot a { font-size: 13px; font-weight: 700; color: #93c5fd; min-height: 32px; display: inline-flex; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .nw-card { transition: none; } .nw-card:hover { transform: none; } }
 @media (max-width: 640px) { .freight-network { padding: 14px; border-radius: 16px; } .nw-label { font-size: 15px; } }

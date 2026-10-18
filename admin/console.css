@@ -326,3 +326,77 @@ html[data-theme="light"] body.console .admin-map { background: #e8eef8; }
 @media (max-width: 760px) {
   html[data-theme="light"] body.console :is(.shipments-table.responsive tr, .client-table tr, .courier-table tr) { background: #fff; border-color: rgba(15, 40, 90, 0.12); }
 }
+
+/* ---------- iPhone / tablet: bottom tab bar, larger readable text, calmer spacing ---------- */
+.tabbar { display: none; }
+@media (max-width: 900px) {
+  body.console .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); background: rgba(4, 8, 20, 0.96); border-top: 1px solid var(--hy-line-strong);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  body.console .tabbar button { display: grid; justify-items: center; gap: 3px; min-height: 56px; padding: 6px 4px; border: 0; border-radius: 12px; background: transparent;
+    color: #9fb0cc; font: 700 13px var(--hy-font); cursor: pointer; }
+  body.console .tabbar svg { width: 23px; height: 23px; }
+  body.console .tabbar button[aria-current="page"], body.console .tabbar button[aria-expanded="true"] { color: #fff; background: rgba(59, 130, 246, 0.2); }
+  body.console .tabbar button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 1px; }
+  body.console .console-menu { display: none; } /* "More" in the tab bar opens the full menu */
+  body.console .content { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
+  body.console .toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  body.console .sticky-actions { bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+  body.console .modal-overlay { z-index: 120; }
+
+  /* readable type on phones: body 15px, nothing below 13px */
+  body.console { font-size: 15px; }
+  body.console :is(label, .hint, .field-hint, .field-err, .pill, .meta, small, .kpi .kpi-label, .dash-cols h4, .ops-sub, .ops-row-meta, .breadcrumb,
+    .ev-list .meta, .sys-chip, .btn-copy, .courier-badge, .audit-diff, .summary-grid small, .loc-check-note, .nav-section, .shipments-table td::before, code, .code) { font-size: 13px !important; }
+  body.console .shipments-table td { font-size: 15px; }
+  body.console :is(.btn-action, .btn-copy, .row-actions .btn-action) { min-height: 44px; }
+  body.console .card-header h3 { font-size: 20px; } body.console .card-header p { font-size: 14px; line-height: 1.5; }
+  body.console .panel { padding: 16px; } body.console .panel + .panel { margin-top: 14px; }
+}
+
+/* shipments by status (overview) */
+.dash-status { margin: 18px 0; }
+.dash-status h4 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8fa3c4; }
+.status-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.status-bar { width: 100%; display: grid; grid-template-columns: 150px minmax(0, 1fr) 48px; align-items: center; gap: 12px; min-height: 44px; padding: 6px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 10px; background: rgba(15, 23, 42, 0.5); color: var(--hy-text); font: inherit; cursor: pointer; text-align: left; }
+.status-bar:hover { border-color: rgba(96, 165, 250, 0.5); }
+.status-bar:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.status-bar .pill { justify-self: start; }
+.sb-track { height: 8px; border-radius: 999px; background: rgba(148, 163, 184, 0.16); overflow: hidden; }
+.sb-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.status-bar strong { text-align: right; font-variant-numeric: tabular-nums; font-size: 16px; }
+@media (max-width: 520px) { .status-bar { grid-template-columns: minmax(0, 1fr) 44px; } .sb-track { grid-column: 1 / -1; grid-row: 2; } }
+
+/* live tracking: quick actions in the current-record summary; change history */
+.trk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.trk-actions .btn-action { text-decoration: none; display: inline-flex; align-items: center; }
+.ev-history-title { margin: 22px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #8fa3c4; }
+.history-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.history-list li { padding: 10px 12px; border: 1px solid rgba(148, 163, 184, 0.14); border-radius: 10px; background: rgba(15, 23, 42, 0.45); }
+.history-change { margin-top: 4px; font-size: 13px; color: #cbd5e1; overflow-wrap: anywhere; }
+.history-list .meta { margin-top: 4px; font-size: 13px; color: #8fa3c4; }
+
+/* confirmation dialog: a compact card (bottom sheet on phones), never full screen */
+body.console #confirmModal .confirm-card { max-width: 440px; height: auto; max-height: none; padding: 22px; border-radius: 16px; }
+#confirmModal h3 { margin: 0 0 8px; font-size: 19px; } #confirmModal p { margin: 0 0 16px; line-height: 1.5; color: #cbd5e1; }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.confirm-actions button { min-height: 46px; min-width: 120px; }
+#confirmModal .btn-danger-solid { border: 0; border-radius: 10px; padding: 0 18px; background: #dc2626; color: #fff; font-weight: 700; cursor: pointer; }
+#confirmModal .btn-danger-solid:disabled { opacity: .45; cursor: not-allowed; }
+#confirmModal input { font-size: 16px; min-height: 46px; text-transform: uppercase; }
+@media (max-width: 900px) {
+  body.console #confirmModal { align-items: flex-end; padding: 0; }
+  body.console #confirmModal .confirm-card { width: 100%; max-width: none; height: auto; border-radius: 18px 18px 0 0; padding-bottom: calc(22px + env(safe-area-inset-bottom, 0px)); }
+  .confirm-actions button { flex: 1 1 140px; }
+}
+
+/* light theme for the additions */
+html[data-theme="light"] body.console .tabbar { background: rgba(255, 255, 255, 0.97); border-top-color: rgba(15, 40, 90, 0.12); }
+html[data-theme="light"] body.console .tabbar button { color: #51627f; }
+html[data-theme="light"] body.console .tabbar button[aria-current="page"], html[data-theme="light"] body.console .tabbar button[aria-expanded="true"] { color: #1d4ed8; background: #e7efff; }
+html[data-theme="light"] .status-bar, html[data-theme="light"] .history-list li { background: #f7f9fd; border-color: rgba(15, 40, 90, 0.12); color: #0b1a3d; }
+html[data-theme="light"] .sb-track { background: #e3e9f3; }
+html[data-theme="light"] :is(.dash-status h4, .ev-history-title, .history-list .meta) { color: #51627f; }
+html[data-theme="light"] .history-change, html[data-theme="light"] #confirmModal p { color: #334155; }
+body.console:has(.container.hidden) .tabbar { display: none; } /* not on the sign-in screen */

@@ -9,7 +9,7 @@ import { can, STATUS_META, EXCEPTION_TYPES, ROLES } from "../shared/status.js";
 import { ValidationError } from "./_lib/validate.js";
 import * as svc from "./_lib/service.js";
 import { getStore } from "./_lib/store/index.js";
-import { notificationsConfigured } from "./_lib/notifications.js";
+import { notificationsConfigured, configuredProviders } from "./_lib/notifications.js";
 import { listProviders } from "./_lib/providers/index.js";
 import { resolveMapConfig } from "./_lib/map-config.js";
 import * as couriers from "./_lib/couriers.js";
@@ -121,7 +121,7 @@ async function settings() {
     session: { ttlMinutes: SESSION_TTL_MS / 60000 },
     map: (() => { const m = resolveMapConfig(); return { provider: `${m.label} (Leaflet)`, fallbacks: m.tiles.slice(1).map((t) => t.label), customTilesConfigured: m.primary !== "osm", keyConfigured: m.keyConfigured, issues: m.issues }; })(),
     realtime: { sse: process.env.REALTIME_SSE !== "off", fallback: "adaptive polling", pollMs: Number(process.env.CLIENT_POLL_MS) || 20000 },
-    notifications: { configured: notificationsConfigured(), providers: process.env.NOTIFY_WEBHOOK_URL ? ["webhook"] : [] },
+    notifications: { configured: notificationsConfigured(), providers: configuredProviders() },
     providers: listProviders(),
     geocoding: process.env.GEOCODER === "off" ? "off" : "OpenStreetMap Nominatim (server side)",
     statuses: Object.entries(STATUS_META).map(([code, m]) => ({ code, label: m.label })),
