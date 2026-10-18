@@ -3,6 +3,7 @@
 html { scroll-behavior: smooth; scroll-padding-top: calc(var(--hy-nav-h) + 12px); }
 html.nav-open { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+:root { --section-y: clamp(60px, 8vw, 96px); }
 body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-height: 1.6; background: var(--hy-bg-0); overflow-x: clip;
   -webkit-font-smoothing: antialiased; }
 .site a { color: var(--hy-blue-2); }
@@ -32,6 +33,9 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .nav-toggle[aria-expanded="true"] .i-close { display: block; }
 .nav-scrim { position: fixed; inset: var(--hy-nav-h) 0 0 0; z-index: 55; background: rgba(2, 6, 23, 0.6); }
 .nav-scrim[hidden] { display: none; }
+#activity[hidden] { display: none !important; }
+/* homepage only (the attribute is set by its script): links to the optional shared-shipments section follow its visibility */
+html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li:has(> a[href="/#activity"]) { display: none; }
 @media (max-width: 900px) {
   .nav-toggle { display: inline-grid; place-items: center; }
   .nav-panel { display: none; position: fixed; top: var(--hy-nav-h); left: 0; right: 0; z-index: 61; flex-direction: column; align-items: stretch; gap: 12px;
@@ -55,11 +59,22 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .btn svg { width: 18px; height: 18px; }
 
 /* ---------- hero ---------- */
-.hero3 { position: relative; isolation: isolate; min-height: min(860px, calc(100svh - var(--hy-nav-h))); display: flex; align-items: center; padding: 72px 0 64px; overflow: hidden; }
-.hero3-media { position: absolute; inset: 0; z-index: -2; background: #030712 var(--hero-photo, url("../assets/hero/scene.svg")) center 60% / cover no-repeat; transform: scale(1.02); }
-.hero3::before { content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(90deg, rgba(3, 7, 18, 0.94) 0%, rgba(3, 7, 18, 0.8) 38%, rgba(3, 7, 18, 0.25) 75%, rgba(3, 7, 18, 0.1) 100%),
-              linear-gradient(0deg, rgba(3, 7, 18, 1) 0%, rgba(3, 7, 18, 0) 30%); }
+.hero3 { position: relative; isolation: isolate; min-height: min(860px, calc(100svh - var(--hy-nav-h))); display: flex; align-items: center; padding: 72px 0 64px; overflow: hidden; background: #030712; }
+/* original drawn scene (assets/hero/scene.svg): container ship, port cranes, cargo aircraft. Decorative; if it fails the
+   hero is plain navy and fully usable. */
+.hero3-media { position: absolute; inset: 0; z-index: -2; background: #030712 var(--hero-photo, url("../assets/hero/scene.svg")) 70% 62% / cover no-repeat; transform: scale(1.02); }
+/* readability: dark only under the text column, the scene stays clear on the right */
+.hero3::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(3, 7, 18, 0.92) 0%, rgba(3, 7, 18, 0.8) 30%, rgba(3, 7, 18, 0.38) 50%, rgba(3, 7, 18, 0.06) 68%, rgba(3, 7, 18, 0) 100%),
+              linear-gradient(0deg, var(--hy-bg-0) 0%, rgba(5, 10, 24, 0) 22%); }
+/* restrained route lines drawn once across the scene */
+.hero3-routes { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; }
+.hero3-routes path { fill: none; stroke: #7dd3fc; stroke-width: 1.6; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.hero3-routes .r2 { stroke: #60a5fa; stroke-opacity: .55; }
+.hero3-routes .r3 { stroke-opacity: .4; stroke-dasharray: 0.01 0.012; }
+.hero3-routes circle { fill: #e0f2fe; }
+.hero3-routes .halo { fill: #38bdf8; opacity: .25; }
+@media (max-width: 1023px) { .hero3-routes { display: none; } }
 .hero3 .wrap { width: min(1280px, 100%); }
 .hero3-copy { max-width: 640px; }
 .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #93c5fd; margin: 0; }
@@ -86,13 +101,33 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .hero3-facts li { display: inline-flex; align-items: center; gap: 8px; }
 .hero3-facts svg { width: 18px; height: 18px; color: var(--hy-blue-2); flex: none; }
 @media (max-width: 640px) {
-  .hero3 { padding: 40px 0 44px; min-height: 0; }
-  .hero3::before { background: linear-gradient(180deg, rgba(3, 7, 18, 0.35) 0%, rgba(3, 7, 18, 0.7) 40%, rgba(3, 7, 18, 0.92) 70%, rgba(3, 7, 18, 1) 100%); }
-  .hero3-media { background-position: 68% 30%; }
+  /* phones: the scene is a clear band across the top of the hero, the copy starts on the calm water below it */
+  .hero3 { padding: clamp(160px, 50vw, 214px) 0 44px; min-height: 0; }
+  .hero3-media { background: #030712 var(--hero-photo-mobile, url("../assets/hero/scene-mobile.svg")) center -20px / 100% auto no-repeat; }
+  .hero3::before { background: linear-gradient(180deg, rgba(3, 7, 18, 0) 0%, rgba(3, 7, 18, 0) 26%, rgba(3, 7, 18, 0.55) 40%, rgba(3, 7, 18, 0.85) 52%, var(--hy-bg-0) 70%); }
+  .hero3 h1 { margin: 14px 0 14px; text-shadow: 0 2px 18px rgba(3, 7, 18, 0.8); }
+  .hero3 .lead { margin-bottom: 24px; }
+  .hero3-ctas { margin-bottom: 26px; }
   .eyebrow { letter-spacing: .14em; font-size: 11px; }
   .eyebrow::before { width: 18px; }
   .track-form2 { flex-direction: column; } .track-form2 input { flex: none; width: 100%; } .btn-primary2 { width: 100%; }
   .hero3-ctas .btn { flex: 1 1 100%; }
+}
+
+/* hero entrance: plays once on load; nothing waits on it and reduced motion skips it entirely */
+@media (prefers-reduced-motion: no-preference) {
+  .hero3-media { animation: hero-scene 1.6s cubic-bezier(.2, .7, .2, 1) both; }
+  .hero3-copy > * { animation: hero-up .7s cubic-bezier(.2, .7, .2, 1) both; }
+  .hero3-copy > :nth-child(2) { animation-delay: .08s; } .hero3-copy > :nth-child(3) { animation-delay: .16s; }
+  .hero3-copy > :nth-child(4) { animation-delay: .24s; } .hero3-copy > :nth-child(5) { animation-delay: .32s; } .hero3-copy > :nth-child(6) { animation-delay: .4s; }
+  .hero3-routes path { stroke-dasharray: 1 1; animation: hero-route 2.2s .5s cubic-bezier(.4, 0, .2, 1) both; }
+  .hero3-routes .r3 { stroke-dasharray: 0.01 0.012; animation: none; }
+  .hero3-routes .r2 { animation-delay: .8s; }
+  .hero3-routes circle { animation: hero-node .6s 1.9s ease-out both; }
+  @keyframes hero-scene { from { opacity: 0; transform: scale(1.07); } to { opacity: 1; transform: scale(1.02); } }
+  @keyframes hero-up { from { opacity: 0; transform: translate3d(0, 16px, 0); } to { opacity: 1; transform: none; } }
+  @keyframes hero-route { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes hero-node { from { opacity: 0; } to { opacity: 1; } }
 }
 
 /* ---------- tracking pages: compact band ---------- */
@@ -110,10 +145,10 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 @media (max-width: 640px) { .track-band .search-group { flex-direction: column; } .track-band .search-group input { flex: none; width: 100%; } .track-band .btn-search { width: 100%; } }
 
 /* ---------- sections ---------- */
-.section { padding: 88px 0; }
-.section.tight { padding: 64px 0; }
+/* one vertical rhythm for every homepage band */
+.section { padding: var(--section-y) 0; }
+.section.tight { padding: calc(var(--section-y) * .72) 0; }
 .section.alt { background: linear-gradient(180deg, #050b1c, #071029); border-top: 1px solid rgba(148, 163, 184, 0.08); border-bottom: 1px solid rgba(148, 163, 184, 0.08); }
-@media (max-width: 640px) { .section { padding: 60px 0; } .section.tight { padding: 48px 0; } }
 .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap; margin-bottom: 36px; }
 .section-head h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.1; letter-spacing: -0.03em; margin: 0; color: #fff; max-width: 720px; }
 .section-head p { color: #94a3b8; margin: 12px 0 0; max-width: 620px; font-size: 16px; }
@@ -185,8 +220,8 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .site-footer .foot-base { margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(148, 163, 184, 0.1); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; font-size: 13px; }
 @media (max-width: 768px) { .site-footer { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); } }
 
-/* ---------- freight showcase (homepage, after global activity) ---------- */
-.freight { padding: 32px 0 56px; }
+/* ---------- freight showcase (homepage, after the optional shared-shipments section) ---------- */
+.freight { padding: 0 0 var(--section-y); }
 .freight-stage { position: relative; isolation: isolate; overflow: hidden; min-height: clamp(560px, 46vw, 680px); display: flex; align-items: center;
   background: radial-gradient(900px 500px at 20% 40%, rgba(29, 78, 216, 0.22), transparent 70%), linear-gradient(180deg, #071330 0%, #0a1a3d 55%, #040b1f 100%); }
 .freight-media { position: absolute; inset: 0; z-index: -2; display: block; }
@@ -201,7 +236,7 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .freight-stage::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(90deg, rgba(3, 8, 22, 0.9) 0%, rgba(3, 8, 22, 0.6) 32%, rgba(3, 8, 22, 0.08) 56%, rgba(3, 8, 22, 0) 72%),
               linear-gradient(0deg, rgba(3, 7, 18, 0.95) 0%, rgba(3, 7, 18, 0) 28%),
-              linear-gradient(180deg, rgba(3, 7, 18, 0.55) 0%, rgba(3, 7, 18, 0) 18%); }
+              linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(5, 10, 24, 0.6) 9%, rgba(5, 10, 24, 0) 24%); }
 .freight-inner { width: min(1280px, 100%); padding-top: 80px; padding-bottom: 140px; }
 .freight-copy { max-width: 640px; }
 .freight-copy h2 { font-size: clamp(34px, 5.2vw, 64px); line-height: 1.02; letter-spacing: -0.035em; margin: 18px 0 18px; color: #fff; text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35); }
@@ -235,12 +270,13 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 }
 @media (max-width: 900px) {
   /* tablets and phones: image as a band on top, text below on solid navy, never over the ship */
-  .freight { padding: 8px 0 60px; }
-  .freight-stage { display: block; min-height: 0; background: #050b1c; }
+  .freight { padding: 0 0 var(--section-y); }
+  .freight-stage { display: block; min-height: 0; background: linear-gradient(180deg, var(--hy-bg-0) 0%, #050b1c 30%); }
   .freight-stage::before { display: none; }
-  .freight-media, .freight-media[data-kind] { position: relative; inset: auto; left: auto; aspect-ratio: 16 / 9; -webkit-mask-image: none; mask-image: none; }
+  .freight-media, .freight-media[data-kind] { position: relative; inset: auto; left: auto; aspect-ratio: 16 / 9; overflow: hidden; -webkit-mask-image: none; mask-image: none; }
   .freight-media img { object-position: 62% 55%; }
-  .freight-media::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 38%; background: linear-gradient(180deg, rgba(5, 11, 28, 0), #050b1c); }
+  .freight-media::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(5, 10, 24, 0) 22%, rgba(5, 11, 28, 0) 58%, #050b1c 100%); }
   .freight-inner { padding-top: 18px; padding-bottom: 28px; }
   .freight-services { margin-top: 0; box-shadow: none; }
   .freight-copy { max-width: 640px; }
@@ -255,8 +291,8 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 }
 
 /* ---------- logistics journey (after the freight showcase) ---------- */
-.journey { position: relative; padding: 24px 0 96px; overflow: hidden;
-  background: radial-gradient(800px 420px at 85% 30%, rgba(29, 78, 216, 0.14), transparent 70%), linear-gradient(180deg, #030712 0%, #050b1c 100%); }
+.journey { position: relative; padding: 0 0 var(--section-y); overflow: hidden;
+  background: radial-gradient(800px 420px at 85% 30%, rgba(29, 78, 216, 0.14), transparent 70%), linear-gradient(180deg, #050b1c 0%, #050b1c 55%, var(--hy-bg-0) 100%); }
 /* understated hand-off from the freight section: a thin route line drawn in as the section arrives */
 .journey-route { display: block; width: 100%; height: 72px; margin-bottom: 8px; }
 .journey-route path { fill: none; stroke: #3b82f6; stroke-opacity: .45; stroke-width: 2; stroke-dasharray: 0.006 0.012; vector-effect: non-scaling-stroke; }
@@ -273,12 +309,24 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .journey-media img { object-fit: cover; object-position: 60% 50%; }
 .journey-copy h2 { font-size: clamp(30px, 4.4vw, 52px); line-height: 1.05; letter-spacing: -0.03em; margin: 16px 0 16px; color: #fff; }
 .journey-lead { color: #cbd5e1; font-size: clamp(16px, 1.7vw, 18px); margin: 0 0 24px; max-width: 480px; }
-.journey-steps { list-style: none; margin: 0 0 24px; padding: 0; display: grid; gap: 14px; counter-reset: js; }
-.journey-steps li { display: grid; grid-template-columns: 30px 1fr; column-gap: 12px; }
-.journey-steps li::before { counter-increment: js; content: counter(js); grid-row: span 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  font-size: 13px; font-weight: 800; color: #bfdbfe; background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(96, 165, 250, 0.35); }
-.journey-steps strong { color: #fff; font-size: 15.5px; }
-.journey-steps span { color: #94a3b8; font-size: 14.5px; }
+/* three general milestones joined by a connector line (explanatory, not the status of a real shipment) */
+.journey-steps { position: relative; list-style: none; margin: 0 0 26px; padding: 0; display: grid; gap: 22px; counter-reset: js; }
+.journey-steps::before, .journey-steps::after { content: ""; position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; border-radius: 2px; pointer-events: none; }
+.journey-steps::before { background: rgba(96, 165, 250, 0.16); }
+.journey-steps::after { background: linear-gradient(180deg, #60a5fa, #22d3ee); transform-origin: top; }
+.journey-steps li { position: relative; display: grid; grid-template-columns: 44px 1fr; column-gap: 16px; align-items: start; }
+.journey-steps li::before { counter-increment: js; content: counter(js, decimal-leading-zero); grid-row: span 2; position: relative; z-index: 1; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #e0f2fe; background: #0b1a3d;
+  border: 1px solid rgba(96, 165, 250, 0.5); box-shadow: 0 0 0 5px #040a1c, 0 0 22px rgba(56, 189, 248, 0.22); }
+.journey-steps strong { color: #fff; font-size: 16.5px; padding-top: 3px; }
+.journey-steps span { color: #a5b4c8; font-size: 14.5px; line-height: 1.55; }
+/* sequential reveal: the line draws down while the milestones appear one after another */
+html.hx-motion .journey-steps[data-reveal]:not(.is-visible) { opacity: 1; transform: none; }
+html.hx-motion .journey-steps[data-reveal]::after { transition: transform 1.3s cubic-bezier(.4, 0, .2, 1) .1s; }
+html.hx-motion .journey-steps[data-reveal]:not(.is-visible)::after { transform: scaleY(0); }
+html.hx-motion .journey-steps > li[data-reveal]:nth-child(1) { transition-delay: .1s; }
+html.hx-motion .journey-steps > li[data-reveal]:nth-child(2) { transition-delay: .5s; }
+html.hx-motion .journey-steps > li[data-reveal]:nth-child(3) { transition-delay: .9s; }
 
 /* motion (only when the reveal system is active; reduced motion turns it off entirely) */
 html.hx-motion .journey-route[data-reveal] path { stroke-dashoffset: 1; transition: stroke-dashoffset 1.6s cubic-bezier(.2, .7, .2, 1); }
@@ -299,6 +347,7 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .journey-steps::after { transform: none !important; transition: none !important; }
   .journey-frame, .journey-frame .journey-media img, .journey-media, .journey-route path { clip-path: none !important; transform: none !important; animation: none !important; transition: none !important; stroke-dashoffset: 0 !important; }
 }
 @media (max-width: 900px) {
@@ -306,7 +355,7 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
   .journey-frame { justify-self: stretch; max-width: none; }
 }
 @media (max-width: 640px) {
-  .journey { padding: 8px 0 60px; }
+  .journey { padding: 0 0 var(--section-y); }
   .journey-route { height: 48px; }
   .journey-parallax { aspect-ratio: 4 / 3; }
   .journey-parallax::before { background-image: url("data:image/jpeg;base64,/9j/2wBDAA4KCw0LCQ4NDA0QDw4RFiQXFhQUFiwgIRokNC43NjMuMjI6QVNGOj1OPjIySGJJTlZYXV5dOEVmbWVabFNbXVn/2wBDAQ8QEBYTFioXFypZOzI7WVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVn/wAARCAASABgDASIAAhEBAxEB/8QAGAABAAMBAAAAAAAAAAAAAAAAAAQFBgP/xAAnEAACAQMCBgEFAAAAAAAAAAABAgMABBEFIQYSEyIxQRUjUWFxgf/EABYBAQEBAAAAAAAAAAAAAAAAAAIBA//EABgRAAMBAQAAAAAAAAAAAAAAAAABAhEh/9oADAMBAAIRAxEAPwCZwg8UejBWdFJmYAEgZ8eqsri5hS8MCwuWMXU5xjlG+MH3WPsdOuBPbyTWHUhikdmRgM+dsb7V0gvpfn9TLFlkZRlQe1UGM/0bYpKs6iOd4yRq3Et1bTsFAjhDEIwUEsAcb5/XqlQ764snsVe3eOYLIFLso5s7kmlZu2NSi8umZeUBiB9gazURJ4lvMnyuD+dhSlKA0Ut/9K/uBH2AOB27eqUpSIf/2Q=="); }

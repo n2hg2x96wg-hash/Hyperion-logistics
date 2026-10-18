@@ -127,10 +127,10 @@ test("public statistics count countries from the typed place, not a mistyped coo
   assert.ok(isos.includes("NG"));
 });
 
-test("homepage: freight showcase sits between global activity and carriers, with real actions and no fabricated proof", () => {
+test("homepage: freight showcase follows the optional shared-shipments section, with real actions and no fabricated proof", () => {
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const pos = (id) => html.indexOf(`id="${id}"`);
-  assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("carriers"), "section order");
+  assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("journey"), "section order");
   const section = html.slice(pos("freight"), pos("journey"));
   assert.ok(!/★|rating|review|testimonial|\d+(\.\d+)?\s*\/\s*5|customers|on[- ]time|guarantee/i.test(section), "no ratings, reviews or invented claims");
   assert.match(section, /href="#services"[^>]*>Explore freight services/);
@@ -235,9 +235,9 @@ test("carriers: integration and partnership are separate, evidence-backed states
 test("homepage: logistics journey section follows the freight showcase, with an honest illustrative image", () => {
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const pos = (id) => html.indexOf(`id="${id}"`);
-  assert.ok(pos("freight") < pos("journey") && pos("journey") < pos("carriers"), "order: freight → journey → carriers");
+  assert.ok(pos("freight") < pos("journey") && pos("journey") < pos("services"), "order: freight → journey → services");
   assert.ok(!html.includes('id="ccStats"') && !html.includes("data-stat="), "statistics block stays hidden");
-  const section = html.slice(pos("journey"), pos("carriers"));
+  const section = html.slice(pos("journey"), pos("services"));
   const img = section.match(/<img [^>]+>/)[0];
   assert.match(img, /width="1179" height="638"/); assert.match(img, /loading="lazy"/); assert.match(img, /alt="Illustration:[^"]+"/); assert.match(img, /onerror="/);
   assert.ok(!/<figcaption/.test(section), "no label over the photo");
@@ -257,4 +257,67 @@ test("public carrier directory shows no internal update methods; admin list keep
   const { __clearPublicCache } = await import("../api/public.js"); __clearPublicCache();
   const list = (await (await fetch(`${base}/api/public?view=carriers`)).json()).carriers;
   assert.ok(list.length > 0 && list.every((c) => c.integration && typeof c.partner === "boolean"), "public API response shape unchanged");
+});
+
+test("homepage flow: hero → optional shared shipments → freight → journey → services → carriers → support, each section once", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const order = ["track", "results-section", "activity", "freight", "journey", "services", "about", "carriers", "how", "support"];
+  const at = order.map((id) => html.indexOf(`id="${id}"`));
+  assert.ok(at.every((p) => p > 0), "every section present");
+  assert.deepEqual([...at].sort((a, b) => a - b), at, "sections in order");
+  for (const id of order) assert.equal(html.split(`id="${id}"`).length, 2, `${id} appears once`);
+  // every in-page link still has a target
+  for (const [, id] of html.matchAll(/href="\/?#([a-zA-Z][\w-]*)"/g)) assert.ok(html.includes(`id="${id}"`), `#${id} has no target`);
+});
+
+test("homepage hero: headline and tracking form unchanged; drawn scene present and decorative layers hidden from assistive tech", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /<h1 id="heroTitle">Every shipment\. Every milestone\. <span>One clear view\.<\/span><\/h1>/);
+  for (const kept of ['id="trackingInput"', 'onclick="track()"', 'href="#trackForm" data-focus-track>Track a shipment', 'href="#services">Explore our services', 'id="error"'])
+    assert.ok(html.includes(kept), `${kept} missing`);
+  assert.match(html, /class="hero3-media" role="img" aria-label="Illustration:[^"]+"/);
+  assert.match(html, /<svg class="hero3-routes"[^>]*aria-hidden="true"/);
+  const css = fs.readFileSync(new URL("../ui/site-v2.css", import.meta.url), "utf8");
+  for (const f of ["scene.svg", "scene-mobile.svg"]) {
+    assert.ok(css.includes(`assets/hero/${f}`), `${f} used`);
+    const svg = fs.readFileSync(new URL(`../assets/hero/${f}`, import.meta.url), "utf8");
+    assert.ok(svg.length < 40000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
+  }
+  // the entrance animation only runs when motion is allowed; the hero has a solid fallback colour
+  const hero = css.slice(css.indexOf("/* ---------- hero ---------- */"), css.indexOf("/* ---------- tracking pages"));
+  assert.match(hero, /\.hero3 \{[^}]*background: #030712/);
+  const anim = hero.slice(hero.indexOf("/* hero entrance"));
+  assert.match(anim, /^[^{]*\{\s*@media \(prefers-reduced-motion: no-preference\)|@media \(prefers-reduced-motion: no-preference\) \{/);
+  assert.ok(!/animation:[^;]*infinite/.test(anim), "no continuous hero animation");
+  assert.ok(!/(^|\n)\.hero3[^{]*\{[^}]*animation:/.test(hero.slice(0, hero.indexOf("/* hero entrance"))), "animations only inside the motion media query");
+});
+
+test("homepage shared shipments: hidden unless public data loaded with at least one route; errors are not treated as empty", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /<section class="section" id="activity" aria-labelledby="activityTitle" hidden data-state="loading">/);
+  assert.match(html, /document\.documentElement\.dataset\.activity = state;[\s\S]*setActivity\("loading"\);/, "links to the section follow it");
+  assert.match(fs.readFileSync(new URL("../ui/site-v2.css", import.meta.url), "utf8"), /html\[data-activity\]:not\(\[data-activity="ready"\]\) [^{]*a\[href="\/#activity"\]\) \{ display: none; \}/);
+  const script = html.slice(html.indexOf("const activity = document.getElementById(\"activity\")"));
+  assert.match(script, /onData: \(d\) => setActivity\(Array\.isArray\(d\?\.routes\) && d\.routes\.length \? "ready" : "empty"\)/);
+  assert.match(script, /if \(activity\.dataset\.state !== "ready"\) setActivity\("error"\)/, "a failed load is recorded as an error");
+  assert.match(script, /throw err;/, "the command center still sees the failure (status text, retry back-off)");
+  assert.match(script, /const show = state === "ready";/);
+  // the public API rules are unchanged: routes only for opted-in shipments, masked codes
+  const view = fs.readFileSync(new URL("../api/_lib/public-view.js", import.meta.url), "utf8");
+  assert.match(view, /maskCode/);
+});
+
+test("journey: three explanatory milestones joined by a connector; reduced motion and no-JS keep everything visible", () => {
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const section = html.slice(html.indexOf('id="journey"'), html.indexOf('id="services"'));
+  const steps = [...section.matchAll(/<li data-reveal><strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+  assert.deepEqual(steps, ["Warehouse processing", "Transit and handling", "Final delivery"]);
+  assert.match(section, /<ol class="journey-steps" data-reveal="line"/);
+  assert.ok(!/(in transit|delivered|out for delivery|on hold|HY-\d)/i.test(section.replace(/Final delivery|delivery is recorded|final delivery/gi, "")), "no live statuses or shipment numbers");
+  const css = fs.readFileSync(new URL("../ui/site-v2.css", import.meta.url), "utf8");
+  // hiding rules only exist under html.hx-motion (set by ui/motion.js when motion is allowed)
+  for (const m of css.matchAll(/[^}]*journey-steps[^{]*:not\(\.is-visible\)[^{]*\{[^}]*\}/g)) assert.match(m[0], /html\.hx-motion/);
+  assert.match(css, /\.journey-steps::after \{ transform: none !important; transition: none !important; \}/, "connector fully drawn under reduced motion");
+  const motion = fs.readFileSync(new URL("../ui/motion.css", import.meta.url), "utf8");
+  assert.match(motion, /prefers-reduced-motion: reduce[\s\S]*\[data-reveal\] \{ opacity: 1 !important; transform: none !important;/);
 });
