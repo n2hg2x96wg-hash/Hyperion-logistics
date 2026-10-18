@@ -85,7 +85,7 @@
 .hx-lg-line { display: inline-block; width: 18px; height: 0; border-top: 3px solid #2563eb; border-radius: 2px; }
 .hx-lg-line.dashed { border-top: 3px dashed #64748b; }
 .hx-map-hint { position: absolute; left: 10px; bottom: 26px; z-index: 500; pointer-events: none; background: rgba(15,23,42,.78); color: #fff; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; transition: opacity .3s ease; }
-.hx-map-awake .hx-map-hint, .hx-map-notile .hx-map-hint { opacity: 0; }
+.hx-map-awake .hx-map-hint, .hx-map-notile .hx-map-hint, .hx-map-hint.is-gone { opacity: 0; }
 .hx-marker-wrap { background: none; border: 0; }
 .hx-marker, .hx-lg { display: block; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
 .hx-marker { width: 22px; height: 22px; }
@@ -454,3 +454,44 @@ html[data-theme="light"] .hx-3d-views .hx-seg[aria-pressed="true"] { background:
 .hx-help p { margin: 8px 0 0; color: var(--hx-muted); font-size: 15px; line-height: 1.55; }
 html[data-theme="light"] .hx-od i { background: repeating-linear-gradient(90deg, #2563eb 0 6px, transparent 6px 10px); } html[data-theme="light"] .hx-od i::after { border-left-color: #2563eb; }
 html[data-theme="light"] .hx-help p { color: #44557a; }
+
+/* ---------- shipment map: themed outline base, labels, mode marker, route summary ---------- */
+.hx-map { --hx-map-sea: #0a1a3c; --hx-map-land: #1b335f; --hx-map-border: #345a96; --hx-map-line: #5fd3ff; --hx-map-dash: #94a3b8; }
+.hx-map.hx-base-outline { background: radial-gradient(120% 90% at 50% 0%, #10295c, var(--hx-map-sea)); }
+.hx-map .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; font-size: 20px; background: #0f1d3d; color: #e2e8f0; border-color: rgba(148, 163, 184, .25); }
+.hx-map .leaflet-control-zoom a:hover { background: #18294f; }
+.hx-map .leaflet-bar { border: 1px solid rgba(148, 163, 184, .25); box-shadow: 0 6px 18px rgba(2, 6, 23, .35); }
+.hx-map-ctl button { min-height: 44px; background: #0f1d3d; color: #e2e8f0; box-shadow: 0 6px 18px rgba(2, 6, 23, .35); border: 1px solid rgba(148, 163, 184, .25); }
+.hx-map-ctl button[aria-pressed="true"] { background: #2563eb; color: #fff; }
+.hx-map .leaflet-control-attribution { background: rgba(10, 26, 60, .72); color: #a5b4cf; } .hx-map .leaflet-control-attribution a { color: #bfdbfe; }
+.hx-map .hx-map-label { background: rgba(8, 18, 42, .88); color: #f1f5ff; border: 1px solid rgba(125, 192, 255, .35); border-radius: 8px; padding: 4px 8px; font: 700 12px/1.2 inherit; box-shadow: 0 6px 16px rgba(2, 6, 23, .35); }
+.hx-map .hx-map-label::before { display: none; }
+.hx-map-ctl.is-row { flex-direction: row; }
+@media (max-width: 520px) { .hx-map-ctl button { padding: 6px 10px; font-size: 12px; } .hx-map .hx-map-label { font-size: 11px; padding: 3px 6px; }
+  .hx-map-hint { left: 50%; right: auto; top: 10px; bottom: auto; transform: translateX(-50%); white-space: nowrap; font-size: 12px; } }
+.hx-map .hx-map-label.k-current { border-color: rgba(251, 191, 36, .6); }
+.hx-marker.hx-m-mode { width: 34px; height: 34px; display: grid; place-items: center; background: #2563eb; color: #fff; }
+.hx-marker.hx-m-mode svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hx-marker.hx-m-mode.hx-state-last { background: #d97706; }
+.hx-map-note { margin: 10px 2px 0; font-size: 13px; color: #b6c4dc; }
+.hx-map-cap { color: #8ea3c4; }
+.hx-routesum { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, 1.2fr) minmax(0, 1fr); align-items: center; gap: 6px 12px; margin: 0 0 12px; padding: 12px 14px; border-radius: 14px;
+  background: rgba(15, 29, 61, .55); border: 1px solid rgba(148, 163, 184, .16); }
+.hx-rsum-end { display: grid; gap: 2px; min-width: 0; } .hx-rsum-end.is-dest { text-align: right; }
+.hx-rsum-end small { font-size: 12px; color: #8ea3c4; } .hx-rsum-end strong { font-size: 15px; overflow-wrap: break-word; }
+.hx-rsum-line { position: relative; height: 4px; border-radius: 4px; background: rgba(148, 163, 184, .28); }
+.hx-rsum-line i { position: absolute; inset: 0 auto 0 0; width: calc(var(--hx-p, 0) * 100%); border-radius: 4px; background: linear-gradient(90deg, #22c55e, #5fd3ff); }
+.hx-rsum-mode { position: absolute; top: 50%; left: calc(var(--hx-p, 0) * 100%); transform: translate(-50%, -50%); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #2563eb; color: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, .25); }
+.hx-rsum-mode svg { width: 16px; height: 16px; }
+.hx-rsum-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; color: #b6c4dc; }
+@media (max-width: 520px) { .hx-routesum { grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr); padding: 10px 12px; } .hx-rsum-end strong { font-size: 14px; } }
+
+html[data-theme="light"] .hx-map { --hx-map-sea: #dbe8f8; --hx-map-land: #f8fafc; --hx-map-border: #a9bcd8; --hx-map-line: #2563eb; --hx-map-dash: #64748b; }
+html[data-theme="light"] .hx-map.hx-base-outline { background: radial-gradient(120% 90% at 50% 0%, #eaf2fd, var(--hx-map-sea)); }
+html[data-theme="light"] .hx-map .leaflet-control-zoom a, html[data-theme="light"] .hx-map-ctl button { background: #fff; color: #0b1a3d; border-color: rgba(15, 40, 90, .16); box-shadow: 0 4px 12px rgba(15, 40, 90, .12); }
+html[data-theme="light"] .hx-map-ctl button[aria-pressed="true"] { background: #2563eb; color: #fff; }
+html[data-theme="light"] .hx-map .leaflet-control-attribution { background: rgba(255, 255, 255, .8); color: #44557a; } html[data-theme="light"] .hx-map .leaflet-control-attribution a { color: #1d4ed8; }
+html[data-theme="light"] .hx-map .hx-map-label { background: rgba(255, 255, 255, .95); color: #0b1a3d; border-color: rgba(15, 40, 90, .18); box-shadow: 0 4px 12px rgba(15, 40, 90, .12); }
+html[data-theme="light"] .hx-routesum { background: #f4f8fe; border-color: rgba(15, 40, 90, .1); }
+html[data-theme="light"] :is(.hx-rsum-end small, .hx-rsum-meta, .hx-map-cap) { color: #51627f; }
+html[data-theme="light"] .hx-rsum-line { background: #dbe4f0; }

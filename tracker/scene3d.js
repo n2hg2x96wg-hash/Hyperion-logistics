@@ -8,7 +8,7 @@
 // reset() and setView() for the on-screen buttons. Rendering stops when the canvas is off-screen or the tab is hidden,
 // a short frame-time check lightens or declines the scene on slow devices, and dispose() frees the GPU context.
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
-export const SCENES = ["processing", "collection", "ship", "air", "road", "neutral", "facility", "customs", "delivery", "delivered"];
+export const SCENES = ["processing", "collection", "ship", "air", "road", "neutral", "facility", "customs", "delivery", "delivered", "delayed", "hold", "cancelled"];
 
 export async function createViewer(container, scene, { reducedMotion = false, animate = true } = {}) {
   if (!SCENES.includes(scene)) throw new Error("unknown scene");

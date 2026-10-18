@@ -269,8 +269,9 @@
       <p>Enter your tracking number to see the current status, the last recorded location and the full timeline.</p>
       <div class="search-group">
         <input type="text" id="trackingInput" placeholder="Enter your tracking number" aria-label="Tracking number" oninput="this.value = this.value.toUpperCase()">
-        <button class="btn-search hx-press" onclick="track()">Track</button>
+        <button class="btn-search hx-press" onclick="track()"><span id="btn-text">Track</span></button>
       </div>
+      <div id="error" class="error-message" role="alert"></div>
     </div>
   </section>
 
@@ -283,7 +284,18 @@
     const input = document.getElementById("trackingInput");
     const button = document.querySelector(".btn-search");
     const tracker = createTracker(document.getElementById("results"), {
-      onState: (s) => { if (button) { button.disabled = s.phase === "loading"; }  }
+      onState: (s) => {
+        const busy = s.phase === "loading";
+        if (button) { button.disabled = busy; button.toggleAttribute("aria-busy", busy); }
+        const label = document.getElementById("btn-text");
+        if (label) label.textContent = busy ? "Tracking…" : s.phase === "ready" ? "Found" : "Track";
+        if (s.phase === "ready" && label) { clearTimeout(window.__hxFound); window.__hxFound = setTimeout(() => { label.textContent = "Track"; }, 1800); }
+        // a short message next to the field; the full explanation is in the results below
+        const err = document.getElementById("error");
+        const msg = { invalid: "Please enter a valid tracking number.", notfound: "Tracking number not found.", error: "We couldn't load tracking right now. Please try again." }[s.phase] || "";
+        if (err) { err.classList.toggle("show", !!msg); err.textContent = msg; }
+        input.toggleAttribute("aria-invalid", s.phase === "invalid" || s.phase === "notfound");
+      }
     });
 
     // Public entry point kept for existing inline handlers (onclick="track()")
