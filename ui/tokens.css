@@ -22,3 +22,25 @@
   --hy-nav-h: 64px;
   color-scheme: dark;
 }
+
+/* Light theme (opt-in with the sun/moon toggle; dark stays the default). White and pale-blue surfaces, navy text,
+   the same blue/cyan accents. Text colours meet WCAG AA on --hy-bg-0, --hy-bg-1 and white. */
+html[data-theme="light"] {
+  --hy-bg-0: #f5f8fe;
+  --hy-bg-1: #eaf1fc;
+  --hy-bg-2: #ffffff;
+  --hy-surface: #ffffff;
+  --hy-surface-strong: #ffffff;
+  --hy-line: rgba(15, 40, 90, 0.12);
+  --hy-line-strong: rgba(15, 40, 90, 0.22);
+  --hy-text: #0b1a3d;
+  --hy-text-2: #2c3e5f;
+  --hy-muted: #51627f;
+  --hy-blue: #2563eb;
+  --hy-blue-2: #1d4ed8;
+  --hy-cyan: #0e7490;
+  --hy-glow: 0 0 0 1px rgba(37, 99, 235, 0.18), 0 10px 30px rgba(37, 99, 235, 0.12);
+  --hy-ok: #15803d; --hy-warn: #b45309; --hy-bad: #b91c1c; --hy-info: #1d4ed8;
+  --hy-shadow: 0 12px 32px rgba(15, 40, 90, 0.1);
+  color-scheme: light;
+}

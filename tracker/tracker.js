@@ -7,6 +7,7 @@
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
 import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
+import { presentation, sceneSvg, routeStops } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -54,7 +55,7 @@ export function createTracker(root, opts = {}) {
   const state = { code: null, view: null, phase: "idle", transport: "none", lastCheckedAt: null };
   let abort = null; let inflightCode = null; let map = null; let mapMod = null; let mapFailed = false; let mapToken = 0;
   let es = null; let pollTimer = null; let pollDelay = 0; let esFailures = 0; let sseRetryAt = 0; let tick = null; let destroyed = false;
-  let serverOffset = 0; let renderedCode = null;
+  let serverOffset = 0; let renderedCode = null; let shownStage = null; // progress stage last drawn, so the bar animates only on a real change
   let cfg = { pollMs: 20000, sse: true };
   const visibilityHandler = () => { if (!document.hidden && state.code && state.view && useRealtime) pollNow(); };
 
@@ -206,16 +207,45 @@ export function createTracker(root, opts = {}) {
     root.innerHTML = `<div class="hx-card hx-empty" role="alert" data-reveal><div class="hx-empty-ico">${msg.icon}</div><h3>${msg.title}</h3><p>${msg.body}</p>${msg.retry ? '<button type="button" class="hx-btn" data-act="retry">Try again</button>' : ""}</div>`;
   }
 
+  // Stage-based progress. No percentage is shown: the lifecycle position is the only fact the data supports.
   function stepsHtml(p) {
     const cur = p.steps.findIndex((s) => s.code === p.stage);
-    const pct = p.cancelled ? 0 : (p.pct ?? 0);
+    const n = p.steps.length;
+    const frac = (i) => (p.stage === "DELIVERED" ? 1 : i <= 0 ? 0 : i / (n - 1));
     const items = p.steps.map((s, i) => {
-      const cls = p.cancelled ? "" : i < cur ? "done" : i === cur ? (p.held ? "current held" : "current") : "";
-      return `<li class="hx-step ${cls}" ${i === cur ? 'aria-current="step"' : ""}><span class="hx-step-dot"></span><span class="hx-step-label">${esc(s.label)}</span></li>`;
+      const st = p.cancelled ? "" : i < cur ? "done" : i === cur ? (p.held ? "current held" : "current") : "upcoming";
+      const sr = st.startsWith("current") ? (p.held ? "Current, on hold" : "Current") : st === "done" ? "Completed" : "Upcoming";
+      return `<li class="hx-step ${st}" ${i === cur ? 'aria-current="step"' : ""}><span class="hx-step-dot" aria-hidden="true"></span><span class="hx-step-label">${esc(s.label)}</span><span class="hx-sr"> — ${sr}</span></li>`;
     }).join("");
-    const now = cur >= 0 ? `<div class="hx-stage-now">${esc(p.steps[cur].label)}</div>` : "";
-    const count = cur >= 0 ? `<div class="hx-progress-head"><span>Stage <strong data-count="${cur + 1}">${cur + 1}</strong> of ${p.steps.length}</span><span><strong data-count="${Math.round(pct)}">${Math.round(pct)}</strong>% of the journey</span></div>` : "";
-    return `${count}<div class="hx-progress-bar" role="progressbar" aria-label="Shipment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="--hx-p:${pct / 100}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
+    if (cur < 0) return `<ol class="hx-steps">${items}</ol>`;
+    const label = p.steps[cur].label;
+    const now = `<div class="hx-stage-now">${esc(label)}${p.held ? " · on hold" : ""}</div>`;
+    const head = `<div class="hx-progress-head"><span>Stage <strong>${cur + 1}</strong> of ${n}</span><span class="hx-progress-label">${esc(label)}</span></div>`;
+    return `${head}<div class="hx-progress-bar" role="progressbar" aria-label="Shipment progress" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${cur + 1}" aria-valuetext="Stage ${cur + 1} of ${n}: ${esc(label)}"><span data-p="${frac(cur)}" style="--hx-p:${frac(cur)}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
+  }
+
+  function routeHtml(v, reveal) {
+    const stops = routeStops(v);
+    if (stops.length < 2) return "";
+    const MAX = 6; const hidden = Math.max(0, stops.length - MAX);
+    const shown = hidden ? [stops[0], ...stops.slice(-(MAX - 1))] : stops;
+    const mark = { done: "✓", current: "●", upcoming: "" };
+    const srState = { done: "completed", current: "current", upcoming: "upcoming" };
+    return `<section class="hx-card hx-route" ${reveal ? "data-reveal" : ""} aria-labelledby="hxRouteH"><h3 class="hx-h" id="hxRouteH">Recorded route <small class="hx-h-sub">oldest first</small></h3>
+      <ol class="hx-route-list">${shown.map((x, i) => `${hidden && i === 1 ? `<li class="hx-route-gap">+${hidden} earlier stop${hidden === 1 ? "" : "s"}</li>` : ""}
+        <li class="hx-rs is-${x.state} k-${x.kind}"><span class="hx-rs-dot" aria-hidden="true">${mark[x.state]}</span>
+          <span class="hx-rs-body"><span class="hx-rs-title">${esc(x.title)}<span class="hx-sr"> (${srState[x.state]})</span></span><span class="hx-rs-place">${esc(x.place)}</span>
+          ${x.at ? `<time class="hx-rs-time" datetime="${esc(x.at)}">${esc(fmtDateTime(x.at))}</time>` : ""}</span></li>`).join("")}</ol>
+      <p class="hx-route-note">Places come from recorded updates; this is not a live position.</p></section>`;
+  }
+
+  function sceneHtml(v, ls) {
+    const pr = presentation(v);
+    const loc = v.currentLocation?.name;
+    const when = ls?.updatedAt || v.lastUpdated;
+    return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}"><div class="hx-scene-stage">${sceneSvg(pr)}</div>
+      <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}${when ? ` · <time datetime="${esc(when)}">${esc(fmtDateTime(when))}</time>` : ""}</span>
+      <small>Illustration of the current stage, not a live position.</small></figcaption></figure>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
@@ -266,19 +296,21 @@ export function createTracker(root, opts = {}) {
       ${preview ? `<div class="hx-preview-banner" role="note"><strong>PREVIEW MODE</strong> — this is exactly what the client sees for this tracking number. Nothing here is editable.</div>` : ""}
       <section class="hx-card hx-header" ${R()}>
         <div class="hx-header-top">
-          <div class="hx-id"><div class="hx-kicker">Tracking number</div><h2 class="hx-code">${esc(v.trackingCode)}</h2></div>
+          <div class="hx-id"><div class="hx-kicker">Tracking number</div><div class="hx-code-row"><h2 class="hx-code">${esc(v.trackingCode)}</h2><button type="button" class="hx-copy hx-press" data-act="copy" aria-label="Copy tracking number"><span aria-hidden="true">⧉</span> <span data-copy-label>Copy</span></button></div></div>
           <div class="hx-status"><div class="hx-kicker">Current status</div><span class="hx-pill tone-${esc(v.status.tone)}${v.status.code && !["DELIVERED", "CANCELLED"].includes(v.status.code) ? " is-active" : ""}"><i aria-hidden="true"></i>${esc(v.status.label)}</span></div>
         </div>
+        ${sceneHtml(v, ls)}
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
           ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div><div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time">Recorded <time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time></span>` : ls.state !== "none" ? ' <span class="hx-loc-time">Recorded time not available</span>' : ""}</div></div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
-          <div class="hx-fact" ${R()}><div class="hx-fact-label">🕒 Last updated</div><div class="hx-fact-value" data-ago="${esc(v.lastUpdated || "")}">${ago ? esc(ago[0].toUpperCase() + ago.slice(1)) : "Unavailable"}</div>${v.lastUpdated ? `<div class="hx-fact-sub"><time datetime="${esc(v.lastUpdated)}">${esc(fmtDateTime(v.lastUpdated))}</time></div>` : ""}</div>
+          <div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Last recorded update</div><div class="hx-fact-value" data-ago="${esc(v.lastUpdated || "")}">${ago ? esc(ago[0].toUpperCase() + ago.slice(1)) : "Unavailable"}</div>${v.lastUpdated ? `<div class="hx-fact-sub"><time datetime="${esc(v.lastUpdated)}">${esc(fmtDateTime(v.lastUpdated))}</time>${v.timeline?.[0]?.sourceLabel ? ` · ${esc(v.timeline[0].sourceLabel)}` : ""}</div>` : ""}</div>
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
         </div>
         <div class="hx-meta" data-slot="meta"></div>
         ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(v.exception.label)}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}${v.exception.recordedAt ? `<small>Recorded ${esc(fmtDateTime(v.exception.recordedAt))}</small>` : ""}</div></div>` : ""}
         ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
       </section>
+      ${routeHtml(v, reveal)}
       ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div><div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div><div class="hx-map-foot"><div class="hx-legend"><span><i class="hx-lg hx-m-origin"></i>Origin</span><span><i class="hx-lg hx-m-current"></i>Shipment</span><span><i class="hx-lg hx-m-dest"></i>Destination</span><span><i class="hx-lg-line"></i>Recorded route</span><span><i class="hx-lg-line dashed"></i>Remaining</span></div><div class="hx-map-note" data-slot="mapnote"></div></div></section>` : ""}
       ${timelineHtml(v.timeline, reveal)}
       <section class="hx-card hx-details" ${R()}>
@@ -293,6 +325,7 @@ export function createTracker(root, opts = {}) {
       </section>
       ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} Shipment notes</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
       ${supportCardHtml(v.trackingCode, R())}`;
+    animateProgress(v, isUpdate);
     renderedCode = v.trackingCode;
     if (keepMap) root.querySelector('[data-slot="map"]')?.replaceWith(keepMap);
     renderMeta();
@@ -300,6 +333,21 @@ export function createTracker(root, opts = {}) {
     if (v.map) mountMap(v.map);
     else destroyMap();
     if (isUpdate) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
+  }
+
+  /** The progress bar moves only when the recorded stage changes; a first render or an unrelated update draws it in place. */
+  function animateProgress(v, isUpdate) {
+    const bar = root.querySelector(".hx-progress-bar span");
+    const stage = v.progress?.stage || null;
+    const prevStage = shownStage; shownStage = stage;
+    if (!bar) return;
+    const changed = isUpdate && prevStage && stage !== prevStage && !reducedMotion();
+    if (!changed) { bar.classList.add("no-anim"); return; }
+    const steps = v.progress.steps; const n = steps.length; const i = steps.findIndex((x) => x.code === prevStage);
+    bar.classList.add("no-anim"); bar.style.setProperty("--hx-p", String(i <= 0 ? 0 : i / (n - 1)));
+    void bar.offsetWidth; // commit the old width, then transition to the new one
+    bar.classList.remove("no-anim"); bar.style.setProperty("--hx-p", bar.dataset.p);
+    root.querySelector(".hx-step.current")?.classList.add("is-new");
   }
 
   /** Counts numbers up once when they scroll into view (bounded ~700ms, then stops). Final values are in the HTML already. */
@@ -323,11 +371,11 @@ export function createTracker(root, opts = {}) {
     const t = state.transport;
     const secs = Math.round((pollDelay || cfg.pollMs || 20000) / 1000);
     // Connection state only. Whether the SHIPMENT is live is the location badge's job, based on recorded data.
-    const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : t === "live" ? '<span class="hx-conn ok"><i></i>Auto-updating</span>'
-      : t === "polling" ? `<span class="hx-conn poll"><i></i>Auto-updating · checks every ${secs}s</span>`
+    const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : t === "live" ? '<span class="hx-conn ok"><i></i>Checks for new updates automatically</span>'
+      : t === "polling" ? `<span class="hx-conn poll"><i></i>Checks for new updates every ${secs}s</span>`
       : t === "offline" ? '<span class="hx-conn off"><i></i>Offline — showing last known update</span>' : '<span class="hx-conn poll"><i></i>Connecting for updates…</span>';
     const checked = state.lastCheckedAt ? `<small class="hx-checked">Checked ${esc(new Date(state.lastCheckedAt + serverOffset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</small>` : "";
-    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Refresh tracking now"><span aria-hidden="true">↻</span> Refresh</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div>`;
+    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Check for new updates now"><span aria-hidden="true">↻</span> Check now</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div>`;
   }
 
   /** Re-evaluate "Live" / "Recently updated" / "Last known" as time passes without new data. */
@@ -336,8 +384,7 @@ export function createTracker(root, opts = {}) {
     const ls = locState(v); if (!ls) return;
     root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => { if (!el.classList.contains(`is-${ls.state}`)) el.outerHTML = badge(ls); });
     const title = root.querySelector('[data-slot="maptitle"]'); if (title) title.textContent = ls.state === "live" ? "Live tracking map" : "Shipment map";
-    const agoEl = root.querySelector("[data-ago]"); const iso = agoEl?.dataset.ago;
-    if (agoEl && iso) { const a = timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a[0].toUpperCase() + a.slice(1); }
+    root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a[0].toUpperCase() + a.slice(1); });
     if (v.map) { mapNote(v.map, ls); if (map && v.map.current && v.map.current.state !== ls.state) map.api.update(withState(v.map, ls)); }
   }
   const withState = (data, ls) => (data.current ? { ...data, current: { ...data.current, state: ls?.state || "last" } } : data);
@@ -402,11 +449,23 @@ export function createTracker(root, opts = {}) {
   }
   function destroyMap() { mapToken++; if (map) { map.api.destroy(); map = null; } }
 
+  async function copyCode(btn, code) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(code); ok = true; }
+    catch { // older browsers: copy through a temporary, off-screen text field
+      const t = document.createElement("textarea"); t.value = code; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;left:-9999px;top:0";
+      document.body.appendChild(t); t.select(); try { ok = document.execCommand("copy"); } catch { ok = false; } t.remove();
+    }
+    const label = btn?.querySelector("[data-copy-label]"); if (!label) return;
+    label.textContent = ok ? "Copied" : "Copy failed"; btn.classList.toggle("is-done", ok);
+    setTimeout(() => { if (label.isConnected) { label.textContent = "Copy"; btn.classList.remove("is-done"); } }, 1600);
+  }
+
   function reset() {
     if (abort) abort.abort();
     abort = null; inflightCode = null;
     stopRealtime(); destroyMap();
-    state.code = null; state.view = null; state.lastCheckedAt = null; renderedCode = null;
+    state.code = null; state.view = null; state.lastCheckedAt = null; renderedCode = null; shownStage = null;
   }
 
   // ---------- events ----------
@@ -414,8 +473,18 @@ export function createTracker(root, opts = {}) {
     const act = e.target.closest("[data-act]")?.dataset.act;
     if (act === "refresh") { const b = e.target.closest("[data-act]"); b.classList.add("is-busy"); Promise.resolve(refresh()).finally(() => { renderMeta(); }); }
     if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
+    if (act === "copy" && state.view) copyCode(e.target.closest("[data-act]"), state.view.trackingCode);
     if (act === "retry" && state.code) { const c = state.code; state.code = null; inflightCode = null; track(c); }
   });
+  // Gentle depth on the stage illustration for mouse users (±4°); nothing on touch screens or with reduced motion.
+  const fine = typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const onPointer = (e) => {
+    const st = e.target.closest?.(".hx-scene-stage"); if (!st || reducedMotion()) return;
+    const r = st.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - 0.5; const y = (e.clientY - r.top) / r.height - 0.5;
+    st.style.setProperty("--rx", `${(-y * 4).toFixed(2)}deg`); st.style.setProperty("--ry", `${(x * 4).toFixed(2)}deg`);
+  };
+  const onLeave = (e) => { const st = e.target.closest?.(".hx-scene-stage"); if (st) { st.style.removeProperty("--rx"); st.style.removeProperty("--ry"); } };
+  if (fine) { root.addEventListener("pointermove", onPointer); root.addEventListener("pointerout", onLeave); }
   tick = setInterval(refreshFreshness, 30000);
 
   return {
@@ -427,6 +496,7 @@ export function createTracker(root, opts = {}) {
     expire() { const had = !!state.code; reset(); if (had) { setPhase("expired"); renderMessage("expired"); } else { root.innerHTML = ""; setPhase("idle"); } },
     destroy() {
       destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect();
+      root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave);
       document.removeEventListener("visibilitychange", visibilityHandler); root.innerHTML = "";
     }
   };

@@ -27,6 +27,15 @@ body.site { margin: 0; font-family: var(--hy-font); color: var(--hy-text); line-
 .nav-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; background: var(--hy-blue); color: #fff !important;
   text-decoration: none; font-weight: 700; font-size: 14px; white-space: nowrap; }
 .nav-cta:hover { background: #2563eb; }
+/* sun/moon theme switch: always visible, next to the menu on phones and before the links on desktop */
+.theme-toggle { margin-left: auto; display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 10px; cursor: pointer;
+  background: transparent; color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.28); }
+.theme-toggle:hover { color: #fff; border-color: rgba(148, 163, 184, 0.55); }
+.theme-toggle:focus-visible, .nav-toggle:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.theme-toggle .i-moon { display: none; }
+html[data-theme="light"] .theme-toggle .i-sun { display: none; }
+html[data-theme="light"] .theme-toggle .i-moon { display: block; }
+@media (max-width: 900px) { .theme-toggle { width: 44px; height: 44px; margin-right: -6px; } }
 .nav-toggle { display: none; background: transparent; border: 1px solid rgba(148, 163, 184, 0.3); color: #fff; border-radius: 10px; width: 44px; height: 44px; cursor: pointer; }
 .nav-toggle .i-close { display: none; }
 .nav-toggle[aria-expanded="true"] .i-open { display: none; }
@@ -74,6 +83,8 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 .hero3-routes .r3 { stroke-opacity: .4; stroke-dasharray: 0.01 0.012; }
 .hero3-routes circle { fill: #e0f2fe; }
 .hero3-routes .halo { fill: #38bdf8; opacity: .25; }
+.hero3-routes .pkt { fill: #e0f2fe; filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.9)); }
+@media (prefers-reduced-motion: reduce) { .hero3-pkts { display: none; } }
 @media (max-width: 1023px) { .hero3-routes { display: none; } }
 .hero3 .wrap { width: min(1280px, 100%); }
 .hero3-copy { max-width: 640px; }
@@ -314,7 +325,13 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 .journey-steps::before, .journey-steps::after { content: ""; position: absolute; left: 21px; top: 22px; bottom: 22px; width: 2px; border-radius: 2px; pointer-events: none; }
 .journey-steps::before { background: rgba(96, 165, 250, 0.16); }
 .journey-steps::after { background: linear-gradient(180deg, #60a5fa, #22d3ee); transform-origin: top; }
-.journey-steps li { position: relative; display: grid; grid-template-columns: 44px 1fr; column-gap: 16px; align-items: start; }
+.journey-steps li { position: relative; display: grid; grid-template-columns: 44px 84px minmax(0, 1fr); column-gap: 16px; align-items: start; }
+.journey-steps li > strong, .journey-steps li > span { grid-column: 3; }
+/* the owner's step pictures (warehouse, truck, doorstep): decorative, the step text carries the meaning */
+.js-thumb { grid-column: 2; grid-row: 1 / span 2; display: block; width: 84px; height: 84px; border-radius: 16px; overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.22); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35); background: #0b1a3d; }
+.js-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+@media (max-width: 640px) { .journey-steps li { grid-template-columns: 44px 64px minmax(0, 1fr); column-gap: 12px; } .js-thumb { width: 64px; height: 64px; border-radius: 13px; } }
 .journey-steps li::before { counter-increment: js; content: counter(js, decimal-leading-zero); grid-row: span 2; position: relative; z-index: 1; width: 44px; height: 44px; border-radius: 50%;
   display: grid; place-items: center; font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #e0f2fe; background: #0b1a3d;
   border: 1px solid rgba(96, 165, 250, 0.5); box-shadow: 0 0 0 5px #040a1c, 0 0 22px rgba(56, 189, 248, 0.22); }

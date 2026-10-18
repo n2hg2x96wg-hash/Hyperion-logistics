@@ -1,0 +1,108 @@
+/* Light theme for the public pages (and the shared map/feed/carrier components used by the admin console).
+   Applies only under html[data-theme="light"], set by ui/theme.js. The tokens in ui/tokens.css change most colours;
+   the rules below cover places that use fixed dark colours. Image bands (the hero scene, the freight photo and the
+   global map stage) stay dark in both themes on purpose, with their own light text. */
+
+html[data-theme="light"] body.site { background: var(--hy-bg-0); color: var(--hy-text); }
+
+/* header + mobile menu */
+html[data-theme="light"] .site-nav { background: rgba(255, 255, 255, 0.9); border-bottom-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] .site-nav.is-scrolled { box-shadow: 0 8px 24px rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] .brand { color: #0b1a3d !important; }
+html[data-theme="light"] .nav-menu a { color: #2c3e5f; }
+html[data-theme="light"] .nav-menu a:hover, html[data-theme="light"] .nav-menu a:focus-visible, html[data-theme="light"] .nav-menu a[aria-current="page"] { color: #0b1a3d; background: rgba(37, 99, 235, 0.08); }
+html[data-theme="light"] :is(.theme-toggle, .nav-toggle) { color: #0b1a3d; border-color: rgba(15, 40, 90, 0.2); background: #fff; }
+html[data-theme="light"] .theme-toggle:hover { border-color: #2563eb; color: #1d4ed8; }
+html[data-theme="light"] :is(.theme-toggle, .nav-toggle):focus-visible { outline-color: #2563eb; }
+html[data-theme="light"] .nav-scrim { background: rgba(15, 23, 42, 0.35); }
+@media (max-width: 900px) {
+  html[data-theme="light"] .nav-panel { background: #fff; border-bottom-color: rgba(15, 40, 90, 0.12); box-shadow: 0 24px 48px rgba(15, 40, 90, 0.15); }
+  html[data-theme="light"] .nav-menu li + li { border-top-color: rgba(15, 40, 90, 0.08); }
+  html[data-theme="light"] .nav-menu a:hover, html[data-theme="light"] .nav-menu a[aria-current="page"] { background: transparent; color: #1d4ed8; }
+}
+
+/* image bands keep their dark look; give them their own fades so they sit cleanly on the light page */
+html[data-theme="light"] .hero3::before {
+  background: linear-gradient(90deg, rgba(3, 7, 18, 0.92) 0%, rgba(3, 7, 18, 0.8) 30%, rgba(3, 7, 18, 0.38) 50%, rgba(3, 7, 18, 0.06) 68%, rgba(3, 7, 18, 0) 100%),
+              linear-gradient(0deg, #050a18 0%, rgba(5, 10, 24, 0) 22%); }
+@media (max-width: 640px) {
+  html[data-theme="light"] .hero3::before { background: linear-gradient(180deg, rgba(3, 7, 18, 0) 0%, rgba(3, 7, 18, 0) 26%, rgba(3, 7, 18, 0.55) 40%, rgba(3, 7, 18, 0.85) 52%, #050a18 70%); }
+}
+/* inside the dark bands, the dark-theme colours apply (text, lines, outline buttons) */
+html[data-theme="light"] :is(.hero3, .freight-stage, .track-band, .cc-stage) {
+  --hy-text: #e6ecf8; --hy-text-2: #b6c3dc; --hy-muted: #8394b4; --hy-blue-2: #60a5fa;
+  --hy-line: rgba(120, 150, 210, 0.16); --hy-line-strong: rgba(120, 160, 230, 0.28); color-scheme: dark; }
+html[data-theme="light"] :is(.hero3, .freight-stage) .btn-ghost { color: #fff !important; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.4); backdrop-filter: blur(6px); }
+html[data-theme="light"] :is(.hero3, .freight-stage) .btn-ghost:hover { border-color: #fff; background: rgba(255, 255, 255, 0.12); }
+html[data-theme="light"] .freight-stage::before {
+  background: linear-gradient(90deg, rgba(3, 8, 22, 0.9) 0%, rgba(3, 8, 22, 0.6) 32%, rgba(3, 8, 22, 0.08) 56%, rgba(3, 8, 22, 0) 72%),
+              linear-gradient(0deg, rgba(3, 7, 18, 0.95) 0%, rgba(3, 7, 18, 0) 28%), linear-gradient(180deg, #050a18 0%, rgba(5, 10, 24, 0) 18%); }
+@media (max-width: 900px) {
+  html[data-theme="light"] .freight-stage { background: #050b1c; }
+  html[data-theme="light"] .freight-media::after { background: linear-gradient(180deg, rgba(5, 11, 28, 0) 55%, #050b1c 100%); }
+}
+html[data-theme="light"] .freight-services { background: rgba(255, 255, 255, 0.92); border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 24px 50px rgba(15, 40, 90, 0.16); }
+html[data-theme="light"] .freight-card { background: #fff; border-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] .freight-card:hover { border-color: rgba(37, 99, 235, 0.45); }
+html[data-theme="light"] .fc-text strong { color: #0b1a3d; } html[data-theme="light"] .fc-text span { color: #51627f; }
+html[data-theme="light"] .fc-icon { color: #1d4ed8; background: #e7efff; border-color: rgba(37, 99, 235, 0.25); }
+
+/* buttons outside image bands */
+html[data-theme="light"] .btn-ghost { color: #0b1a3d !important; border-color: rgba(15, 40, 90, 0.3); background: #fff; backdrop-filter: none; }
+html[data-theme="light"] .btn-ghost:hover { border-color: #2563eb; background: #f3f7fe; }
+html[data-theme="light"] .btn-primary { box-shadow: 0 10px 24px rgba(37, 99, 235, 0.25); }
+
+/* sections */
+html[data-theme="light"] .section.alt { background: linear-gradient(180deg, #eef4ff, #e7effc); border-color: rgba(15, 40, 90, 0.06); }
+html[data-theme="light"] :is(.section-head h2, .intro h2, .steps h3, .service h3, .caps strong, .journey-copy h2, .journey-steps strong) { color: #0b1a3d; }
+html[data-theme="light"] :is(.section-head p, .intro p, .steps p, .service p, .caps span, .journey-steps span) { color: #44557a; }
+html[data-theme="light"] .journey-lead { color: #2c3e5f; }
+html[data-theme="light"] .eyebrow { color: #1d4ed8; }
+html[data-theme="light"] .hero3 .eyebrow, html[data-theme="light"] .freight-stage .eyebrow, html[data-theme="light"] .track-band .eyebrow { color: #93c5fd; }
+html[data-theme="light"] .service { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 10px 26px rgba(15, 40, 90, 0.06); }
+html[data-theme="light"] .caps li, html[data-theme="light"] .steps li { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 8px 22px rgba(15, 40, 90, 0.05); }
+html[data-theme="light"] .caps .ico { background: #e7efff; color: #1d4ed8; }
+html[data-theme="light"] .site a.link-arrow { color: #1d4ed8; }
+
+/* journey */
+html[data-theme="light"] .journey { background: radial-gradient(800px 420px at 85% 30%, rgba(37, 99, 235, 0.08), transparent 70%), linear-gradient(180deg, #f5f8fe 0%, #eef4ff 55%, #f5f8fe 100%); }
+html[data-theme="light"] .journey-route path { stroke: #2563eb; stroke-opacity: .35; }
+html[data-theme="light"] .journey-frame { border-color: rgba(15, 40, 90, 0.12); box-shadow: 0 30px 60px rgba(15, 40, 90, 0.18); }
+html[data-theme="light"] .journey-steps::before { background: rgba(37, 99, 235, 0.15); }
+html[data-theme="light"] .journey-steps li::before { color: #1d4ed8; background: #fff; border-color: rgba(37, 99, 235, 0.45); box-shadow: 0 0 0 5px #f5f8fe, 0 6px 16px rgba(37, 99, 235, 0.18); }
+html[data-theme="light"] .js-thumb { border-color: rgba(15, 40, 90, 0.12); box-shadow: 0 10px 22px rgba(15, 40, 90, 0.14); }
+
+/* support band stays a blue card; footer goes light */
+html[data-theme="light"] .site-footer { background: #eaf1fc; border-top-color: rgba(15, 40, 90, 0.08); color: #44557a; }
+html[data-theme="light"] .site-footer h3 { color: #0b1a3d; }
+html[data-theme="light"] .site-footer a { color: #2c3e5f; } html[data-theme="light"] .site-footer a:hover { color: #1d4ed8; }
+html[data-theme="light"] .site-footer .foot-base { border-top-color: rgba(15, 40, 90, 0.1); }
+
+/* shared shipments: map stage stays dark (canvas palette); feed, table and badges go light */
+html[data-theme="light"] :is(.cc-feed-wrap, .cc-table-wrap) { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 10px 26px rgba(15, 40, 90, 0.06); }
+html[data-theme="light"] .cc-table-head h3, html[data-theme="light"] .cc-table .cc-ref { color: #0b1a3d; }
+html[data-theme="light"] .cc-table th { background: #f3f7fe; }
+html[data-theme="light"] .cc-table td { border-top-color: rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] .cc-status[data-tone="warn"] { color: #92400e; }
+html[data-theme="light"] .cc-pill { background: #e7efff; color: #1d4ed8; } html[data-theme="light"] .cc-pill.tone-success { background: #e7f7ed; color: #166534; }
+html[data-theme="light"] .cc-pill.tone-warn { background: #fff4e0; color: #92400e; } html[data-theme="light"] .cc-pill.tone-danger { background: #fdecec; color: #991b1b; }
+html[data-theme="light"] .cc-pill.tone-neutral { background: #eef2f7; color: #334155; }
+html[data-theme="light"] .cc-stat { background: #fff; }
+
+/* carrier directory */
+html[data-theme="light"] .cr-tab { color: #2c3e5f; border-color: rgba(15, 40, 90, 0.2); background: #fff; }
+html[data-theme="light"] .cr-tab[aria-pressed="true"] { background: #0b1a3d; border-color: #0b1a3d; color: #fff; }
+html[data-theme="light"] .cr-tile { background: #fff; border-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] .cr-tile:hover, html[data-theme="light"] .cr-tile[aria-expanded="true"] { background: #f3f7fe; border-color: rgba(37, 99, 235, 0.45); }
+html[data-theme="light"] .cr-tile .wm, html[data-theme="light"] .cr-detail h4 { color: #0b1a3d; }
+html[data-theme="light"] .cr-detail { background: #f3f7fe; border-color: rgba(37, 99, 235, 0.3); }
+html[data-theme="light"] .cr-detail p { color: #44557a; }
+html[data-theme="light"] :is(.cr-chip, .cr-int) { background: #eef2f7; color: #334155; border-color: rgba(51, 65, 85, 0.2); }
+html[data-theme="light"] .cr-chip.partner { background: #fff4e0; color: #92400e; border-color: rgba(146, 64, 14, 0.3); }
+
+/* tracking pages: the band stays dark (it shows the hero scene); results sit on the light page */
+html[data-theme="light"] .track-band { border-bottom-color: rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] .track-page .hx-support:not(.hx-support-card) { color: #0b1a3d; }
+
+/* focus rings stay visible on light backgrounds */
+html[data-theme="light"] :is(a, button, input, select, textarea):focus-visible { outline-color: #2563eb; }
