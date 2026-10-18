@@ -3,9 +3,11 @@
 // network VISUALISATION: no tracking codes, statuses, transport modes, counts or "live" claims are shown, and nothing
 // here reads shipment data. Real published shipments stay in the separate activity section (ui/globe/command-center.js).
 //
-// Behaviour: one route is swapped every few seconds by a shuffle-bag scheduler (no fixed cycle, regions mixed); the
-// globe eases towards the newest route. Animation pauses offscreen, in a background tab and with the Pause button.
-// Reduced motion: a still globe and a "Show other routes" button. No canvas / no geography: cards only.
+// Behaviour: it starts by itself when the section scrolls into view. One route is swapped every few seconds by a
+// shuffle-bag scheduler (no fixed cycle, regions and region pairs mixed); the globe turns slowly and eases towards the
+// newest ("focused") route, which is drawn brighter and marked on its card. Animation pauses offscreen and in a
+// background tab. Reduced motion: no rotation or gliding markers; routes and cards still change, without movement.
+// No canvas / no geography: cards only.
 import { loadCountries, prefersReducedMotion } from "./globe/geo.js";
 import { hubById, distanceKm, createScheduler } from "./network-routes.js";
 
@@ -54,10 +56,14 @@ function landDots(count) {
       const polys = [];
       for (const f of fc.features) {
         const list = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.type === "MultiPolygon" ? f.geometry.coordinates : [];
-        for (const p of list) {
-          let minX = 180, maxX = -180, minY = 90, maxY = -90;
+        for (const p0 of list) {
+          // rings that cross the antimeridian (Russia, Fiji…) are shifted to continuous longitudes, otherwise ray casting
+          // fills a whole band of ocean; such polygons are then tested at lng and lng + 360
+          const wraps = p0[0].some((pt, i) => i && Math.abs(pt[0] - p0[0][i - 1][0]) > 180);
+          const p = wraps ? p0.map((ring) => ring.map(([x, y]) => [x < 0 ? x + 360 : x, y])) : p0;
+          let minX = Infinity, maxX = -Infinity, minY = 90, maxY = -90;
           for (const [x, y] of p[0]) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
-          polys.push({ p, minX, maxX, minY, maxY });
+          polys.push({ p, minX, maxX, minY, maxY, wraps });
         }
       }
       const out = []; const golden = Math.PI * (3 - Math.sqrt(5)); let i = 0;
@@ -69,8 +75,9 @@ function landDots(count) {
           const z = 1 - (2 * i + 1) / count; const lat = Math.asin(z) / RAD; const lng = ((((i * golden) / RAD) % 360) + 540) % 360 - 180;
           if (lat < -60) continue;
           for (const q of polys) {
-            if (lng < q.minX || lng > q.maxX || lat < q.minY || lat > q.maxY) continue;
-            if (pointInRing(lng, lat, q.p[0]) && !q.p.slice(1).some((h) => pointInRing(lng, lat, h))) { out.push(vec(lat, lng)); break; }
+            const x = q.wraps && lng < 0 ? lng + 360 : lng;
+            if (x < q.minX || x > q.maxX || lat < q.minY || lat > q.maxY) continue;
+            if (pointInRing(x, lat, q.p[0]) && !q.p.slice(1).some((h) => pointInRing(x, lat, h))) { out.push(vec(lat, lng)); break; }
           }
         }
         if (i < count) idle(chunk); else resolve(out);
@@ -97,8 +104,7 @@ function readPalette(el) {
  */
 export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   const canvas = root.querySelector("canvas"); const cards = root.querySelector("[data-slot='ngcards']");
-  const srList = root.querySelector("[data-slot='nglist']"); const toggle = root.querySelector("[data-ng-toggle]");
-  const next = root.querySelector("[data-ng-next]");
+  const srList = root.querySelector("[data-slot='nglist']");
   const reduced = prefersReducedMotion();
   const scheduler = createScheduler({ random });
   const interval = Number(window.HX_NETWORK_INTERVAL_MS) || 6500;
@@ -110,7 +116,7 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   let view = { lng: 10, lat: 12 }; let target = { lng: 10, lat: 12 };
   let routes = []; // { conn, key, a, b, pts, born, dying }
   let clock = 0; let last = 0; let nextSwap = interval; let raf = 0;
-  let onscreen = false; let userPaused = false; let hot = null; let destroyed = false;
+  let onscreen = false; let hot = null; let destroyed = false; let stillTimer = 0;
 
   root.dataset.state = "loading";
 
@@ -158,7 +164,9 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
       if (!reduced) { li.classList.add("is-in"); requestAnimationFrame(() => requestAnimationFrame(() => li.classList.remove("is-in"))); }
       li.addEventListener("mouseenter", () => { hot = r.key; draw(); }); li.addEventListener("mouseleave", () => { hot = null; draw(); });
     }
-    root.dataset.routes = want.map((r) => r.key).join(" ");
+    const focus = want[want.length - 1]?.key || "";
+    for (const li of cards.children) li.classList.toggle("is-focus", li.dataset.key === focus && !li.classList.contains("is-out"));
+    root.dataset.routes = want.map((r) => r.key).join(" "); root.dataset.focus = focus;
     if (srList) srList.innerHTML = want.map((r) => `<li>${esc(r.a.city)}, ${esc(r.a.country)} to ${esc(r.b.city)}, ${esc(r.b.country)}</li>`).join("");
   }
 
@@ -229,7 +237,7 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     if (fade <= 0) return;
     const n = Math.max(2, Math.round(r.pts.length * grow));
     const pts = r.pts.slice(0, n).map((p) => visiblePoint(p, R, cx, cy));
-    const hotRoute = hot === r.key;
+    const hotRoute = hot ? hot === r.key : r.key === root.dataset.focus; // the focused card's route, or the hovered one
     const stroke = (width, color, alpha) => {
       ctx.lineWidth = width; ctx.strokeStyle = color; ctx.globalAlpha = alpha * fade; ctx.beginPath();
       let pen = false;
@@ -244,15 +252,18 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
       const p = visiblePoint(vec(hub.lat, hub.lng), R, cx, cy); if (p.hidden) continue;
       ctx.globalAlpha = fade; ctx.fillStyle = palette.marker; ctx.beginPath(); ctx.arc(p.x, p.y, 3.4, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 0.35 * fade; ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.fill();
-      if (size >= 260) {
+      if (size >= 260 && hotRoute) { // names only on the focused (or hovered) route, so labels always match its card
         ctx.globalAlpha = fade; ctx.font = `600 ${size < 480 ? 11 : 12}px system-ui, -apple-system, Segoe UI, sans-serif`;
         ctx.lineWidth = 3; ctx.strokeStyle = palette.halo; ctx.fillStyle = palette.city;
-        ctx.strokeText(hub.city, p.x + 8, p.y - 6); ctx.fillText(hub.city, p.x + 8, p.y - 6);
+        // keep the name inside the canvas: flip it to the left of the marker near the right edge
+        const w = ctx.measureText(hub.city).width; const lx = p.x + 8 + w > size - 4 ? p.x - 8 - w : p.x + 8;
+        const ly = Math.max(14, p.y - 6);
+        ctx.strokeText(hub.city, lx, ly); ctx.fillText(hub.city, lx, ly);
       }
     }
     // a small marker gliding along the finished arc
-    if (!reduced && grow >= 1) {
-      const t = ((age - 1600) / 4200) % 1; const i = Math.floor(t * (r.pts.length - 1));
+    if (!reduced && age >= 1600) {
+      const t = ((age - 1600) / 4200) % 1; const i = clamp(Math.floor(t * (r.pts.length - 1)), 0, r.pts.length - 1);
       const p = visiblePoint(r.pts[i], R, cx, cy);
       if (!p.hidden) {
         ctx.globalAlpha = 0.35 * fade; ctx.fillStyle = palette.arc; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
@@ -263,7 +274,7 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   }
 
   // ----- clock (only advances while running, so swaps pause with the animation) -----
-  const running = () => onscreen && !userPaused && !document.hidden && !destroyed;
+  const running = () => onscreen && !document.hidden && !destroyed;
   function frame(now) {
     raf = 0;
     if (!running()) return;
@@ -277,14 +288,18 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     draw();
     raf = requestAnimationFrame(frame);
   }
-  function kick() { if (!raf && running() && !reduced) { last = 0; raf = requestAnimationFrame(frame); } }
-  function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; }
-
-  function setPaused(v) {
-    userPaused = v;
-    if (toggle) { toggle.setAttribute("aria-pressed", String(v)); toggle.querySelector("span").textContent = v ? "Play" : "Pause"; toggle.dataset.paused = String(v); }
-    if (v) stop(); else kick();
+  // reduced motion: no rotation or gliding; the set still changes now and then, redrawn in place
+  function stillSwap() {
+    stillTimer = 0; if (!running()) return;
+    swap(); routes = routes.filter((r) => r.dying == null); view = { ...target }; draw();
+    stillTimer = setTimeout(stillSwap, interval * 1.3);
   }
+  function kick() {
+    if (!running()) return;
+    if (reduced) { if (!stillTimer) stillTimer = setTimeout(stillSwap, interval * 1.3); return; }
+    if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+  }
+  function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; clearTimeout(stillTimer); stillTimer = 0; }
 
   // ----- start -----
   fill();
@@ -296,11 +311,6 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     landDots(narrow() ? 5200 : 8200).then((d) => { dots = d; root.dataset.land = "ready"; draw(); })
       .catch(() => { root.classList.add("no-land"); draw(); });
   }
-  if (reduced) { if (toggle) toggle.hidden = true; if (next) next.hidden = false; }
-  else if (next) next.hidden = true;
-
-  toggle?.addEventListener("click", () => setPaused(!userPaused));
-  next?.addEventListener("click", () => { for (const r of routes) r.dying = clock - 10000; routes = []; fill(); view = { ...target }; renderCards(); draw(); });
   const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => resize()) : null; ro?.observe(root);
   const io = typeof IntersectionObserver === "function"
     ? new IntersectionObserver((e) => { onscreen = e.some((x) => x.isIntersecting); if (onscreen) kick(); else stop(); }, { rootMargin: "80px" })
@@ -311,7 +321,6 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   document.addEventListener("visibilitychange", onVis); document.addEventListener("hx-theme", onTheme);
 
   return {
-    pause: () => setPaused(true), play: () => setPaused(false),
     visible: () => routes.filter((r) => !r.dying).map((r) => r.key),
     destroy() { destroyed = true; stop(); ro?.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", onVis); document.removeEventListener("hx-theme", onTheme); }
   };

@@ -155,10 +155,10 @@ html[data-theme="light"] .freight-network { --ng-sea-1: #f4f8ff; --ng-sea-2: #cf
   --ng-glow: rgba(37, 99, 235, 0.18); --ng-marker: #d97706; --ng-city: #0b1a3d; --ng-halo: #f4f8ff;
   background: radial-gradient(70% 80% at 30% 50%, rgba(37, 99, 235, 0.08), transparent 70%), linear-gradient(180deg, #ffffff, #eef4fc);
   border-color: rgba(15, 40, 90, 0.12); box-shadow: 0 18px 40px rgba(15, 40, 90, 0.08); }
-html[data-theme="light"] .ng-head h3 { color: #0b1a3d; } html[data-theme="light"] .ng-note { color: #51627f; }
-html[data-theme="light"] .ng-btn { color: #1e3a6e; background: #fff; border-color: rgba(15, 40, 90, 0.18); } html[data-theme="light"] .ng-btn:hover { border-color: #2563eb; }
+html[data-theme="light"] .ng-head h3 { color: #0b1a3d; } html[data-theme="light"] .ng-foot { color: #51627f; }
 html[data-theme="light"] .ng-card { background: rgba(255, 255, 255, 0.92); border-color: rgba(15, 40, 90, 0.12); color: #0b1a3d; box-shadow: 0 12px 28px rgba(15, 40, 90, 0.08); }
-html[data-theme="light"] .ng-card:hover { border-color: #2563eb; } html[data-theme="light"] .ng-kind { color: #1d4ed8; }
+html[data-theme="light"] .ng-card:hover, html[data-theme="light"] .ng-card.is-focus { border-color: #2563eb; }
+html[data-theme="light"] .ng-card.is-focus { box-shadow: 0 12px 28px rgba(15, 40, 90, 0.1), 0 0 0 1px rgba(37, 99, 235, 0.25); } html[data-theme="light"] .ng-kind { color: #1d4ed8; }
 html[data-theme="light"] .ng-city strong { color: #0b1a3d; } html[data-theme="light"] :is(.ng-city small, .ng-dist) { color: #51627f; } html[data-theme="light"] .ng-city span { color: #334155; }
 html[data-theme="light"] .ng-route i { background: linear-gradient(90deg, #d97706, #2563eb); } html[data-theme="light"] .ng-route i::after { background: #2563eb; box-shadow: none; }
 html[data-theme="light"] .track-title { color: #0b1a3d; }

@@ -705,7 +705,7 @@ test("3D view on a slow device: declined after a short frame-time check, the pho
   await ctx.close();
 });
 
-test("homepage network globe: worldwide connections rotate with no admin data, pause, reduced motion and fallback", async () => {
+test("homepage network globe: runs by itself with no controls or admin data, cards match the globe, reduced motion and fallback", async () => {
   const empty = (r) => r.fulfill({ status: 200, contentType: "application/json",
     body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "e", generatedAt: new Date().toISOString() }) });
   // no published shipments at all: the globe still shows connections, and they change over time
@@ -723,16 +723,27 @@ test("homepage network globe: worldwide connections rotate with no admin data, p
   for (let i = 0; i < 12 && seen.size < 6; i++) { await page.waitForTimeout(800); (await page.getAttribute("#freightNetwork", "data-routes")).split(" ").forEach((k) => seen.add(k)); }
   assert.ok(seen.size >= 5, `several connections over time: ${[...seen]}`);
   const text = (await page.textContent("#freightNetwork")).replace(/\s+/g, " ");
-  assert.match(text, /Worldwide freight connections/); assert.match(text, /Network visualisation of international freight corridors — not live shipments\./);
+  assert.match(text, /Worldwide freight connections/); assert.match(text, /Freight connections shown for illustration — not live shipments\./);
   assert.match(text, /Freight connection/); assert.match(text, /km apart/);
   assert.ok(!/In Transit|Delivered|\bGPS\b|tracking number|Illustrative network/i.test(text), "no shipment statuses, codes or the old disclaimer");
   assert.ok(!text.includes(codes.good) && !text.includes(codes.sea), "never shows tracking codes");
+  assert.equal(await page.locator("#freightNetwork button").count(), 0, "no play/pause or other manual controls");
   assert.ok(await page.$eval("#freightNetwork canvas", (c) => c.width > 0 && c.height > 0));
-  // pause stops the rotation
-  await page.click("[data-ng-toggle]");
-  assert.equal(await page.getAttribute("[data-ng-toggle]", "aria-pressed"), "true");
-  const paused = await page.getAttribute("#freightNetwork", "data-routes"); await page.waitForTimeout(2200);
-  assert.equal(await page.getAttribute("#freightNetwork", "data-routes"), paused, "paused routes stay put");
+  // cards, globe routes and the focused route stay in sync (city names come from the same hub records)
+  const { hubById } = await import("../../ui/network-routes.js");
+  for (let i = 0; i < 3; i++) {
+    await page.waitForTimeout(900);
+    const st = await page.evaluate(() => { const r = document.getElementById("freightNetwork");
+      return { routes: r.dataset.routes.split(" "), focus: r.dataset.focus,
+        cards: [...r.querySelectorAll(".ng-card:not(.is-out)")].map((c) => ({ key: c.dataset.key, focus: c.classList.contains("is-focus"), cities: [...c.querySelectorAll(".ng-city strong")].map((x) => x.textContent), countries: [...c.querySelectorAll(".ng-city > span")].map((x) => x.textContent), dist: c.querySelector(".ng-dist").textContent })) }; });
+    assert.deepEqual(st.cards.map((c) => c.key), st.routes, "one card per route on the globe, same order");
+    assert.equal(st.focus, st.routes.at(-1)); assert.deepEqual(st.cards.filter((c) => c.focus).map((c) => c.key), [st.focus], "the focused route's card is marked");
+    for (const c of st.cards) {
+      const [a, b] = c.key.split(">").map((id) => hubById.get(id));
+      assert.deepEqual(c.cities, [a.city, b.city], c.key); assert.deepEqual(c.countries, [a.country, b.country], c.key);
+      assert.match(c.dist, /^[\d,]+ km apart · /);
+    }
+  }
   assert.ok(await noOverflow(page)); assert.deepEqual(errors, []);
   await shot(page, "network-globe-1280");
   await ctx.close();
@@ -747,17 +758,16 @@ test("homepage network globe: worldwide connections rotate with no admin data, p
   assert.ok(await noOverflow(page));
   await shot(page, "network-globe-390-light");
   await ctx.close();
-  // reduced motion: a still globe and a button for other routes
+  // reduced motion: no rotation or gliding, but the routes and cards still change by themselves
   ctx = await newContext({ width: 768, height: 900 });
+  await ctx.addInitScript(() => { window.HX_NETWORK_INTERVAL_MS = 600; });
   page = await ctx.newPage(); await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`${base}/index.html?map=flat`);
   await page.locator("#freightNetwork").scrollIntoViewIfNeeded();
   await page.waitForFunction(() => document.getElementById("freightNetwork").dataset.state === "static", null, { timeout: 20000 });
-  assert.equal(await page.isVisible("[data-ng-toggle]"), false);
-  const still = await page.getAttribute("#freightNetwork", "data-routes"); await page.waitForTimeout(1500);
-  assert.equal(await page.getAttribute("#freightNetwork", "data-routes"), still, "nothing rotates by itself");
-  await page.click("[data-ng-next]");
-  assert.notEqual(await page.getAttribute("#freightNetwork", "data-routes"), still);
+  const still = await page.getAttribute("#freightNetwork", "data-routes");
+  await page.waitForFunction((f) => document.getElementById("freightNetwork").dataset.routes !== f, still, { timeout: 10000 });
+  assert.equal(await page.locator("#freightNetwork button").count(), 0);
   await ctx.close();
   // no canvas: the cards alone
   ctx = await newContext({ width: 1280, height: 900 });

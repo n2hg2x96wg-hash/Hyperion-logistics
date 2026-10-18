@@ -588,7 +588,11 @@ test("homepage network: a worldwide connections globe that needs no admin data a
   assert.equal(new Set(CONNECTIONS.map(([a, b]) => `${a}>${b}`)).size, CONNECTIONS.length, "no duplicate connections");
   const used = new Set(CONNECTIONS.flat()); for (const h of HUBS) assert.ok(used.has(h.id), `${h.id} is used`);
   for (const r of REGIONS) assert.ok(HUBS.some((h) => h.region === r), r);
-  assert.ok(HUBS.length >= 40 && CONNECTIONS.length >= 60, "a large network, not a fixed list of eight");
+  assert.ok(HUBS.length >= 80 && CONNECTIONS.length >= 300, `a large network, not a fixed list: ${HUBS.length} hubs, ${CONNECTIONS.length} connections`);
+  for (const r of REGIONS) assert.ok(HUBS.filter((h) => h.region === r).length >= 5, `${r} is well represented`);
+  for (const id of ["lagos", "accra", "abidjan", "dakar", "casablanca", "cairo", "nairobi", "london", "frankfurt", "hamburg", "amsterdam", "antwerp", "rotterdam", "shanghai", "hongkong", "singapore", "tokyo", "dubai", "newyork", "toronto", "losangeles", "saopaulo", "buenosaires", "santiago", "sydney", "melbourne"]) assert.ok(ids.has(id), id);
+  const pairs = new Set(CONNECTIONS.map(([a, b]) => [hubById.get(a).region, hubById.get(b).region].sort().join("|")));
+  assert.ok(pairs.size >= 18, `many continent pairings: ${pairs.size}`);
   assert.ok(CONNECTIONS.filter((c) => c.includes("lagos")).length >= 8, "Lagos is well connected");
   for (const pair of [["shanghai", "newyork"], ["frankfurt", "london"], ["tokyo", "sydney"], ["dubai", "lagos"], ["singapore", "rotterdam"], ["toronto", "amsterdam"], ["hongkong", "singapore"], ["nairobi", "dubai"]])
     assert.ok(CONNECTIONS.some((c) => c[0] === pair[0] && c[1] === pair[1]), pair.join(">"));
@@ -596,23 +600,30 @@ test("homepage network: a worldwide connections globe that needs no admin data a
   // scheduler: no repeats inside its window, never a duplicate on screen, and the visible set mixes regions
   let seed = 7; const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   const sch = createScheduler({ random }); const seen = []; let visible = [];
+  const rp = ([a, b]) => [hubById.get(a).region, hubById.get(b).region].sort().join("|");
   for (let i = 0; i < 300; i++) {
     const c = sch.next(visible); const k = c.join(">");
     assert.ok(!visible.some((v) => v.join(">") === k), "never shown twice at once");
-    assert.ok(!seen.slice(-12).includes(k), `no repeat within the window (${k})`);
+    assert.ok(!seen.slice(-24).includes(k), `no repeat within the window (${k})`);
+    assert.ok(!visible.some((v) => rp(v) === rp(c)), `no continent pairing twice on screen (${rp(c)})`);
     seen.push(k); visible = [...visible.slice(-2), c];
     if (visible.length === 3) assert.ok(new Set(visible.flatMap(([a, b]) => [hubById.get(a).region, hubById.get(b).region])).size >= 2, "regions are mixed");
   }
-  assert.ok(new Set(seen).size >= CONNECTIONS.length * 0.95, "every connection gets shown over time");
+  assert.equal(new Set(seen).size, 300, "300 picks, 300 different connections");
+  // deterministic with a seeded random, varied without one
+  const run = (sd) => { let x = sd; const rnd = () => { x = (x * 16807) % 2147483647; return x / 2147483647; }; const sc = createScheduler({ random: rnd }); return Array.from({ length: 10 }, () => sc.next().join(">")).join(","); };
+  assert.equal(run(11), run(11)); assert.notEqual(run(11), run(12));
   // copy: a visualisation, never shipment data
   const src = read("ui/network-globe.js"); const h = read("index.html");
-  assert.match(h, /Network visualisation of international freight corridors &mdash; not live shipments\./);
+  assert.match(h, /Freight connections shown for illustration &mdash; not live shipments\./);
+  assert.ok(!/data-ng-toggle|data-ng-next|ng-btn|>Play<|>Pause</.test(h + src), "no play/pause or manual controls: it runs by itself");
   assert.match(h, /Worldwide freight connections/);
   const prose = (src + read("ui/network-routes.js")).replace(/\/\/.*$/gm, "");
   assert.ok(!/\b(live|in transit|delivered|tracking (code|number)|shipments? (count|total)|active)\b/i.test(prose), "no live/status/code/count wording");
   assert.ok(!/fetch\(|\/api\//.test(src), "the globe reads no shipment data");
   assert.match(src, /new IntersectionObserver/, "pauses offscreen"); assert.match(src, /visibilitychange/, "pauses in a background tab");
-  assert.match(src, /prefersReducedMotion\(\)/); assert.match(h, /data-ng-toggle/); assert.match(h, /data-ng-next/);
+  assert.match(src, /prefersReducedMotion\(\)/); assert.match(src, /function stillSwap\(\)/, "reduced motion still changes routes, without movement");
+  assert.match(src, /li\.classList\.toggle\("is-focus"/, "the focused route's card is marked"); assert.match(src, /root\.dataset\.focus = focus/);
   assert.ok(!/Illustrative network — not live shipment activity|nw-tag/.test(h), "the old orange disclaimer is gone");
   // the real published-shipment feed stays separate (command centre), and still never shows record-edit times
   const cc = read("ui/globe/command-center.js");

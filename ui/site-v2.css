@@ -410,29 +410,24 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
     radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.35), transparent), radial-gradient(1px 1px at 88% 70%, rgba(255,255,255,.4), transparent),
     radial-gradient(1px 1px at 40% 88%, rgba(255,255,255,.3), transparent), linear-gradient(180deg, #071233, #030817);
   box-shadow: 0 30px 70px rgba(2, 6, 23, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-.ng-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px 20px; position: relative; z-index: 1; }
-.ng-head .eyebrow { margin: 0 0 6px; }
-.ng-head h3 { margin: 0; font-size: clamp(22px, 3vw, 32px); color: #fff; letter-spacing: -0.02em; line-height: 1.1; }
-.ng-note { margin: 8px 0 0; font-size: 13px; color: #94a7c6; max-width: 46ch; }
-.ng-actions { display: flex; gap: 8px; }
-.ng-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 600 14px/1 inherit; cursor: pointer;
-  color: #dbe7fb; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.28); transition: background .2s ease, border-color .2s ease; }
-.ng-btn:hover { background: rgba(148, 163, 184, 0.18); border-color: rgba(125, 192, 255, 0.5); }
-.ng-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.ng-btn .i-play { display: none; fill: currentColor; stroke: none; } .ng-btn[data-paused="true"] .i-play { display: block; } .ng-btn[data-paused="true"] .i-pause { display: none; }
-.ng-btn[hidden] { display: none; }
-.ng-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: clamp(12px, 3vw, 36px); margin-top: 8px; }
+.ng-head { position: relative; z-index: 1; }
+.ng-head .eyebrow { margin: 0 0 4px; }
+.ng-head h3 { margin: 0; font-size: clamp(21px, 3vw, 30px); color: #fff; letter-spacing: -0.02em; line-height: 1.1; }
+.ng-foot { margin: 14px 0 0; font-size: 12.5px; color: #8297b8; text-align: center; }
+.ng-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: clamp(8px, 3vw, 36px); margin-top: 4px; }
 .ng-globe { position: relative; max-width: 620px; width: 100%; justify-self: center; }
 .ng-globe canvas { display: block; width: 100%; }
 .freight-network[data-state="loading"] .ng-globe canvas { opacity: 0; } .ng-globe canvas { transition: opacity .8s ease; }
 .freight-network.no-globe .ng-globe { display: none; } .freight-network.no-globe .ng-body { grid-template-columns: 1fr; }
-.ng-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; align-content: center; min-height: 0; }
-.ng-card { display: grid; gap: 10px; padding: 16px 18px; border-radius: 18px; color: #e6ecf8;
+.ng-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; align-content: center; min-height: 0; position: relative; }
+.ng-cards .ng-card.is-out { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; } /* leaving cards fade over the list, so its height never jumps */
+.ng-card { display: grid; gap: 10px; align-content: center; min-height: 142px; padding: 16px 18px; border-radius: 18px; color: #e6ecf8;
   background: linear-gradient(160deg, rgba(30, 58, 120, 0.55), rgba(10, 20, 48, 0.72)); border: 1px solid rgba(125, 192, 255, 0.2);
   box-shadow: 0 14px 34px rgba(2, 6, 23, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06); backdrop-filter: blur(6px);
   transition: opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1), border-color .2s ease; }
 .ng-card.is-in { opacity: 0; transform: translateY(14px) scale(.98); } .ng-card.is-out { opacity: 0; transform: translateY(-10px) scale(.98); }
 .ng-card:hover { border-color: rgba(125, 211, 252, 0.6); }
+.ng-card.is-focus { border-color: rgba(95, 211, 255, 0.65); box-shadow: 0 14px 34px rgba(2, 6, 23, 0.35), 0 0 0 1px rgba(95, 211, 255, 0.25), 0 0 26px rgba(56, 189, 248, 0.18); }
 .ng-kind { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc; }
 .ng-route { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: center; gap: 8px; }
 .ng-city { display: grid; gap: 1px; min-width: 0; } .ng-city:last-child { text-align: right; }
@@ -440,6 +435,7 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
 .ng-route i { height: 2px; position: relative; background: linear-gradient(90deg, #fbbf24, #5fd3ff); border-radius: 2px; }
 .ng-route i::after { content: ""; position: absolute; right: -2px; top: 50%; width: 7px; height: 7px; border-radius: 50%; background: #5fd3ff; transform: translateY(-50%); box-shadow: 0 0 8px #5fd3ff; }
 .ng-dist { font-size: 13px; color: #94a7c6; }
-@media (max-width: 860px) { .ng-body { grid-template-columns: 1fr; } .ng-globe { max-width: 460px; } }
-@media (max-width: 640px) { .freight-network { border-radius: 18px; } .ng-card { padding: 14px; } .ng-city strong { font-size: 16px; } }
+@media (max-width: 860px) { .ng-body { grid-template-columns: 1fr; } .ng-globe { max-width: 520px; } }
+@media (max-width: 640px) { .freight-network { border-radius: 18px; padding: 16px 12px 14px; } .ng-globe { margin: -6px -4px 0; width: calc(100% + 8px); max-width: none; }
+  .ng-card { padding: 14px; min-height: 132px; } .ng-city strong { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .ng-card, .ng-globe canvas { transition: none; } }

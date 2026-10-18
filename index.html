@@ -255,21 +255,15 @@
       <div class="wrap">
         <figure class="freight-network" id="freightNetwork" data-state="loading" data-reveal aria-labelledby="freightNetworkTitle">
           <figcaption class="ng-head">
-            <div>
-              <p class="eyebrow">Global network</p>
-              <h3 id="freightNetworkTitle">Worldwide freight connections</h3>
-              <p class="ng-note">Network visualisation of international freight corridors &mdash; not live shipments.</p>
-            </div>
-            <div class="ng-actions">
-              <button type="button" class="ng-btn" data-ng-toggle aria-pressed="false" aria-label="Pause the route animation"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pause" d="M8 5v14M16 5v14"/><path class="i-play" d="M7 4.5v15l12-7.5z"/></svg><span>Pause</span></button>
-              <button type="button" class="ng-btn" data-ng-next hidden>Show other routes</button>
-            </div>
+            <p class="eyebrow">Global network</p>
+            <h3 id="freightNetworkTitle">Worldwide freight connections</h3>
           </figcaption>
           <div class="ng-body">
             <div class="ng-globe" aria-hidden="true"><canvas></canvas></div>
             <ul class="ng-cards" data-slot="ngcards" aria-hidden="true"></ul>
             <ul class="sr-only" data-slot="nglist" aria-label="Freight connections currently shown"></ul>
           </div>
+          <p class="ng-foot">Freight connections shown for illustration &mdash; not live shipments.</p>
         </figure>
       </div>
     </section>
