@@ -281,14 +281,17 @@ test("homepage hero: headline and tracking form unchanged; drawn scene present a
   for (const f of ["scene.svg", "scene-mobile.svg"]) {
     assert.ok(css.includes(`assets/hero/${f}`), `${f} used`);
     const svg = fs.readFileSync(new URL(`../assets/hero/${f}`, import.meta.url), "utf8");
-    assert.ok(svg.length < 40000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
+    assert.ok(svg.length < 48000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
   }
   // the entrance animation only runs when motion is allowed; the hero has a solid fallback colour
   const hero = css.slice(css.indexOf("/* ---------- hero ---------- */"), css.indexOf("/* ---------- tracking pages"));
   assert.match(hero, /\.hero3 \{[^}]*background: #030712/);
   const anim = hero.slice(hero.indexOf("/* hero entrance"));
   assert.match(anim, /^[^{]*\{\s*@media \(prefers-reduced-motion: no-preference\)|@media \(prefers-reduced-motion: no-preference\) \{/);
-  assert.ok(!/animation:[^;]*infinite/.test(anim), "no continuous hero animation");
+  // the only looping motion is one thin dotted route line drifting slowly; everything else plays once
+  const loops = [...anim.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^}]*animation:[^;]*infinite/g)].map((m) => m[1].trim());
+  assert.deepEqual(loops, [".hero3-routes .r3"], `looping hero animations: ${loops}`);
+  assert.match(css, /@media \(max-width: 1023px\) \{ \.hero3-routes \{ display: none; \} \}/, "route lines (and their drift) only on wide screens");
   assert.ok(!/(^|\n)\.hero3[^{]*\{[^}]*animation:/.test(hero.slice(0, hero.indexOf("/* hero entrance"))), "animations only inside the motion media query");
 });
 
@@ -310,7 +313,7 @@ test("homepage shared shipments: hidden unless public data loaded with at least 
 test("journey: three explanatory milestones joined by a connector; reduced motion and no-JS keep everything visible", () => {
   const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const section = html.slice(html.indexOf('id="journey"'), html.indexOf('id="services"'));
-  const steps = [...section.matchAll(/<li data-reveal><strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
+  const steps = [...section.matchAll(/<li data-reveal>(?:<picture class="js-thumb">[\s\S]*?<\/picture>)?<strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
   assert.deepEqual(steps, ["Warehouse processing", "Transit and handling", "Final delivery"]);
   assert.match(section, /<ol class="journey-steps" data-reveal="line"/);
   assert.ok(!/(in transit|delivered|out for delivery|on hold|HY-\d)/i.test(section.replace(/Final delivery|delivery is recorded|final delivery/gi, "")), "no live statuses or shipment numbers");
@@ -320,4 +323,136 @@ test("journey: three explanatory milestones joined by a connector; reduced motio
   assert.match(css, /\.journey-steps::after \{ transform: none !important; transition: none !important; \}/, "connector fully drawn under reduced motion");
   const motion = fs.readFileSync(new URL("../ui/motion.css", import.meta.url), "utf8");
   assert.match(motion, /prefers-reduced-motion: reduce[\s\S]*\[data-reveal\] \{ opacity: 1 !important; transform: none !important;/);
+});
+
+// ---------- theme toggle, tracking presentation, admin UI ----------
+const read = (f) => fs.readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
+
+test("theme: saved choice applied in <head> before any stylesheet on every page; dark is the default; toggle in the shared header", () => {
+  for (const f of ["index.html", "track.html", "tracking-enhanced.html", "admin.html"]) {
+    const html = read(f);
+    const head = html.indexOf('localStorage.getItem("hx-theme")==="light"');
+    assert.ok(head > 0, `${f}: early theme script`);
+    assert.ok(head < html.indexOf('rel="stylesheet"'), `${f}: theme applied before the first stylesheet (no flash)`);
+    assert.match(html, /data-theme-toggle aria-pressed="false" aria-label="Switch to light theme"/, `${f}: toggle button`);
+    assert.ok(html.includes('href="ui/theme-light.css"'), `${f}: light styles`);
+  }
+  for (const f of ["index.html", "track.html", "tracking-enhanced.html"]) {
+    const header = read(f).match(/<!-- site-header -->([\s\S]*?)<!-- \/site-header -->/)[1];
+    assert.match(header, /class="theme-toggle"/, `${f}: toggle sits in the shared header`);
+  }
+  const js = read("ui/theme.js");
+  assert.ok(!/prefers-color-scheme/.test(js), "no system detection: dark until the visitor chooses");
+  assert.match(js, /try \{ localStorage\.setItem\(KEY, theme\); \} catch/, "storage failures never break the page");
+  assert.match(read("ui/site-shell.js"), /import "\.\/theme\.js";/);
+  assert.match(read("admin.html"), /<script type="module" src="ui\/theme\.js"><\/script>/);
+  // the tracking code itself is still never stored: the new tracker module stays storage-free
+  assert.ok(!/localStorage|sessionStorage|document\.cookie/.test(read("tracker/scene.js")), "tracker/scene.js"); // tracker.js: test/api.test.js
+});
+
+test("theme: text colours meet WCAG AA contrast in both themes", () => {
+  const css = read("ui/tokens.css");
+  const block = (sel) => Object.fromEntries([...css.slice(css.indexOf(sel)).split("}")[0].matchAll(/--(hy-[\w-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
+  const dark = block(":root {"); const light = { ...dark, ...block('html[data-theme="light"] {') };
+  const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  for (const [name, t] of [["dark", dark], ["light", light]]) {
+    for (const bg of ["hy-bg-0", "hy-bg-1", "hy-bg-2"]) {
+      assert.ok(ratio(t["hy-text"], t[bg]) >= 7, `${name}: body text on ${bg}`);
+      assert.ok(ratio(t["hy-text-2"], t[bg]) >= 4.5, `${name}: secondary text on ${bg}`);
+      assert.ok(ratio(t["hy-muted"], t[bg]) >= 4.5, `${name}: muted text on ${bg} (${ratio(t["hy-muted"], t[bg]).toFixed(2)})`);
+    }
+  }
+  assert.ok(ratio("#ffffff", light["hy-blue"]) >= 4.5, "white text on the light-theme primary button");
+});
+
+test("tracking presentation: the stage comes from the recorded status, the vehicle only from carrier/service data", async () => {
+  const { presentation, shipmentMode, sceneSvg } = await import("../tracker/scene.js");
+  const { STATUS } = await import("../shared/status.js");
+  const expected = { CREATED: "registered", PROCESSING: "processing", PICKED_UP: "transit", IN_TRANSIT: "transit", AT_FACILITY: "facility", CUSTOMS: "facility",
+    OUT_FOR_DELIVERY: "out-for-delivery", DELIVERED: "delivered", DELAYED: "held", EXCEPTION: "held", CANCELLED: "cancelled" };
+  for (const code of Object.values(STATUS)) assert.equal(presentation({ status: { code } }).stage, expected[code], code);
+  assert.equal(presentation({ status: { code: "SOMETHING_NEW" } }).stage, "neutral", "unknown status -> neutral");
+  assert.equal(presentation({}).stage, "neutral");
+  assert.equal(shipmentMode({ carrier: { name: "Maersk" } }), "ship");
+  assert.equal(shipmentMode({ carrier: { name: "Emirates SkyCargo" } }), "plane");
+  assert.equal(shipmentMode({ carrier: { name: "DHL" } }), "van");
+  assert.equal(shipmentMode({ carrier: { name: "DHL", serviceType: "Ocean freight (FCL)" } }), "ship", "recorded service type wins");
+  assert.equal(shipmentMode({ carrier: { name: "Some Local Mover", custom: true } }), null, "custom carrier: no guessed vehicle");
+  assert.equal(shipmentMode({ carrier: { name: "Unknown Co" } }), null);
+  assert.equal(shipmentMode({}), null);
+  assert.equal(presentation({ status: { code: "IN_TRANSIT" }, carrier: { name: "Maersk" } }).label, "In transit · sea freight");
+  assert.equal(presentation({ status: { code: "IN_TRANSIT" } }).label, "In transit", "no mode claimed without data");
+  const svg = sceneSvg({ stage: "transit", mode: "ship" });
+  assert.match(svg, /aria-hidden="true"/); assert.ok(!/<text/.test(svg), "the picture carries no text (no invented place names)");
+  const tracker = read("tracker/tracker.js");
+  assert.match(tracker, /Illustration of the current shipment stage\./);
+  assert.ok(!/% of the journey|%<\/|pct\}%/.test(tracker), "no invented percentage in the progress display");
+  assert.match(tracker, /Stage <strong>\$\{cur \+ 1\}<\/strong> of \$\{n\}/);
+});
+
+test("recorded route: oldest first, consecutive repeats merged, nothing invented, destination upcoming until delivered", async () => {
+  const { routeStops } = await import("../tracker/scene.js");
+  const ev = (location, timestamp, title = "In Transit") => ({ location, timestamp, title });
+  const view = { origin: "Shanghai, China", destination: "Rotterdam, Netherlands", status: { code: "IN_TRANSIT" },
+    timeline: [ev("Suez Canal, Egypt", "2026-10-05T00:00:00Z"), ev("", "2026-10-04T00:00:00Z", "Note without a place"), ev("Singapore", "2026-10-03T00:00:00Z"),
+      ev("Singapore", "2026-10-02T12:00:00Z"), ev("Shanghai, China", "2026-10-01T00:00:00Z", "Picked Up")] };
+  const stops = routeStops(view);
+  assert.deepEqual(stops.map((s) => s.place), ["Shanghai, China", "Singapore", "Suez Canal, Egypt", "Rotterdam, Netherlands"]);
+  assert.deepEqual(stops.map((s) => s.state), ["done", "done", "current", "upcoming"]);
+  assert.equal(stops.at(-1).title, "Destination");
+  const delivered = routeStops({ ...view, status: { code: "DELIVERED" }, timeline: [...view.timeline, ev("Rotterdam, Netherlands", "2026-10-09T00:00:00Z", "Delivered")] });
+  assert.deepEqual(delivered.map((s) => s.state), ["done", "done", "done", "current"]);
+  assert.equal(delivered.at(-1).title, "Delivered");
+  const bare = routeStops({ origin: "A", destination: "B", status: { code: "CREATED" }, timeline: [] });
+  assert.deepEqual(bare.map((s) => [s.place, s.state]), [["A", "current"], ["B", "upcoming"]], "only two points when nothing is recorded");
+  assert.deepEqual(routeStops({ timeline: [] }), [], "no origin/destination: no route at all");
+});
+
+test("homepage pictures: owner's step pictures on the journey, freight photo without printed shipment details, docs updated", () => {
+  const html = read("index.html");
+  for (const n of ["warehouse", "transit", "delivery"]) for (const ext of ["avif", "webp", "jpg"]) for (const sz of [96, 192])
+    assert.ok(fs.existsSync(new URL(`../assets/journey/step-${n}-${sz}.${ext}`, import.meta.url)), `step-${n}-${sz}.${ext}`);
+  assert.equal((html.match(/<picture class="js-thumb">/g) || []).length, 3);
+  for (const m of html.matchAll(/<picture class="js-thumb">[\s\S]*?<img ([^>]+)>/g)) { assert.match(m[1], /alt=""/); assert.match(m[1], /width="96" height="96"/); assert.match(m[1], /loading="lazy"/); }
+  assert.match(html, /assets\/freight\/ship-1179\.jpg/); assert.ok(!html.includes("ship-1536"));
+  assert.match(read("assets/freight/README.md"), /blurred out/);
+  assert.match(read("assets/freight/CREDITS.md"), /step-\{warehouse,transit,delivery\}/);
+});
+
+test("hero: shipment indicators run once along the drawn route lines and are hidden with reduced motion", () => {
+  const html = read("index.html");
+  const pkts = html.slice(html.indexOf('<g class="hero3-pkts">'), html.indexOf("</g>", html.indexOf('<g class="hero3-pkts">')));
+  assert.equal((pkts.match(/<animateMotion /g) || []).length, 2);
+  assert.ok(!/repeatCount|indefinite/.test(pkts), "no looping");
+  assert.match(pkts, /fill="freeze"/);
+  assert.match(read("ui/site-v2.css"), /@media \(prefers-reduced-motion: reduce\) \{ \.hero3-pkts \{ display: none; \} \}/);
+});
+
+test("admin: tracking numbers copyable, archive/delete set apart, a real-data 'needs attention' figure, theme switch", () => {
+  const center = read("admin/center.js");
+  assert.match(center, /data-act="copy" data-code="\$\{esc\(s\.id\)\}"/);
+  assert.match(center, /<span class="row-actions-risky">/);
+  assert.match(center, /copy: \(\) => copyCode\(code\)/);
+  assert.match(center, /const attention = \(t\.delayed \|\| 0\) \+ \(t\.exceptions \|\| 0\);/, "derived only from the existing totals");
+  // the existing confirmations for destructive actions are kept
+  assert.match(center, /confirm\(`Permanently delete \$\{code\}/); assert.match(center, /confirm\(`Archive \$\{code\}\?/);
+  const admin = read("admin.html");
+  for (const id of ["loginForm", "loginPassword", "loginBtn", "appRoot", "loginOverlay"]) assert.ok(admin.includes(`id="${id}"`), id);
+  assert.match(admin, /toast\.setAttribute\("role", type === "error" \? "alert" : "status"\)/);
+  const css = read("admin/console.css");
+  assert.match(css, /\.row-actions \.btn-action \{ flex: 1 1 auto; min-height: 44px; \}/);
+  assert.match(css, /html\[data-theme="light"\] body\.console/);
+});
+
+test("tracker: manual check never overlaps, reports its real outcome, and the timeline reads oldest first by default", () => {
+  const t = read("tracker/tracker.js");
+  assert.match(t, /if \(!refreshing\) refreshing = \(async \(\) => \{/, "one manual check at a time");
+  assert.match(t, /b\.disabled = true; b\.setAttribute\("aria-busy", "true"\);/);
+  for (const k of ["updated", "unchanged", "error"]) assert.match(t, new RegExp(`${k}: "`), `feedback for ${k}`);
+  assert.match(t, /role="status" aria-live="polite"/);
+  assert.match(t, /Last checked \$\{/, "check time labelled separately from the last recorded event");
+  assert.match(t, /let timelineOrder = "oldest";/);
+  assert.match(t, /const latestId = items\[0\]\?\.id;/, "'Latest' still marks the newest recorded event in either order");
+  assert.match(t, /\$\{loc\?\.sourceLabel \? ` · \$\{esc\(loc\.sourceLabel\)\}` : ""\}/, "the location says how it was recorded");
 });

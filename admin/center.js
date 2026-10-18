@@ -238,7 +238,8 @@ export function initControlCenter(host) {
       const t = d.totals;
       const first = !$("kpiGrid").childElementCount;
       const tile = (label, value, cls = "") => `<div class="kpi ${cls}" ${first ? "data-reveal" : ""}><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div></div>`;
-      $("kpiGrid").innerHTML = tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
+      const attention = (t.delayed || 0) + (t.exceptions || 0);
+      $("kpiGrid").innerHTML = tile("Needs attention <small>delayed + exceptions</small>", attention, attention ? "bad attention" : "good attention") + tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
         tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived) + (t.unclassified ? tile("Not yet classified", t.unclassified, "warn") : "");
       $("lastUpdated").textContent = `refreshed ${fmt(d.generatedAt)}`;
       loadLocationCheck();
@@ -394,18 +395,18 @@ export function initControlCenter(host) {
     $("shipmentsContainer").innerHTML = `<div class="table-wrap"><table class="shipments-table responsive"><thead><tr><th>Tracking ID</th><th>Courier</th><th>Status</th><th>Route</th><th>Current location</th><th>Updated</th><th>Actions</th></tr></thead><tbody>${rows.map((s) => {
       const cr = host.findCourier(s.courier);
       return `<tr>
-        <td data-label="Tracking ID"><strong>${esc(s.id)}</strong>${s.archived ? ' <span class="pill neutral">archived</span>' : ""}${s.publicMap ? ' <span class="pill public" title="Shown on the public homepage (masked)">homepage</span>' : ""}</td>
+        <td data-label="Tracking ID" class="td-code"><strong>${esc(s.id)}</strong> <button class="btn-action subtle btn-copy" data-act="copy" data-code="${esc(s.id)}" aria-label="Copy tracking number ${esc(s.id)}">Copy</button>${s.archived ? ' <span class="pill neutral">archived</span>' : ""}${s.publicMap ? ' <span class="pill public" title="Shown on the public homepage (masked)">homepage</span>' : ""}</td>
         <td data-label="Courier">${esc(cr?.name || s.courier || "—")}</td>
         <td data-label="Status">${s.statusCode ? pill(s.statusCode) : `<span class="pill neutral">${esc(s.status || "Unknown")}</span>`}</td>
         <td data-label="Route">${esc(s.origin || "—")} → ${esc(s.destination || "—")}</td>
         <td data-label="Location">${esc(s.location || "—")}${s.hasCoordinates ? "" : ' <small style="color:#94a3b8">(no coords)</small>'}</td>
         <td data-label="Updated">${esc(timeAgo(s.updatedAt) || "—")}</td>
-        <td data-label="Actions"><div class="row-actions">
+        <td data-label="Actions" class="td-actions"><div class="row-actions">
           <button class="btn-action" data-act="track" data-code="${esc(s.id)}">Open</button>
           <button class="btn-action" data-act="edit" data-code="${esc(s.id)}">Edit</button>
           <button class="btn-action" data-act="preview" data-code="${esc(s.id)}">Preview</button>
-          ${can("archive") ? `<button class="btn-action" data-act="${s.archived ? "unarchive" : "archive"}" data-code="${esc(s.id)}">${s.archived ? "Restore" : "Archive"}</button>` : ""}
-          ${can("delete") ? `<button class="btn-action btn-danger" data-act="delete" data-code="${esc(s.id)}">Delete</button>` : ""}
+          ${can("archive") || can("delete") ? `<span class="row-actions-risky">${can("archive") ? `<button class="btn-action" data-act="${s.archived ? "unarchive" : "archive"}" data-code="${esc(s.id)}">${s.archived ? "Restore" : "Archive"}</button>` : ""}
+          ${can("delete") ? `<button class="btn-action btn-danger" data-act="delete" data-code="${esc(s.id)}">Delete</button>` : ""}</span>` : ""}
         </div></td></tr>`;
     }).join("")}</tbody></table></div>`;
   }
@@ -417,8 +418,12 @@ export function initControlCenter(host) {
   $("shipmentsContainer").addEventListener("click", (e) => {
     const b = e.target.closest("[data-act]"); if (!b) return; const code = b.dataset.code;
     ({ track: () => openShipment(code, "tracking"), preview: () => openShipment(code, "preview"), edit: () => openEdit(code),
-      archive: () => setArchived(code, true), unarchive: () => setArchived(code, false), delete: () => deleteShipment(code) })[b.dataset.act]?.();
+      archive: () => setArchived(code, true), unarchive: () => setArchived(code, false), delete: () => deleteShipment(code), copy: () => copyCode(code) })[b.dataset.act]?.();
   });
+  async function copyCode(code) {
+    try { await navigator.clipboard.writeText(code); host.showToast(`Copied ${code}`, "success"); }
+    catch { host.showToast("Copy is not available in this browser — select the tracking number instead", "error"); }
+  }
   async function setArchived(code, archived) {
     if (archived && !confirm(`Archive ${code}? It will disappear from public tracking but all data is kept.`)) return;
     await guarded(`arch:${code}`, null, async () => { await api(archived ? "archive" : "unarchive", { code }); host.showToast(archived ? "Shipment archived" : "Shipment restored", "success"); runSearch(true); });

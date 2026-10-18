@@ -236,9 +236,9 @@ test("logistics journey: reduced motion shows everything at once; a failed image
   assert.equal(await page.$eval("#journey .journey-steps", (o) => getComputedStyle(o, "::after").transform), "none", "connector drawn without animation");
   assert.equal(await page.$eval(".hero3-media", (m) => getComputedStyle(m).animationName), "none", "no hero entrance animation");
   await page.locator("#journey").scrollIntoViewIfNeeded();
-  await page.evaluate(() => { const i = document.querySelector("#journey img"); if (i) i.loading = "eager"; }); // may already have failed
+  await page.evaluate(() => { const i = document.querySelector("#journey .journey-frame img"); if (i) i.loading = "eager"; }); // may already have failed
   await page.waitForFunction(() => document.querySelector(".journey-frame").classList.contains("is-missing"), null, { timeout: 10000 });
-  assert.equal(await page.locator("#journey img").count(), 0, "broken image removed");
+  assert.equal(await page.locator("#journey .journey-frame img").count(), 0, "broken image removed");
   const h = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
   assert.ok(h > 100, "panel keeps its size");
   await ctx.close();
@@ -357,6 +357,172 @@ test("map states: no coordinates shows 'Awaiting location', never an empty world
   assert.equal(await page.locator(".leaflet-container").count(), 0);
   await ctx.close();
 });
+
+test("theme toggle: switches, persists across pages and the admin, applies before first paint, keeps text readable", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/index.html?map=flat`);
+  const theme = () => page.evaluate(() => document.documentElement.dataset.theme || "dark");
+  assert.equal(await theme(), "dark", "dark by default");
+  const btn = page.locator(".site-nav [data-theme-toggle]");
+  assert.ok(await btn.isVisible(), "toggle visible on phones without opening the menu");
+  const box = await btn.boundingBox(); assert.ok(box.width >= 40 && box.height >= 40, "comfortable tap target");
+  assert.equal(await btn.getAttribute("aria-pressed"), "false");
+  await btn.click();
+  assert.equal(await theme(), "light"); assert.equal(await btn.getAttribute("aria-pressed"), "true");
+  assert.equal(await btn.getAttribute("aria-label"), "Switch to dark theme");
+  assert.equal(await page.$eval('meta[name="theme-color"]', (m) => m.content), "#f5f8fe");
+  // next page: the saved choice is applied by the inline <head> script, before stylesheets and module scripts run
+  await page.goto(`${base}/track.html`, { waitUntil: "commit" });
+  await page.waitForFunction(() => document.readyState !== "loading" || document.documentElement.dataset.theme);
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light");
+  await page.waitForLoadState("load");
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  assert.equal(bg, "rgb(245, 248, 254)", "light page background");
+  // a tracking result in the light theme: dark text on light cards
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-header .hx-code");
+  const card = await page.$eval(".hx-header", (c) => ({ bg: getComputedStyle(c).backgroundImage, fg: getComputedStyle(c.querySelector(".hx-code")).color }));
+  assert.match(card.bg, /rgb\(255, 255, 255\)/, "light card surface"); assert.equal(card.fg, "rgb(11, 26, 61)");
+  await shot(page, "theme-light-track-390");
+  // the admin console follows the same choice
+  await page.goto(`${base}/admin.html`);
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), "light");
+  // switching back is remembered too
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.locator(".site-nav [data-theme-toggle]").click();
+  await page.reload();
+  assert.equal(await theme(), "dark");
+  assert.ok(await noOverflow(page));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+for (const w of [390, 768, 1280]) {
+  test(`tracking result at ${w}px: stage illustration from real data, stage-based progress, recorded route, copy and manual check`, async () => {
+    const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
+    await ctx.grantPermissions(["clipboard-read", "clipboard-write"], { origin: base });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/track.html`);
+    await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+    await page.waitForSelector(".hx-scene");
+    const scene = await page.$eval(".hx-scene", (f) => ({ stage: f.dataset.stage, mode: f.dataset.mode, text: f.textContent.replace(/\s+/g, " "), h: f.querySelector(".hx-scene-stage").getBoundingClientRect().height }));
+    assert.equal(scene.stage, "transit", "IN_TRANSIT -> transit stage");
+    assert.equal(scene.mode, "van", "DHL is an express carrier in the catalogue");
+    assert.match(scene.text, /Illustration of the current shipment stage\./);
+    assert.ok(scene.h > 100, "illustration has its reserved size");
+    const head = await page.textContent(".hx-progress-head");
+    assert.match(head, /Stage \d of \d/); assert.ok(!head.includes("%"), "no percentage");
+    assert.equal(await page.locator(".hx-step.current[aria-current='step']").count(), 1);
+    const route = await page.$$eval(".hx-rs", (li) => li.map((x) => ({ place: x.querySelector(".hx-rs-place").textContent, cls: x.className })));
+    assert.equal(route[0].place, "Houston, United States"); assert.match(route[0].cls, /k-origin/);
+    assert.equal(route.at(-1).place, "Lisbon, Portugal"); assert.match(route.at(-1).cls, /is-upcoming/, "destination upcoming while in transit");
+    assert.match(await page.textContent(".hx-fact-updated"), /Last recorded update/);
+    await page.click(".hx-copy");
+    await page.waitForFunction(() => document.querySelector("[data-copy-label]")?.textContent === "Copied");
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), codes.good);
+    assert.match(await page.textContent('[data-act="refresh"]'), /Check now/);
+    await page.click('[data-act="refresh"]');
+    await page.waitForTimeout(600);
+    assert.ok(await page.isVisible(".hx-header"), "result stays after a manual check");
+    assert.ok(await noOverflow(page), `overflow at ${w}px`);
+    await shot(page, `tracking-result-${w}`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
+
+test("tracking edge cases: invalid code, network failure with retry, missing optional data, single-flight manual check, timeline order", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/track.html`);
+  // invalid code: clear message, no request result invented
+  await page.fill("#trackingInput", "!!"); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /Please enter a valid tracking number/.test(document.getElementById("results").textContent));
+  // network failure on lookup: an error message with a working retry
+  await ctx.route(/\/api\/track\?/, (r) => r.abort());
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /We couldn't load tracking right now/.test(document.getElementById("results").textContent));
+  assert.equal(await page.locator('[data-act="retry"]').count(), 1);
+  await ctx.unroute(/\/api\/track\?/);
+  await page.click('[data-act="retry"]');
+  await page.waitForSelector(".hx-header .hx-code");
+  // timeline: oldest first by default, "Latest" marks the newest record, order can be flipped
+  const order = () => page.$$eval(".hx-timeline > .hx-tl", (li) => li.map((x) => ({ latest: x.classList.contains("latest"), t: x.querySelector("time").dateTime })));
+  let tl = await order();
+  if (tl.length > 1) {
+    assert.ok(Date.parse(tl[0].t) <= Date.parse(tl.at(-1).t), "oldest first");
+    assert.ok(tl.at(-1).latest, "newest record marked Latest");
+    await page.click('.hx-seg[data-order="latest"]');
+    tl = await order();
+    assert.ok(Date.parse(tl[0].t) >= Date.parse(tl.at(-1).t), "latest first after switching");
+    assert.ok(tl[0].latest);
+    assert.equal(await page.getAttribute('.hx-seg[data-order="latest"]', "aria-pressed"), "true");
+  }
+  // manual check: two quick taps send one request, and the outcome is reported
+  let calls = 0; page.on("request", (r) => { if (r.url().includes("/api/track?")) calls++; });
+  await page.evaluate(() => { const b = document.querySelector('[data-act="refresh"]'); b.click(); b.click(); });
+  await page.waitForFunction(() => /Checked|New information/.test(document.querySelector(".hx-refresh-note")?.textContent || ""));
+  assert.equal(calls, 1, "one request for overlapping taps");
+  assert.match(await page.textContent(".hx-checked"), /Last checked/);
+  // a failed check keeps the last loaded data and says so
+  await ctx.route(/\/api\/track\?/, (r) => r.abort());
+  await page.click('[data-act="refresh"]');
+  await page.waitForFunction(() => /Couldn't check right now/.test(document.querySelector(".hx-refresh-note")?.textContent || ""));
+  assert.ok(await page.isVisible(".hx-header .hx-code"), "last loaded shipment stays on screen");
+  await ctx.unroute(/\/api\/track\?/);
+  // missing optional data: neutral wording, nothing invented
+  await page.fill("#trackingInput", codes.none); await page.keyboard.press("Enter");
+  await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.none);
+  const caption = await page.textContent(".hx-scene figcaption");
+  assert.match(caption, /No location recorded yet/);
+  const stops = await page.$$eval(".hx-rs-place", (x) => x.map((e) => e.textContent));
+  assert.deepEqual(stops, ["Somewhere", "Elsewhere"], "only the recorded origin and destination");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("tracking result with reduced motion: every block visible at once, illustration static", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce", isMobile: true, hasTouch: true });
+  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|cdn\.jsdelivr\.net/, (r) => r.abort());
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-route");
+  const ops = await page.$$eval(".hx-tracker > *, .hx-route .hx-rs, .hx-scene", (els) => els.map((e) => getComputedStyle(e).opacity));
+  assert.ok(ops.every((o) => o === "1"), `hidden blocks: ${ops}`);
+  assert.equal(await page.$eval(".hx-scene-subject", (g) => getComputedStyle(g).animationName), "none");
+  await ctx.close();
+});
+
+for (const theme of ["dark", "light"]) {
+  test(`admin shipment list on a phone (${theme}): readable cards, copy, separated risky actions, no overflow`, async () => {
+    const ctx = await newContext({ width: 390, height: 844 });
+    if (theme === "light") await ctx.addInitScript(() => { try { localStorage.setItem("hx-theme", "light"); } catch {} });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/admin.html`);
+    await page.fill("#loginPassword", process.env.ADMIN_PASSWORD); await page.click("#loginBtn");
+    await page.waitForFunction(() => typeof window.switchView === "function" && !document.getElementById("appRoot").classList.contains("hidden"));
+    assert.ok(await page.isVisible(".header [data-theme-toggle]"), "theme switch in the top bar");
+    await page.waitForSelector("#kpiGrid .kpi.attention", { timeout: 10000 }); // dashboard figures load after sign-in
+    await page.evaluate(() => window.switchView("shipments"));
+    await page.waitForSelector(".shipments-table .td-code");
+    const card = await page.$eval(".shipments-table tbody tr", (tr) => {
+      const r = (sel) => tr.querySelector(sel)?.getBoundingClientRect();
+      const buttons = [...tr.querySelectorAll(".row-actions .btn-action")].map((b) => b.getBoundingClientRect().height);
+      return { code: r(".td-code strong"), risky: r(".row-actions-risky"), main: r(".row-actions .btn-action"), buttons };
+    });
+    assert.ok(card.code.top < card.main.top, "tracking number first");
+    assert.ok(card.risky.top > card.main.top, "archive/delete set apart below the everyday actions");
+    assert.ok(card.buttons.every((h) => h >= 44), `tap targets ${card.buttons}`);
+    const fs16 = await page.$eval("#fCode", (i) => parseFloat(getComputedStyle(i).fontSize));
+    assert.ok(fs16 >= 16, "no iOS zoom on focus");
+    assert.ok(await noOverflow(page));
+    await shot(page, `admin-list-${theme}-390`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
 
 test("authorization boundary: admin actions refuse public callers", async () => {
   const ctx = await newContext({ width: 1280, height: 900 });

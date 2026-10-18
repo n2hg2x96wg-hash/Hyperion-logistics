@@ -1,4 +1,5 @@
 // Shared public header behaviour (homepage + tracking pages): the mobile menu, and same-page section links.
+import "./theme.js";
 // The menu is a solid sheet with a scrim; it closes on link tap, scrim tap, Escape and when the viewport grows
 // past the breakpoint, and the page behind it cannot scroll while it is open.
 const header = document.querySelector("[data-site-header]");

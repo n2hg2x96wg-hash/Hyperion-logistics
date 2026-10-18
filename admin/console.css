@@ -233,3 +233,96 @@ body.console .summary-grid { grid-template-columns: repeat(auto-fit, minmax(min(
   body.console .logo-text h2::after { content: "Admin"; font-size: 15px; }
   body.console .sticky-actions { padding-right: 76px; }
 }
+
+/* ---------- theme switch (shared with the public site: ui/theme.js) ---------- */
+body.console .theme-toggle { order: 2; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 8px; cursor: pointer;
+  background: transparent; border: 1px solid var(--hy-line-strong); color: var(--hy-text-2); font: 600 13px var(--hy-font); }
+body.console .theme-toggle:hover { border-color: var(--hy-blue-2); color: var(--hy-text); }
+body.console .theme-toggle:focus-visible { outline: 3px solid var(--hy-blue-2); outline-offset: 2px; }
+body.console .theme-toggle .i-moon { display: none; }
+html[data-theme="light"] body.console .theme-toggle .i-sun { display: none; }
+html[data-theme="light"] body.console .theme-toggle .i-moon { display: block; }
+@media (max-width: 900px) {
+  body.console .theme-toggle { order: 1; align-self: center; width: 42px; height: 42px; padding: 0; justify-content: center; flex: none; }
+  body.console .theme-toggle .tt-label { display: none; }
+}
+
+/* ---------- dashboard: "needs attention" first (delayed + exceptions, from the real totals) ---------- */
+body.console .kpi.attention .kpi-label small { display: block; font-size: 10.5px; letter-spacing: .02em; text-transform: none; font-weight: 600; margin-top: 2px; color: var(--hy-muted); }
+body.console .kpi.attention.bad { box-shadow: inset 3px 0 0 var(--hy-bad); }
+
+/* ---------- shipment list: tracking number first, copy, risky actions apart ---------- */
+body.console .td-code strong { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+body.console .btn-copy { padding: 3px 8px; font-size: 12px; margin-left: 4px; }
+body.console .row-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+body.console .row-actions-risky { display: inline-flex; gap: 6px; margin-left: 10px; padding-left: 10px; border-left: 1px solid var(--hy-line); }
+@media (max-width: 760px) {
+  body.console .shipments-table.responsive tr { border: 1px solid var(--hy-line); border-radius: 12px; background: #0a1226; padding: 6px 2px 10px; }
+  body.console .shipments-table.responsive td.td-code { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 6px; text-align: left; font-size: 16px; padding-top: 8px; }
+  body.console .shipments-table.responsive td.td-code::before { display: none; }
+  body.console .shipments-table.responsive td.td-actions { display: block; text-align: left; padding-top: 10px; }
+  body.console .shipments-table.responsive td.td-actions::before { display: block; margin-bottom: 8px; }
+  body.console .row-actions .btn-action { flex: 1 1 auto; min-height: 44px; }
+  body.console .row-actions-risky { display: flex; width: 100%; margin: 8px 0 0; padding: 8px 0 0; border-left: 0; border-top: 1px dashed var(--hy-line-strong); }
+  body.console .btn-copy { min-height: 36px; }
+  body.console .client-table tr, body.console .courier-table tr { background: #0a1226; border-color: var(--hy-line); }
+}
+
+/* ---------- toasts: announced, centred above the phone's home bar ---------- */
+body.console .toast { max-width: min(92vw, 420px); }
+@media (max-width: 760px) {
+  body.console .toast { left: 50%; right: auto; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); text-align: center; animation: none; }
+}
+
+/* ---------- modals become full-height sheets on phones, body scrolls ---------- */
+@media (max-width: 760px) {
+  body.console .modal-overlay { padding: 0; align-items: stretch; }
+  body.console .modal-card { width: 100%; max-width: none; max-height: 100svh; height: 100%; border-radius: 0; overflow-y: auto; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- light theme ---------- */
+html[data-theme="light"] body.console { background: #f1f5fb; }
+html[data-theme="light"] body.console .header { background: #ffffff; border-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] body.console .toggle-btn { color: #44557a; }
+html[data-theme="light"] body.console .toggle-btn:hover { background: rgba(37, 99, 235, 0.07); color: #0b1a3d; }
+html[data-theme="light"] body.console .toggle-btn.active { background: rgba(37, 99, 235, 0.1); color: #0b1a3d; }
+html[data-theme="light"] body.console .nav-section { color: #6b7a96; }
+html[data-theme="light"] body.console :is(.form-card, .stats-card, .shipments-card, .clients-card, .kpi-grid, .loc-check, .modal-card, .login-box) { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 8px 24px rgba(15, 40, 90, 0.05); }
+html[data-theme="light"] body.console :is(.kpi, .stat-item, .courier-stat, .summary-grid > div, .panel, .trk-summary > div, .delete-explain, .delete-cols > div) { background: #f6f9fe; border-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] body.console .kpi-grid .kpi { background: transparent; border-color: rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] body.console :is(input, select, textarea) { background: #fff; border-color: rgba(15, 40, 90, 0.22); color: #0b1a3d; }
+html[data-theme="light"] body.console :is(input, textarea)::placeholder { color: #7b8aa6; }
+html[data-theme="light"] body.console select option { background: #fff; color: #0b1a3d; }
+html[data-theme="light"] body.console .btn-action { background: #fff; border-color: rgba(15, 40, 90, 0.2); color: #1e2f52; }
+html[data-theme="light"] body.console .btn-action.subtle { background: transparent; border-color: transparent; color: #44557a; }
+html[data-theme="light"] body.console .btn-action:hover { border-color: #2563eb; color: #1d4ed8; background: #eef4ff; }
+html[data-theme="light"] body.console :is(.btn-action.btn-danger, .btn-action.btn-delete-client) { background: #fdf0f0; border-color: rgba(185, 28, 28, 0.35); color: #991b1b; }
+html[data-theme="light"] body.console .btn-warn { background: #fff7e8; border-color: rgba(180, 83, 9, 0.35); color: #7c2d12; }
+html[data-theme="light"] body.console .btn-reset { color: #2c3e5f; }
+html[data-theme="light"] body.console :is(.shipments-table thead, .client-table thead, .courier-table thead) { background: #f3f7fe; }
+html[data-theme="light"] body.console .shipments-table tbody tr:hover { background: #f6f9fe; }
+html[data-theme="light"] body.console :is(.pill, .status-badge) { background: #eef2f7; color: #334155; }
+html[data-theme="light"] body.console :is(.pill.info, .status-in-transit, .status-out-for-delivery) { background: #e7efff; color: #1d4ed8; }
+html[data-theme="light"] body.console :is(.pill.success, .status-delivered, .status-badge.positive) { background: #e7f7ed; color: #166534; }
+html[data-theme="light"] body.console :is(.pill.warn, .status-delayed, .status-at-facility, .status-customs-inspection) { background: #fff4e0; color: #92400e; }
+html[data-theme="light"] body.console :is(.pill.danger, .status-exception, .status-cancelled, .status-badge.negative) { background: #fdecec; color: #991b1b; }
+html[data-theme="light"] body.console .pill.public { background: #e0f2fe; color: #075985; }
+html[data-theme="light"] body.console .banner.info { background: #eef4ff; border-color: rgba(37, 99, 235, 0.3); color: #1e3a8a; }
+html[data-theme="light"] body.console .banner.warn { background: #fff7e8; border-color: rgba(180, 83, 9, 0.3); color: #7c2d12; }
+html[data-theme="light"] body.console .sys-chip { background: #f3f7fe; }
+html[data-theme="light"] body.console .modal-overlay { background: rgba(15, 23, 42, 0.4); }
+html[data-theme="light"] body.console .login-overlay { background: radial-gradient(900px 500px at 70% 0%, rgba(37, 99, 235, 0.12), transparent 60%), #f1f5fb; }
+html[data-theme="light"] body.console :is(.loc-check-head h4, .ops-head h3, .ops-row-top, .ops-code, .ops-timeline strong, .ops-empty strong) { color: #0b1a3d; }
+html[data-theme="light"] body.console :is(.ops-row-route, .ops-timeline span, .ops-check, .ops-facts dd, .ops-table code) { color: #2c3e5f; }
+html[data-theme="light"] body.console .loc-check.has-issues .loc-check-head p, html[data-theme="light"] body.console :is(.issue-swapped, .issue-zero) { color: #92400e; }
+html[data-theme="light"] body.console .issue-invalid { color: #991b1b; } html[data-theme="light"] body.console .issue-mismatch { color: #9a3412; }
+html[data-theme="light"] body.console .ops-table th { background: #fff; }
+html[data-theme="light"] body.console :is(.ops-btn, .ops-back) { background: #fff; border-color: rgba(15, 40, 90, 0.2); color: #0b1a3d; }
+html[data-theme="light"] body.console .ops-btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+html[data-theme="light"] body.console .ops-row.is-selected { background: #eaf1ff; }
+html[data-theme="light"] body.console .ops-timeline li > i { box-shadow: 0 0 0 3px #fff; }
+html[data-theme="light"] body.console .admin-map { background: #e8eef8; }
+@media (max-width: 900px) { html[data-theme="light"] body.console .sticky-actions { background: rgba(255, 255, 255, 0.97); } }
+@media (max-width: 760px) {
+  html[data-theme="light"] body.console :is(.shipments-table.responsive tr, .client-table tr, .courier-table tr) { background: #fff; border-color: rgba(15, 40, 90, 0.12); }
+}

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script>try{if(localStorage.getItem("hx-theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#030712">
   <title>Hyperion Logistics | Global Shipping &amp; Shipment Tracking</title>
@@ -74,6 +75,7 @@
   <link rel="stylesheet" href="tracker/tracker.css">
   <link rel="stylesheet" href="ui/motion.css">
   <link rel="stylesheet" href="ui/site.css">
+  <link rel="stylesheet" href="ui/theme-light.css">
   <!-- Smartsupp Live Chat script -->
   <script type="text/javascript">
   var _smartsupp = _smartsupp || {};
@@ -96,6 +98,10 @@
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
         <span>Hyperion<small>Logistics</small></span>
       </a>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Switch to light theme" title="Light theme">
+        <svg class="i-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="i-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      </button>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu">
         <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
@@ -118,11 +124,16 @@
     <section class="hero3" id="track" aria-labelledby="heroTitle">
       <div class="hero3-media" role="img" aria-label="Illustration: a container ship leaving a lit port at dusk, with a cargo aircraft overhead"></div>
       <svg class="hero3-routes" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
-        <path class="r1" d="M860 600 C 1000 380, 1240 300, 1460 250" pathLength="1"/>
-        <path class="r2" d="M760 470 C 980 330, 1180 300, 1330 330" pathLength="1"/>
+        <path class="r1" id="heroR1" d="M860 600 C 1000 380, 1240 300, 1460 250" pathLength="1"/>
+        <path class="r2" id="heroR2" d="M760 470 C 980 330, 1180 300, 1330 330" pathLength="1"/>
         <path class="r3" d="M980 760 C 1180 640, 1380 600, 1600 610" pathLength="1"/>
         <circle class="halo" cx="1460" cy="250" r="10"/><circle cx="1460" cy="250" r="3.5"/>
         <circle class="halo" cx="1330" cy="330" r="9"/><circle cx="1330" cy="330" r="3"/>
+        <!-- shipment indicators: travel once along the drawn lines after the entrance, then rest at the end (no loop) -->
+        <g class="hero3-pkts">
+          <circle class="pkt" r="5" opacity="0"><set attributeName="opacity" to="1" begin="2.4s" fill="freeze"/><animateMotion dur="2.6s" begin="2.4s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".4 0 .2 1"><mpath href="#heroR1"/></animateMotion></circle>
+          <circle class="pkt" r="4" opacity="0"><set attributeName="opacity" to="1" begin="2.9s" fill="freeze"/><animateMotion dur="2.4s" begin="2.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".4 0 .2 1"><mpath href="#heroR2"/></animateMotion></circle>
+        </g>
       </svg>
       <div class="wrap">
         <div class="hero3-copy">
@@ -196,11 +207,11 @@
           <source media="(max-width: 640px)" type="image/avif" srcset="assets/freight/ship-mobile-720.avif 720w, assets/freight/ship-mobile-1080.avif 1080w" sizes="100vw">
           <source media="(max-width: 640px)" type="image/webp" srcset="assets/freight/ship-mobile-720.webp 720w, assets/freight/ship-mobile-1080.webp 1080w" sizes="100vw">
           <source media="(max-width: 640px)" srcset="assets/freight/ship-mobile-720.jpg 720w, assets/freight/ship-mobile-1080.jpg 1080w" sizes="100vw">
-          <source type="image/avif" srcset="assets/freight/ship-960.avif 960w, assets/freight/ship-1536.avif 1536w" sizes="100vw">
-          <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1536.webp 1536w" sizes="100vw">
-          <img src="assets/freight/ship-1536.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1536.jpg 1536w" sizes="100vw"
-            width="1536" height="1024" loading="lazy" decoding="async"
-            alt="Container ship loaded with stacked containers sailing out of a lit port at dusk"
+          <source type="image/avif" srcset="assets/freight/ship-960.avif 960w, assets/freight/ship-1179.avif 1179w" sizes="100vw">
+          <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1179.webp 1179w" sizes="100vw">
+          <img src="assets/freight/ship-1179.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1179.jpg 1179w" sizes="100vw"
+            width="1179" height="880" loading="lazy" decoding="async"
+            alt="Container ship stacked with colourful containers sailing across the open sea at sunset"
             onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.removeAttribute('srcset');this.src='assets/hero/freight-ship.svg'}">
         </picture>
         <div class="wrap freight-inner">
@@ -263,9 +274,9 @@
           <p class="journey-lead" data-reveal>Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
           <!-- How a shipment moves in general; not the status of any particular shipment. -->
           <ol class="journey-steps" data-reveal="line" aria-label="Shipment journey">
-            <li data-reveal><strong>Warehouse processing</strong><span>Shipments are received and prepared for dispatch, and each handover is recorded by our operations team.</span></li>
-            <li data-reveal><strong>Transit and handling</strong><span>As the shipment moves by road, air or ocean, recorded milestones and positions appear on its tracking page.</span></li>
-            <li data-reveal><strong>Final delivery</strong><span>The delivery is recorded with its time, completing the shipment&rsquo;s timeline.</span></li>
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-warehouse-96.avif 1x, assets/journey/step-warehouse-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-warehouse-96.webp 1x, assets/journey/step-warehouse-192.webp 2x"><img src="assets/journey/step-warehouse-96.jpg" srcset="assets/journey/step-warehouse-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Warehouse processing</strong><span>Shipments are received and prepared for dispatch, and each handover is recorded by our operations team.</span></li>
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-transit-96.avif 1x, assets/journey/step-transit-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-transit-96.webp 1x, assets/journey/step-transit-192.webp 2x"><img src="assets/journey/step-transit-96.jpg" srcset="assets/journey/step-transit-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Transit and handling</strong><span>As the shipment moves by road, air or ocean, recorded milestones and positions appear on its tracking page.</span></li>
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-delivery-96.avif 1x, assets/journey/step-delivery-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-delivery-96.webp 1x, assets/journey/step-delivery-192.webp 2x"><img src="assets/journey/step-delivery-96.jpg" srcset="assets/journey/step-delivery-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Final delivery</strong><span>The delivery is recorded with its time, completing the shipment&rsquo;s timeline.</span></li>
           </ol>
           <a class="link-arrow" href="#trackForm" data-focus-track data-reveal>Track a shipment</a>
         </div>
