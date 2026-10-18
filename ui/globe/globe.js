@@ -2,6 +2,7 @@
 // falls back to the Leaflet flat map (flatmap.js) if anything here is unsupported, slow or fails.
 // No basemap provider: oceans and countries are drawn from Natural Earth 110m (public domain), so there are
 // no API keys and no tile requests. Nothing moves along routes; only the camera may rotate (when motion is allowed).
+import { mapPalette, onPalette } from "./palette.js";
 import { loadCountries, routeSegments, TONE_COLORS, prefersReducedMotion } from "./geo.js";
 
 const VERSION = "5.24.0";
@@ -49,6 +50,7 @@ function smoothEnough() {
 export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs = 8000 } = {}) {
   const [lib, countries] = await Promise.all([loadMapLibre(timeoutMs), loadCountries()]);
   const reduced = prefersReducedMotion();
+  const pal = mapPalette();
   const map = new lib.Map({
     container: el,
     style: {
@@ -56,9 +58,9 @@ export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs =
       projection: { type: "globe" },
       sources: { countries: { type: "geojson", data: countries, attribution: "Natural Earth" } },
       layers: [
-        { id: "ocean", type: "background", paint: { "background-color": "#071330" } },
-        { id: "land", type: "fill", source: "countries", paint: { "fill-color": "#13254d", "fill-opacity": 0.95 } },
-        { id: "borders", type: "line", source: "countries", paint: { "line-color": "#2f4f8f", "line-width": 0.5, "line-opacity": 0.7 } }
+        { id: "ocean", type: "background", paint: { "background-color": pal.ocean } },
+        { id: "land", type: "fill", source: "countries", paint: { "fill-color": pal.land, "fill-opacity": 0.95 } },
+        { id: "borders", type: "line", source: "countries", paint: { "line-color": pal.border, "line-width": 0.5, "line-opacity": 0.7 } }
       ]
     },
     center: [12, 18], zoom: el.clientWidth < 520 ? 1.05 : 1.6, minZoom: 0.6, maxZoom: 6,
@@ -92,6 +94,7 @@ export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs =
       "circle-stroke-color": "#e2e8f0", "circle-stroke-width": ["case", ["boolean", ["get", "selected"], false], 2, 1]
     } });
 
+  const offPalette = onPalette((p) => { try { map.setPaintProperty("ocean", "background-color", p.ocean); map.setPaintProperty("land", "fill-color", p.land); map.setPaintProperty("borders", "line-color", p.border); } catch { /* style not ready */ } });
   let routes = []; let selected = null; let interacted = false; let raf = 0; let visible = true; let destroyed = false;
   const setData = () => {
     const lines = []; const pts = [];
@@ -143,6 +146,6 @@ export async function createGlobe(el, { onSelect, skipProbe = false, timeoutMs =
       if (p) map.easeTo({ center: [p.lng, p.lat], zoom: Math.max(map.getZoom(), 1.8), duration: reduced ? 0 : 900, offset: wide ? [-150, 0] : [0, -110] });
     },
     resize() { map.resize(); },
-    destroy() { destroyed = true; cancelAnimationFrame(raf); io?.disconnect(); try { map.remove(); } catch { /* ignore */ } }
+    destroy() { destroyed = true; offPalette(); cancelAnimationFrame(raf); io?.disconnect(); try { map.remove(); } catch { /* ignore */ } }
   };
 }

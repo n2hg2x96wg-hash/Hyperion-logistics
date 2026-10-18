@@ -1,7 +1,7 @@
 /* Light theme for the public pages (and the shared map/feed/carrier components used by the admin console).
    Applies only under html[data-theme="light"], set by ui/theme.js. The tokens in ui/tokens.css change most colours;
-   the rules below cover places that use fixed dark colours. Image bands (the hero scene, the freight photo and the
-   global map stage) stay dark in both themes on purpose, with their own light text. */
+   the rules below cover places that use fixed dark colours. Every section follows the chosen theme, including the
+   hero (daylight scene), the freight photo section and the global map. */
 
 html[data-theme="light"] body.site { background: var(--hy-bg-0); color: var(--hy-text); }
 
@@ -21,26 +21,69 @@ html[data-theme="light"] .nav-scrim { background: rgba(15, 23, 42, 0.35); }
   html[data-theme="light"] .nav-menu a:hover, html[data-theme="light"] .nav-menu a[aria-current="page"] { background: transparent; color: #1d4ed8; }
 }
 
-/* image bands keep their dark look; give them their own fades so they sit cleanly on the light page */
+/* hero: daylight version of the drawn scene, a light veil under the copy, navy text */
+html[data-theme="light"] .hero3 { background: #eef5fd; }
+html[data-theme="light"] .hero3-media { background-image: url("../assets/hero/scene-day.svg"); background-color: #cfe5f7; }
 html[data-theme="light"] .hero3::before {
-  background: linear-gradient(90deg, rgba(3, 7, 18, 0.92) 0%, rgba(3, 7, 18, 0.8) 30%, rgba(3, 7, 18, 0.38) 50%, rgba(3, 7, 18, 0.06) 68%, rgba(3, 7, 18, 0) 100%),
-              linear-gradient(0deg, #050a18 0%, rgba(5, 10, 24, 0) 22%); }
+  background: linear-gradient(90deg, rgba(245, 248, 254, 0.94) 0%, rgba(245, 248, 254, 0.82) 30%, rgba(245, 248, 254, 0.35) 52%, rgba(245, 248, 254, 0) 70%),
+              linear-gradient(0deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 22%); }
+html[data-theme="light"] .hero3 h1 { color: #0b1a3d; text-shadow: none; }
+html[data-theme="light"] .hero3 h1 span { color: #1d4ed8; }
+html[data-theme="light"] .hero3 .lead, html[data-theme="light"] .hero3-facts { color: #2c3e5f; }
+html[data-theme="light"] .hero3 .eyebrow { color: #1d4ed8; }
+html[data-theme="light"] .hero3-routes path { stroke: #1d4ed8; }
+html[data-theme="light"] .hero3-routes circle { fill: #1d4ed8; } html[data-theme="light"] .hero3-routes .halo { fill: #60a5fa; }
+html[data-theme="light"] .hero3-routes .pkt { fill: #fff; filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.9)); }
+html[data-theme="light"] .track-card { background: rgba(255, 255, 255, 0.94); border-color: rgba(15, 40, 90, 0.14); box-shadow: 0 24px 50px rgba(15, 40, 90, 0.14); }
+html[data-theme="light"] .track-card label, html[data-theme="light"] .track-hint { color: #44557a; }
+html[data-theme="light"] :is(.track-form2 input, .track-band .search-group input) { background: #fff; color: #0b1a3d; border-color: rgba(15, 40, 90, 0.25); }
+html[data-theme="light"] :is(.track-form2 input, .track-band .search-group input)::placeholder { color: #7b8aa6; }
+html[data-theme="light"] #error.show { color: #b91c1c; }
 @media (max-width: 640px) {
-  html[data-theme="light"] .hero3::before { background: linear-gradient(180deg, rgba(3, 7, 18, 0) 0%, rgba(3, 7, 18, 0) 26%, rgba(3, 7, 18, 0.55) 40%, rgba(3, 7, 18, 0.85) 52%, #050a18 70%); }
+  html[data-theme="light"] .hero3-media { background-image: url("../assets/hero/scene-mobile-day.svg"); background-color: var(--hy-bg-0); }
+  html[data-theme="light"] .hero3::before { background: linear-gradient(180deg, rgba(245, 248, 254, 0) 0%, rgba(245, 248, 254, 0) 26%, rgba(245, 248, 254, 0.6) 40%, rgba(245, 248, 254, 0.9) 52%, var(--hy-bg-0) 70%); }
+  html[data-theme="light"] .hero3 h1 { text-shadow: 0 1px 12px rgba(245, 248, 254, 0.9); }
 }
-/* inside the dark bands, the dark-theme colours apply (text, lines, outline buttons) */
-html[data-theme="light"] :is(.hero3, .freight-stage, .track-band, .cc-stage) {
-  --hy-text: #e6ecf8; --hy-text-2: #b6c3dc; --hy-muted: #8394b4; --hy-blue-2: #60a5fa;
-  --hy-line: rgba(120, 150, 210, 0.16); --hy-line-strong: rgba(120, 160, 230, 0.28); color-scheme: dark; }
-html[data-theme="light"] :is(.hero3, .freight-stage) .btn-ghost { color: #fff !important; background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.4); backdrop-filter: blur(6px); }
-html[data-theme="light"] :is(.hero3, .freight-stage) .btn-ghost:hover { border-color: #fff; background: rgba(255, 255, 255, 0.12); }
+
+/* freight: the photo keeps its colours; the copy sits on a light veil */
+html[data-theme="light"] .freight-stage { background: linear-gradient(180deg, #eef5fd, #e3eefb); }
 html[data-theme="light"] .freight-stage::before {
-  background: linear-gradient(90deg, rgba(3, 8, 22, 0.9) 0%, rgba(3, 8, 22, 0.6) 32%, rgba(3, 8, 22, 0.08) 56%, rgba(3, 8, 22, 0) 72%),
-              linear-gradient(0deg, rgba(3, 7, 18, 0.95) 0%, rgba(3, 7, 18, 0) 28%), linear-gradient(180deg, #050a18 0%, rgba(5, 10, 24, 0) 18%); }
+  background: linear-gradient(90deg, rgba(245, 248, 254, 0.96) 0%, rgba(245, 248, 254, 0.78) 32%, rgba(245, 248, 254, 0.1) 56%, rgba(245, 248, 254, 0) 72%),
+              linear-gradient(0deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 24%), linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 16%); }
+html[data-theme="light"] .freight-copy h2 { color: #0b1a3d; text-shadow: none; }
+html[data-theme="light"] .freight-copy h2 span { color: #1d4ed8; }
+html[data-theme="light"] .freight-lead { color: #2c3e5f; }
+html[data-theme="light"] .freight-stage .eyebrow { color: #1d4ed8; }
 @media (max-width: 900px) {
-  html[data-theme="light"] .freight-stage { background: #050b1c; }
-  html[data-theme="light"] .freight-media::after { background: linear-gradient(180deg, rgba(5, 11, 28, 0) 55%, #050b1c 100%); }
+  html[data-theme="light"] .freight-stage { background: var(--hy-bg-0); }
+  html[data-theme="light"] .freight-media { border-radius: 0 0 18px 18px; }
+  html[data-theme="light"] .freight-media::after { background: linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 20%, rgba(245, 248, 254, 0) 70%, var(--hy-bg-0) 100%); }
 }
+html[data-theme="light"] .freight-routes { background: rgba(255, 255, 255, 0.92); border-color: rgba(15, 40, 90, 0.12); color: #0b1a3d; box-shadow: 0 18px 40px rgba(15, 40, 90, 0.14); }
+html[data-theme="light"] .freight-routes h3, html[data-theme="light"] .fr-route { color: #0b1a3d; }
+html[data-theme="light"] :is(.fr-sub, .fr-now) { color: #51627f; }
+html[data-theme="light"] .fr-list li { border-top-color: rgba(15, 40, 90, 0.1); }
+html[data-theme="light"] .fr-route i { background: repeating-linear-gradient(90deg, #2563eb 0 6px, transparent 6px 10px); }
+html[data-theme="light"] .fr-route i::after { border-left-color: #2563eb; }
+html[data-theme="light"] .fr-more { color: #1d4ed8 !important; }
+html[data-theme="light"] .fr-pill { background: #e7efff; color: #1d4ed8; } html[data-theme="light"] .fr-pill.tone-success { background: #e7f7ed; color: #166534; }
+html[data-theme="light"] .fr-pill.tone-warn { background: #fff4e0; color: #92400e; } html[data-theme="light"] .fr-pill.tone-danger { background: #fdecec; color: #991b1b; }
+html[data-theme="light"] .fr-pill.tone-neutral { background: #eef2f7; color: #334155; }
+
+/* tracking pages: the band uses the daylight scene */
+html[data-theme="light"] .track-band::before { background: linear-gradient(90deg, rgba(245, 248, 254, 0.96), rgba(245, 248, 254, 0.72)), #cfe5f7 url("../assets/hero/scene-day.svg") center 62% / cover no-repeat; }
+html[data-theme="light"] .track-band h1 { color: #0b1a3d; }
+html[data-theme="light"] .track-band p { color: #2c3e5f; }
+html[data-theme="light"] .track-band .eyebrow { color: #1d4ed8; }
+
+/* global map: the canvas palette follows the theme (ui/globe/palette.js); overlays go light */
+html[data-theme="light"] :is(.cc-stage, .cc-map, .cc-map.cc-flat, .cc-map .leaflet-container) { background: #cfe2f5; }
+html[data-theme="light"] .cc-stage { border-color: rgba(15, 40, 90, 0.12); }
+html[data-theme="light"] :is(.cc-badge, .cc-legend, .cc-empty-note) { background: rgba(255, 255, 255, 0.9); color: #2c3e5f; border-color: rgba(15, 40, 90, 0.12); }
+html[data-theme="light"] .cc-card { background: rgba(255, 255, 255, 0.97); color: #0b1a3d; border-color: rgba(15, 40, 90, 0.15); }
+html[data-theme="light"] .cc-map .leaflet-control-attribution, html[data-theme="light"] .cc-map .maplibregl-ctrl-attrib { background: rgba(255, 255, 255, 0.8) !important; color: #51627f !important; }
+html[data-theme="light"] .cc-map .leaflet-control-attribution a { color: #1d4ed8 !important; }
+
 html[data-theme="light"] .freight-services { background: rgba(255, 255, 255, 0.92); border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 24px 50px rgba(15, 40, 90, 0.16); }
 html[data-theme="light"] .freight-card { background: #fff; border-color: rgba(15, 40, 90, 0.1); }
 html[data-theme="light"] .freight-card:hover { border-color: rgba(37, 99, 235, 0.45); }
@@ -58,7 +101,6 @@ html[data-theme="light"] :is(.section-head h2, .intro h2, .steps h3, .service h3
 html[data-theme="light"] :is(.section-head p, .intro p, .steps p, .service p, .caps span, .journey-steps span) { color: #44557a; }
 html[data-theme="light"] .journey-lead { color: #2c3e5f; }
 html[data-theme="light"] .eyebrow { color: #1d4ed8; }
-html[data-theme="light"] .hero3 .eyebrow, html[data-theme="light"] .freight-stage .eyebrow, html[data-theme="light"] .track-band .eyebrow { color: #93c5fd; }
 html[data-theme="light"] .service { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 10px 26px rgba(15, 40, 90, 0.06); }
 html[data-theme="light"] .caps li, html[data-theme="light"] .steps li { background: #fff; border-color: rgba(15, 40, 90, 0.1); box-shadow: 0 8px 22px rgba(15, 40, 90, 0.05); }
 html[data-theme="light"] .caps .ico { background: #e7efff; color: #1d4ed8; }

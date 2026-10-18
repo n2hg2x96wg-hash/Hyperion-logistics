@@ -224,6 +224,14 @@
               <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
             </div>
           </div>
+          <!-- Filled only from shipments operations has published to the homepage (same masked, city-level data as the
+               Global activity map). Hidden when there are none: no example routes or invented ports. -->
+          <aside class="freight-routes" id="freightRoutes" hidden aria-labelledby="freightRoutesTitle">
+            <h3 id="freightRoutesTitle">Recorded routes</h3>
+            <p class="fr-sub">Published shipments · tracking numbers masked · city level</p>
+            <ol class="fr-list"></ol>
+            <a class="fr-more" href="#activity">See them on the map</a>
+          </aside>
         </div>
       </div>
       <div class="wrap">
@@ -468,11 +476,21 @@
       document.documentElement.dataset.activity = state;
     };
     setActivity("loading");
+    // Freight section: up to three real published routes from the same response (nothing when there are none).
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    function renderFreightRoutes(routes) {
+      const box = document.getElementById("freightRoutes");
+      const list = (Array.isArray(routes) ? routes : []).filter((r) => r && (r.originLabel || r.destinationLabel)).slice(0, 3);
+      box.hidden = !list.length;
+      box.querySelector(".fr-list").innerHTML = list.map((r) => `<li><div class="fr-top"><strong>${esc(r.ref)}</strong><span class="fr-pill tone-${esc(r.status?.tone || "neutral")}">${esc(r.status?.label || "")}</span></div>
+        <div class="fr-route"><span>${esc(r.originLabel || "Origin not set")}</span><i aria-hidden="true"></i><span>${esc(r.destinationLabel || "Destination not set")}</span></div>
+        ${r.current?.place ? `<div class="fr-now">Last recorded at ${esc(r.current.place)}</div>` : ""}</li>`).join("");
+    }
     import("./ui/globe/command-center.js").then(({ mountCommandCenter }) => mountCommandCenter({
       mapEl: document.getElementById("ccMap"), feedEl: document.getElementById("ccFeed"),
       tableEl: document.getElementById("ccTable"),
       cardEl: document.getElementById("ccCard"), statusEl: document.getElementById("ccStatus"), mode: "public", pollMs: 30000,
-      onData: (d) => setActivity(Array.isArray(d?.routes) && d.routes.length ? "ready" : "empty"),
+      onData: (d) => { setActivity(Array.isArray(d?.routes) && d.routes.length ? "ready" : "empty"); renderFreightRoutes(d?.routes); },
       load: async () => {
         try {
           const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } });

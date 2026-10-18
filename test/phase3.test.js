@@ -301,7 +301,7 @@ test("homepage shared shipments: hidden unless public data loaded with at least 
   assert.match(html, /document\.documentElement\.dataset\.activity = state;[\s\S]*setActivity\("loading"\);/, "links to the section follow it");
   assert.match(fs.readFileSync(new URL("../ui/site-v2.css", import.meta.url), "utf8"), /html\[data-activity\]:not\(\[data-activity="ready"\]\) [^{]*a\[href="\/#activity"\]\) \{ display: none; \}/);
   const script = html.slice(html.indexOf("const activity = document.getElementById(\"activity\")"));
-  assert.match(script, /onData: \(d\) => setActivity\(Array\.isArray\(d\?\.routes\) && d\.routes\.length \? "ready" : "empty"\)/);
+  assert.match(script, /onData: \(d\) => \{ setActivity\(Array\.isArray\(d\?\.routes\) && d\.routes\.length \? "ready" : "empty"\);/);
   assert.match(script, /if \(activity\.dataset\.state !== "ready"\) setActivity\("error"\)/, "a failed load is recorded as an error");
   assert.match(script, /throw err;/, "the command center still sees the failure (status text, retry back-off)");
   assert.match(script, /const show = state === "ready";/);
@@ -455,4 +455,49 @@ test("tracker: manual check never overlaps, reports its real outcome, and the ti
   assert.match(t, /let timelineOrder = "oldest";/);
   assert.match(t, /const latestId = items\[0\]\?\.id;/, "'Latest' still marks the newest recorded event in either order");
   assert.match(t, /\$\{loc\?\.sourceLabel \? ` · \$\{esc\(loc\.sourceLabel\)\}` : ""\}/, "the location says how it was recorded");
+});
+
+test("stage photos and 3D models: every status maps safely, files exist, captions are honest, Three.js only on demand", async () => {
+  const { stagePhoto, stageModel, routeOverlaySvg, modelCaption } = await import("../tracker/scene.js");
+  const { STATUS } = await import("../shared/status.js");
+  const sea = { carrier: { name: "Maersk" } }; const courier = { carrier: { name: "DHL" } };
+  const expectPhoto = { CREATED: "dc", PROCESSING: "bays", AT_FACILITY: "forklift", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk", PICKED_UP: null, IN_TRANSIT: null, DELIVERED: null, DELAYED: null, EXCEPTION: null, CANCELLED: null };
+  for (const code of Object.values(STATUS)) {
+    assert.equal(stagePhoto({ status: { code }, ...courier })?.key ?? null, expectPhoto[code], code);
+    const p = stagePhoto({ status: { code }, ...courier });
+    if (p) for (const w of p.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(fs.existsSync(new URL(`../assets/stages/${p.file}-${w}.${ext}`, import.meta.url)), `${p.file}-${w}.${ext}`);
+  }
+  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, ...sea }).key, "ship");
+  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).key, "air");
+  assert.equal(stagePhoto({ status: { code: "SOMETHING_NEW" } }), null, "unknown status keeps the neutral drawing");
+  assert.equal(stageModel({ status: { code: "AT_FACILITY" } }), "warehouse");
+  assert.equal(stageModel({ status: { code: "IN_TRANSIT" }, ...sea }), "ship");
+  assert.equal(stageModel({ status: { code: "IN_TRANSIT" }, ...courier }), null);
+  for (const code of ["DELIVERED", "DELAYED", "EXCEPTION", "CANCELLED", "SOMETHING_NEW"]) assert.equal(stageModel({ status: { code } }), null, code);
+  assert.match(modelCaption("warehouse"), /typical warehouse for this stage, not the actual facility or vehicle/);
+  // overlay: labels only from recorded places, schematic (no coordinates), at most 4 + "N earlier"
+  const svg = routeOverlaySvg({ status: { code: "IN_TRANSIT" }, origin: "Shanghai, China", destination: "Rotterdam, Netherlands",
+    timeline: ["A", "B", "C", "D"].map((p, i) => ({ location: `Port ${p}`, timestamp: `2026-10-0${i + 1}T00:00:00Z`, title: "In Transit" })) });
+  const texts = [...svg.matchAll(/<text[^>]*>([^<]+)<\/text>/g)].map((m) => m[1]);
+  assert.deepEqual(texts.slice(0, 4), ["Shanghai", "Port C", "Port D", "Rotterdam"]); assert.match(texts[4], /\+2 earlier checkpoints/);
+  assert.equal(routeOverlaySvg({ status: { code: "CREATED" }, timeline: [] }), "", "no route without recorded places");
+  const s3d = read("tracker/scene3d.js");
+  assert.match(s3d, /const THREE_URL = "https:\/\/cdn\.jsdelivr\.net\/npm\/three@0\.160\.0\/build\/three\.module\.min\.js";/);
+  assert.ok(!/^import /m.test(s3d), "no static imports: Three.js loads only when a visitor opens the 3D view");
+  assert.match(s3d, /if \(!webglAvailable\(\)\) throw/); assert.match(s3d, /renderer\.dispose\(\)/);
+  assert.match(read("tracker/tracker.js"), /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\)/);
+  assert.ok(!/localStorage|sessionStorage|document\.cookie/.test(s3d));
+  assert.match(read("assets/stages/CREDITS.md"), /rights to be confirmed/i);
+});
+
+test("light theme: day scenes for hero and tracking band, map palette follows the theme, no forced dark bands", () => {
+  const css = read("ui/theme-light.css");
+  assert.match(css, /scene-day\.svg/); assert.match(css, /scene-mobile-day\.svg/);
+  assert.ok(!/color-scheme: dark/.test(css), "no section is forced dark in the light theme");
+  for (const f of ["assets/hero/scene-day.svg", "assets/hero/scene-mobile-day.svg"]) { const svg = read(f); assert.ok(svg.length < 48000); assert.ok(!/<image|href="http/.test(svg)); }
+  assert.match(read("ui/globe/palette.js"), /data-theme|dataset\.theme/);
+  for (const f of ["ui/globe/globe.js", "ui/globe/flatmap.js"]) assert.match(read(f), /onPalette\(/, f);
+  const html = read("index.html");
+  assert.match(html, /<aside class="freight-routes" id="freightRoutes" hidden/);
+  assert.match(html, /renderFreightRoutes\(d\?\.routes\)/, "freight panel is fed only by the public API response");
 });
