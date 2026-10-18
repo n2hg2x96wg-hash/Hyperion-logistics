@@ -149,7 +149,7 @@ for (const w of WIDTHS) {
     assert.match(src, w <= 640 ? /assets\/freight\/ship-mobile-\d+\.(avif|webp|jpg)$/ : /assets\/freight\/ship-\d+\.(avif|webp|jpg)$/, src);
     assert.ok(await noOverflow(page), `overflow at ${w}px`);
     const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
-    assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("carriers"), order.join(","));
+    assert.ok(order.indexOf("activity") + 1 === order.indexOf("freight") && order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("services"), order.join(","));
     assert.equal(await page.locator("#ccStats, [data-stat], [data-countries]").count(), 0, "public statistics block is hidden");
     for (const id of ["#ccMap", "#ccFeed", "#ccTable"]) assert.equal(await page.locator(id).count(), 1, `${id} kept`);
     for (const b of await page.$$eval("#freight .freight-ctas .btn", (bs) => bs.map((x) => { const r = x.getBoundingClientRect(); return [r.left, r.right, r.height]; }))) {
@@ -180,7 +180,8 @@ test("freight showcase: a photo that fails to load falls back to the illustratio
   const page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
   // simulate a broken photo even before one is installed: point the image at a blocked file
-  await page.$eval("#freight img", (i) => { i.loading = "eager"; i.src = "assets/freight/missing.webp"; });
+  // (the photo now sits close to the top, so its own failed request may already have triggered the fallback)
+  await page.$eval("#freight img", (i) => { if (!i.dataset.fallback) { i.loading = "eager"; i.src = "assets/freight/missing.webp"; } });
   await page.waitForFunction(() => { const i = document.querySelector("#freight img"); return i.complete && i.naturalWidth > 0 && i.src.endsWith("freight-ship.svg"); }, null, { timeout: 10000 });
   await ctx.close();
 });
@@ -191,7 +192,7 @@ for (const w of WIDTHS) {
     const page = await ctx.newPage(); const errors = watchErrors(page);
     await page.goto(`${base}/index.html?map=flat`);
     const order = await page.evaluate(() => [...document.querySelectorAll("main > section")].map((s) => s.id));
-    assert.ok(order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("carriers"), order.join(","));
+    assert.ok(order.indexOf("freight") + 1 === order.indexOf("journey") && order.indexOf("journey") + 1 === order.indexOf("services"), order.join(","));
     assert.equal(await page.locator("#ccStats, [data-stat]").count(), 0, "statistics block stays hidden");
     // the frame reserves its size before the lazy image arrives
     const before = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
@@ -207,6 +208,13 @@ for (const w of WIDTHS) {
     assert.equal(st.op, "1");
     assert.match(st.src, w <= 640 ? /assets\/journey\/handover-mobile-\d+\.(avif|webp|jpg)$/ : /assets\/journey\/handover-\d+\.(avif|webp|jpg)$/, st.src);
     assert.ok(await noOverflow(page), `overflow at ${w}px`);
+    await page.waitForFunction(() => [...document.querySelectorAll("#journey .journey-steps > li")].every((li) => li.classList.contains("is-visible")), null, { timeout: 5000 });
+    await page.waitForTimeout(1500);
+    const steps = await page.$$eval("#journey .journey-steps > li", (ls) => ls.map((l) => ({ t: l.querySelector("strong").textContent, op: getComputedStyle(l).opacity, d: parseFloat(getComputedStyle(l).transitionDelay) })));
+    assert.deepEqual(steps.map((x) => x.t), ["Warehouse processing", "Transit and handling", "Final delivery"]);
+    assert.ok(steps.every((x) => x.op === "1"), "every milestone visible");
+    assert.ok(steps[0].d < steps[1].d && steps[1].d < steps[2].d, "milestones appear in sequence");
+    assert.ok(["none", "matrix(1, 0, 0, 1, 0, 0)"].includes(await page.$eval("#journey .journey-steps", (o) => getComputedStyle(o, "::after").transform)), "connector fully drawn");
     await shot(page, `journey-${w}`);
     await page.click("#journey .link-arrow");
     await page.waitForFunction(() => document.activeElement?.id === "trackingInput", null, { timeout: 5000 });
@@ -224,14 +232,101 @@ test("logistics journey: reduced motion shows everything at once; a failed image
   const st = await page.$eval(".journey-frame", (f) => { const cs = getComputedStyle(f); return { op: cs.opacity, clip: cs.clipPath, anim: getComputedStyle(f.querySelector(".journey-parallax")).animationName }; });
   assert.equal(st.op, "1"); assert.equal(st.clip, "none"); assert.equal(st.anim, "none");
   assert.equal(await page.$eval("#journeyTitle", (h) => getComputedStyle(h).opacity), "1", "text visible without scrolling");
+  assert.deepEqual(await page.$$eval("#journey .journey-steps > li", (ls) => ls.map((l) => getComputedStyle(l).opacity)), ["1", "1", "1"], "milestones visible without scrolling");
+  assert.equal(await page.$eval("#journey .journey-steps", (o) => getComputedStyle(o, "::after").transform), "none", "connector drawn without animation");
+  assert.equal(await page.$eval(".hero3-media", (m) => getComputedStyle(m).animationName), "none", "no hero entrance animation");
   await page.locator("#journey").scrollIntoViewIfNeeded();
-  await page.$eval("#journey img", (i) => { i.loading = "eager"; });
+  await page.evaluate(() => { const i = document.querySelector("#journey img"); if (i) i.loading = "eager"; }); // may already have failed
   await page.waitForFunction(() => document.querySelector(".journey-frame").classList.contains("is-missing"), null, { timeout: 10000 });
   assert.equal(await page.locator("#journey img").count(), 0, "broken image removed");
   const h = await page.$eval("#journey .journey-parallax", (e) => e.getBoundingClientRect().height);
   assert.ok(h > 100, "panel keeps its size");
   await ctx.close();
 });
+
+test("shared shipments: published shipments show masked rows; an empty list hides the whole section; a failed load is an error, not empty", async () => {
+  const visible = (page) => page.evaluate(() => { const s = document.getElementById("activity"); return { hidden: s.hidden, state: s.dataset.state, h: s.getBoundingClientRect().height,
+    nav: [...document.querySelectorAll('a[href="/#activity"]')].map((a) => a.offsetParent !== null) }; });
+  // 1. real data: the seeded store has one shipment published for the homepage
+  let ctx = await newContext({ width: 390, height: 844 });
+  let page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("activity").dataset.state === "ready", null, { timeout: 10000 });
+  let v = await visible(page);
+  assert.equal(v.hidden, false); assert.ok(v.h > 200);
+  const rows = await page.$$eval("#ccTable tr", (rs) => rs.map((r) => r.textContent));
+  assert.ok(rows.length >= 1 && !rows.some((t) => t.includes("No shipments")), rows.join(" | "));
+  const text = await page.textContent("#activity");
+  assert.ok(!text.includes(codes.good) && !text.includes(codes.swapped) && !text.includes(codes.none), "full tracking numbers never shown");
+  assert.ok(text.includes("••"), "codes are masked");
+  assert.ok(!text.includes("Lagos") && !text.includes("Somewhere"), "unpublished shipments are not shown");
+  assert.ok(await noOverflow(page));
+  await shot(page, "activity-ready-390");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+
+  // 2. genuinely empty public list (same response shape as the API): the section and its links disappear without a gap
+  ctx = await newContext({ width: 390, height: 844 });
+  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 200, contentType: "application/json",
+    body: JSON.stringify({ routes: [], activity: [], stats: { active: 0, inTransit: 0, delivered: 0, countriesActive: 0, activeCountries: [] }, version: "empty", generatedAt: new Date().toISOString() }) }));
+  page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("activity").dataset.state === "empty", null, { timeout: 10000 });
+  v = await visible(page);
+  assert.equal(v.hidden, true); assert.equal(v.h, 0, "no reserved space"); assert.ok(v.nav.every((x) => !x), "links to the section hidden");
+  const gap = await page.evaluate(() => document.getElementById("freight").getBoundingClientRect().top - document.getElementById("track").getBoundingClientRect().bottom
+    - document.getElementById("results-section").getBoundingClientRect().height);
+  assert.ok(gap >= 0 && gap < 4, `hero/results flow straight into freight (gap ${gap}px)`);
+  assert.ok(await noOverflow(page));
+  await shot(page, "activity-empty-390");
+  await ctx.close();
+
+  // 3. the request fails: recorded as an error, the section stays hidden, nothing on the page breaks
+  ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.route(/\/api\/public\?view=overview/, (r) => r.fulfill({ status: 503, contentType: "application/json", body: '{"error":"unavailable"}' }));
+  page = await ctx.newPage();
+  await page.goto(`${base}/index.html?map=flat`);
+  await page.waitForFunction(() => document.getElementById("activity").dataset.state === "error", null, { timeout: 10000 });
+  v = await visible(page);
+  assert.equal(v.hidden, true);
+  assert.match(await page.textContent("#ccStatus"), /temporarily unavailable/i, "the failure is reported as unavailable, not as 'no shipments'");
+  await page.fill("#trackingInput", codes.good); await page.click(".btn-track");
+  await page.waitForFunction((c) => document.getElementById("trackerRoot").textContent.includes(c), codes.good, { timeout: 15000 }); // tracking unaffected
+  await ctx.close();
+});
+
+for (const w of [390, 768, 1280]) {
+  test(`hero at ${w}px: scene visible, readable copy, CTA focuses the real tracking form`, async () => {
+    const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/index.html?map=flat`);
+    const hero = await page.evaluate(() => {
+      const m = getComputedStyle(document.querySelector(".hero3-media"));
+      const h1 = document.getElementById("heroTitle").getBoundingClientRect();
+      return { bg: m.backgroundImage, h1: [h1.left, h1.right], text: document.getElementById("heroTitle").textContent };
+    });
+    assert.match(hero.bg, w <= 640 ? /assets\/hero\/scene-mobile\.svg/ : /assets\/hero\/scene\.svg/);
+    assert.equal(hero.text, "Every shipment. Every milestone. One clear view.");
+    assert.ok(hero.h1[0] >= 0 && hero.h1[1] <= w + 1, `headline fits: ${hero.h1}`);
+    const scene = await page.evaluate(async (url) => (await fetch(url)).status, w <= 640 ? "/assets/hero/scene-mobile.svg" : "/assets/hero/scene.svg");
+    assert.equal(scene, 200);
+    await page.waitForTimeout(1800); // entrance animation finished
+    assert.deepEqual(await page.$$eval(".hero3-copy > *", (els) => els.map((e) => getComputedStyle(e).opacity)).then((o) => [...new Set(o)]), ["1"], "all hero copy visible after the entrance");
+    assert.ok(await noOverflow(page));
+    await shot(page, `hero-${w}`);
+    // CTA → focus the input; unknown code → clear message; real code → real result
+    await page.click('.hero3-ctas a[data-focus-track]');
+    await page.waitForFunction(() => document.activeElement?.id === "trackingInput", null, { timeout: 5000 });
+    await page.fill("#trackingInput", "HY-000000");
+    await page.press("#trackingInput", "Enter");
+    await page.waitForFunction(() => /Tracking number not found/.test(document.getElementById("trackerRoot").textContent), null, { timeout: 10000 });
+    await page.fill("#trackingInput", codes.good);
+    await page.click(".btn-track");
+    await page.waitForFunction((c) => document.getElementById("trackerRoot").textContent.includes(c), codes.good, { timeout: 15000 });
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}
 
 test("tracking from the hero shows the shipment and keeps markers inside the map", async () => {
   for (const w of [390, 1280]) {

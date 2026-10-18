@@ -116,7 +116,14 @@
 
   <main>
     <section class="hero3" id="track" aria-labelledby="heroTitle">
-      <div class="hero3-media" role="img" aria-label="Container port at night with a cargo aircraft on approach"></div>
+      <div class="hero3-media" role="img" aria-label="Illustration: a container ship leaving a lit port at dusk, with a cargo aircraft overhead"></div>
+      <svg class="hero3-routes" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
+        <path class="r1" d="M860 600 C 1000 380, 1240 300, 1460 250" pathLength="1"/>
+        <path class="r2" d="M760 470 C 980 330, 1180 300, 1330 330" pathLength="1"/>
+        <path class="r3" d="M980 760 C 1180 640, 1380 600, 1600 610" pathLength="1"/>
+        <circle class="halo" cx="1460" cy="250" r="10"/><circle cx="1460" cy="250" r="3.5"/>
+        <circle class="halo" cx="1330" cy="330" r="9"/><circle cx="1330" cy="330" r="3"/>
+      </svg>
       <div class="wrap">
         <div class="hero3-copy">
           <p class="eyebrow">Hyperion Logistics · Global shipping</p>
@@ -146,6 +153,124 @@
     </section>
 
     <section class="tracker-results tracker-results2" id="results-section" aria-label="Tracking results"><div class="wrap"><div id="trackerRoot"></div></div></section>
+
+    <!-- Optional: shown only when operations has published at least one shipment for the homepage (see the script below).
+         Hidden while loading, when nothing is published, and when the data cannot be loaded. -->
+    <section class="section" id="activity" aria-labelledby="activityTitle" hidden data-state="loading">
+      <div class="wrap">
+        <div class="section-head" data-reveal>
+          <div><div class="kicker">Global activity</div><h2 id="activityTitle">Shipments moving through Hyperion</h2>
+            <p>A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
+        </div>
+        <div class="cc">
+          <div class="cc-stage">
+            <div class="cc-map" id="ccMap" role="region" aria-label="World map of publicly shared shipment routes"></div>
+            <div class="cc-empty-note">No shipments are shared publicly right now. Shared routes appear here as operations publishes them.</div>
+            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="ccStatus">Loading shipment data…</span></span></div>
+            <div class="cc-overlay cc-legend" aria-label="Map legend">
+              <span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span>
+              <span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line"></i>Travelled</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span>
+            </div>
+            <div class="cc-card" id="ccCard" hidden aria-live="polite"></div>
+          </div>
+          <aside class="cc-side">
+            <div class="cc-feed-wrap">
+              <div class="cc-feed-head"><h3>Recent updates</h3></div>
+              <ul class="cc-feed" id="ccFeed" aria-live="polite"><li class="cc-feed-empty">Loading…</li></ul>
+            </div>
+          </aside>
+        </div>
+        <div class="cc-table-wrap">
+          <div class="cc-table-head"><h3>Shared shipments</h3><span>Tracking numbers masked · city level</span></div>
+          <table class="cc-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Route</th><th scope="col">Status</th><th scope="col">Last update</th></tr></thead>
+            <tbody id="ccTable"><tr class="cc-row-empty"><td colspan="4">Loading…</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="freight" id="freight" aria-labelledby="freightTitle">
+      <div class="freight-stage">
+        <!-- Freight photo (see assets/freight/README.md and CREDITS.md). Phones get a crop centred on the ship.
+             If an image fails to load, the original illustration is shown instead. -->
+        <picture class="freight-media" data-kind="photo" data-reveal="fade">
+          <source media="(max-width: 640px)" type="image/avif" srcset="assets/freight/ship-mobile-720.avif 720w, assets/freight/ship-mobile-1080.avif 1080w" sizes="100vw">
+          <source media="(max-width: 640px)" type="image/webp" srcset="assets/freight/ship-mobile-720.webp 720w, assets/freight/ship-mobile-1080.webp 1080w" sizes="100vw">
+          <source media="(max-width: 640px)" srcset="assets/freight/ship-mobile-720.jpg 720w, assets/freight/ship-mobile-1080.jpg 1080w" sizes="100vw">
+          <source type="image/avif" srcset="assets/freight/ship-960.avif 960w, assets/freight/ship-1536.avif 1536w" sizes="100vw">
+          <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1536.webp 1536w" sizes="100vw">
+          <img src="assets/freight/ship-1536.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1536.jpg 1536w" sizes="100vw"
+            width="1536" height="1024" loading="lazy" decoding="async"
+            alt="Container ship loaded with stacked containers sailing out of a lit port at dusk"
+            onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.removeAttribute('srcset');this.src='assets/hero/freight-ship.svg'}">
+        </picture>
+        <div class="wrap freight-inner">
+          <div class="freight-copy" data-reveal>
+            <p class="eyebrow">Hyperion Logistics · Global freight</p>
+            <h2 id="freightTitle">Global freight. <span>One clear view.</span></h2>
+            <p class="freight-lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
+            <div class="freight-ctas">
+              <a class="btn btn-primary" href="#services">Explore freight services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+              <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wrap">
+        <ul class="freight-services" data-reveal-stagger aria-label="Freight services">
+          <li data-reveal><a href="#svc-ocean" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/><path d="M5 14 4 10h16l-1 4"/><path d="M8 10V6h4v4M12 7h4v3"/></svg></span>
+            <span class="fc-text"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-air" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z"/></svg></span>
+            <span class="fc-text"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-express" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M1 10h4M1 13h3"/></svg></span>
+            <span class="fc-text"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+          <li data-reveal><a href="#svc-road" class="freight-card">
+            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6M9 11h6"/></svg></span>
+            <span class="fc-text"><strong>Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></span>
+            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="journey" id="journey" aria-labelledby="journeyTitle">
+      <svg class="journey-route" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true" data-reveal="fade">
+        <path d="M-10 96 C 240 96, 360 24, 600 30 S 980 100, 1210 40" pathLength="1"/>
+      </svg>
+      <div class="wrap journey-inner">
+        <figure class="journey-frame" data-reveal="clip">
+          <div class="journey-parallax">
+            <picture class="journey-media">
+              <source media="(max-width: 640px)" type="image/avif" srcset="assets/journey/handover-mobile-600.avif 600w, assets/journey/handover-mobile-851.avif 851w" sizes="100vw">
+              <source media="(max-width: 640px)" type="image/webp" srcset="assets/journey/handover-mobile-600.webp 600w, assets/journey/handover-mobile-851.webp 851w" sizes="100vw">
+              <source media="(max-width: 640px)" srcset="assets/journey/handover-mobile-600.jpg 600w, assets/journey/handover-mobile-851.jpg 851w" sizes="100vw">
+              <source type="image/avif" srcset="assets/journey/handover-720.avif 720w, assets/journey/handover-1179.avif 1179w" sizes="(max-width: 900px) 100vw, 720px">
+              <source type="image/webp" srcset="assets/journey/handover-720.webp 720w, assets/journey/handover-1179.webp 1179w" sizes="(max-width: 900px) 100vw, 720px">
+              <img src="assets/journey/handover-1179.jpg" srcset="assets/journey/handover-720.jpg 720w, assets/journey/handover-1179.jpg 1179w" sizes="(max-width: 900px) 100vw, 720px"
+                width="1179" height="638" loading="lazy" decoding="async"
+                alt="Illustration: a parcel handed over at a delivery van outside a warehouse"
+                onerror="this.closest('figure').classList.add('is-missing');this.closest('picture').remove()">
+            </picture>
+          </div>
+        </figure>
+        <div class="journey-copy" data-reveal-stagger>
+          <p class="eyebrow" data-reveal>The logistics journey</p>
+          <h2 id="journeyTitle" data-reveal>From the warehouse to the doorstep.</h2>
+          <p class="journey-lead" data-reveal>Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
+          <!-- How a shipment moves in general; not the status of any particular shipment. -->
+          <ol class="journey-steps" data-reveal="line" aria-label="Shipment journey">
+            <li data-reveal><strong>Warehouse processing</strong><span>Shipments are received and prepared for dispatch, and each handover is recorded by our operations team.</span></li>
+            <li data-reveal><strong>Transit and handling</strong><span>As the shipment moves by road, air or ocean, recorded milestones and positions appear on its tracking page.</span></li>
+            <li data-reveal><strong>Final delivery</strong><span>The delivery is recorded with its time, completing the shipment&rsquo;s timeline.</span></li>
+          </ol>
+          <a class="link-arrow" href="#trackForm" data-focus-track data-reveal>Track a shipment</a>
+        </div>
+      </div>
+    </section>
 
     <section class="section" id="services" aria-labelledby="servicesTitle">
       <div class="wrap">
@@ -229,122 +354,7 @@
       </div>
     </section>
 
-    <section class="section" id="activity" aria-labelledby="activityTitle">
-      <div class="wrap">
-        <div class="section-head" data-reveal>
-          <div><div class="kicker">Global activity</div><h2 id="activityTitle">Shipments moving through Hyperion</h2>
-            <p>A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
-        </div>
-        <div class="cc">
-          <div class="cc-stage">
-            <div class="cc-map" id="ccMap" role="region" aria-label="World map of publicly shared shipment routes"></div>
-            <div class="cc-empty-note">No shipments are shared publicly right now. Shared routes appear here as operations publishes them.</div>
-            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="ccStatus">Loading shipment data…</span></span></div>
-            <div class="cc-overlay cc-legend" aria-label="Map legend">
-              <span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span>
-              <span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line"></i>Travelled</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span>
-            </div>
-            <div class="cc-card" id="ccCard" hidden aria-live="polite"></div>
-          </div>
-          <aside class="cc-side">
-            <div class="cc-feed-wrap">
-              <div class="cc-feed-head"><h3>Recent updates</h3></div>
-              <ul class="cc-feed" id="ccFeed" aria-live="polite"><li class="cc-feed-empty">Loading…</li></ul>
-            </div>
-          </aside>
-        </div>
-        <div class="cc-table-wrap">
-          <div class="cc-table-head"><h3>Shared shipments</h3><span>Tracking numbers masked · city level</span></div>
-          <table class="cc-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Route</th><th scope="col">Status</th><th scope="col">Last update</th></tr></thead>
-            <tbody id="ccTable"><tr class="cc-row-empty"><td colspan="4">Loading…</td></tr></tbody></table>
-        </div>
-      </div>
-    </section>
-
-    <section class="freight" id="freight" aria-labelledby="freightTitle">
-      <div class="freight-stage">
-        <!-- Freight photo (see assets/freight/README.md and CREDITS.md). Phones get a crop centred on the ship.
-             If an image fails to load, the original illustration is shown instead. -->
-        <picture class="freight-media" data-kind="photo">
-          <source media="(max-width: 640px)" type="image/avif" srcset="assets/freight/ship-mobile-720.avif 720w, assets/freight/ship-mobile-1080.avif 1080w" sizes="100vw">
-          <source media="(max-width: 640px)" type="image/webp" srcset="assets/freight/ship-mobile-720.webp 720w, assets/freight/ship-mobile-1080.webp 1080w" sizes="100vw">
-          <source media="(max-width: 640px)" srcset="assets/freight/ship-mobile-720.jpg 720w, assets/freight/ship-mobile-1080.jpg 1080w" sizes="100vw">
-          <source type="image/avif" srcset="assets/freight/ship-960.avif 960w, assets/freight/ship-1536.avif 1536w" sizes="100vw">
-          <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1536.webp 1536w" sizes="100vw">
-          <img src="assets/freight/ship-1536.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1536.jpg 1536w" sizes="100vw"
-            width="1536" height="1024" loading="lazy" decoding="async"
-            alt="Container ship loaded with stacked containers sailing out of a lit port at dusk"
-            onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.removeAttribute('srcset');this.src='assets/hero/freight-ship.svg'}">
-        </picture>
-        <div class="wrap freight-inner">
-          <div class="freight-copy" data-reveal>
-            <p class="eyebrow">Hyperion Logistics · Global freight</p>
-            <h2 id="freightTitle">Global freight. <span>One clear view.</span></h2>
-            <p class="freight-lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
-            <div class="freight-ctas">
-              <a class="btn btn-primary" href="#services">Explore freight services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-              <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="wrap">
-        <ul class="freight-services" data-reveal-stagger aria-label="Freight services">
-          <li data-reveal><a href="#svc-ocean" class="freight-card">
-            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/><path d="M5 14 4 10h16l-1 4"/><path d="M8 10V6h4v4M12 7h4v3"/></svg></span>
-            <span class="fc-text"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></span>
-            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
-          <li data-reveal><a href="#svc-air" class="freight-card">
-            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z"/></svg></span>
-            <span class="fc-text"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></span>
-            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
-          <li data-reveal><a href="#svc-express" class="freight-card">
-            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M1 10h4M1 13h3"/></svg></span>
-            <span class="fc-text"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></span>
-            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
-          <li data-reveal><a href="#svc-road" class="freight-card">
-            <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6M9 11h6"/></svg></span>
-            <span class="fc-text"><strong>Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></span>
-            <span class="fc-arrow" aria-hidden="true">→</span></a></li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="journey" id="journey" aria-labelledby="journeyTitle">
-      <svg class="journey-route" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true" data-reveal="fade">
-        <path d="M-10 96 C 240 96, 360 24, 600 30 S 980 100, 1210 40" pathLength="1"/>
-      </svg>
-      <div class="wrap journey-inner">
-        <figure class="journey-frame" data-reveal="clip">
-          <div class="journey-parallax">
-            <picture class="journey-media">
-              <source media="(max-width: 640px)" type="image/avif" srcset="assets/journey/handover-mobile-600.avif 600w, assets/journey/handover-mobile-851.avif 851w" sizes="100vw">
-              <source media="(max-width: 640px)" type="image/webp" srcset="assets/journey/handover-mobile-600.webp 600w, assets/journey/handover-mobile-851.webp 851w" sizes="100vw">
-              <source media="(max-width: 640px)" srcset="assets/journey/handover-mobile-600.jpg 600w, assets/journey/handover-mobile-851.jpg 851w" sizes="100vw">
-              <source type="image/avif" srcset="assets/journey/handover-720.avif 720w, assets/journey/handover-1179.avif 1179w" sizes="(max-width: 900px) 100vw, 720px">
-              <source type="image/webp" srcset="assets/journey/handover-720.webp 720w, assets/journey/handover-1179.webp 1179w" sizes="(max-width: 900px) 100vw, 720px">
-              <img src="assets/journey/handover-1179.jpg" srcset="assets/journey/handover-720.jpg 720w, assets/journey/handover-1179.jpg 1179w" sizes="(max-width: 900px) 100vw, 720px"
-                width="1179" height="638" loading="lazy" decoding="async"
-                alt="Illustration: a parcel handed over at a delivery van outside a warehouse"
-                onerror="this.closest('figure').classList.add('is-missing');this.closest('picture').remove()">
-            </picture>
-          </div>
-        </figure>
-        <div class="journey-copy" data-reveal-stagger>
-          <p class="eyebrow" data-reveal>The logistics journey</p>
-          <h2 id="journeyTitle" data-reveal>From the warehouse to the doorstep.</h2>
-          <p class="journey-lead" data-reveal>Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
-          <ol class="journey-steps">
-            <li data-reveal><strong>Handled and recorded</strong><span>Each handover is recorded by our operations team.</span></li>
-            <li data-reveal><strong>Followed on one page</strong><span>Status, route map and timeline in one tracking view.</span></li>
-            <li data-reveal><strong>Delivered milestone</strong><span>The final delivery is recorded with its time.</span></li>
-          </ol>
-          <a class="link-arrow" href="#trackForm" data-focus-track data-reveal>Track a shipment</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="section alt" id="carriers" aria-labelledby="carriersTitle">
+    <section class="section" id="carriers" aria-labelledby="carriersTitle">
       <div class="wrap">
         <div class="section-head" data-reveal><div><div class="kicker">Carriers</div><h2 id="carriersTitle">Carrier directory</h2>
           <p>Carriers your shipment can move with. Tap a carrier to see its service and coverage.</p></div></div>
@@ -354,7 +364,7 @@
       </div>
     </section>
 
-    <section class="section" id="how" aria-labelledby="howTitle">
+    <section class="section alt" id="how" aria-labelledby="howTitle">
       <div class="wrap">
         <div class="section-head" data-reveal><div><div class="kicker">How it works</div><h2 id="howTitle">From booking to doorstep in three steps</h2></div></div>
         <ol class="steps" data-reveal-stagger>
@@ -435,12 +445,35 @@
     if (initial) { input.value = initial.toUpperCase(); tracker.track(initial); }
 
     // Progressive enhancements (loaded after tracking is ready; failures never affect tracking).
+    // Shared shipments are optional on the homepage: the section is shown only when the public data loaded and contains at
+    // least one published route. An empty list hides it; a failed request is recorded as "error" (not "empty") and keeps
+    // the last shown data if the section was already visible. Nothing here changes shipment records.
+    const activity = document.getElementById("activity");
+    const setActivity = (state) => {
+      activity.dataset.state = state;
+      const show = state === "ready";
+      activity.hidden = !show;
+      // links to the section (header and footer) follow it via CSS, so they never point at nothing
+      document.documentElement.dataset.activity = state;
+    };
+    setActivity("loading");
     import("./ui/globe/command-center.js").then(({ mountCommandCenter }) => mountCommandCenter({
       mapEl: document.getElementById("ccMap"), feedEl: document.getElementById("ccFeed"),
       tableEl: document.getElementById("ccTable"),
       cardEl: document.getElementById("ccCard"), statusEl: document.getElementById("ccStatus"), mode: "public", pollMs: 30000,
-      load: async () => { const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }
-    })).catch(() => { document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
+      onData: (d) => setActivity(Array.isArray(d?.routes) && d.routes.length ? "ready" : "empty"),
+      load: async () => {
+        try {
+          const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } });
+          if (!r.ok) throw new Error(String(r.status));
+          return await r.json();
+        } catch (err) {
+          if (activity.dataset.state !== "ready") setActivity("error");
+          console.warn("[activity] public shipment data unavailable:", err?.message);
+          throw err;
+        }
+      }
+    })).catch(() => { setActivity("error"); document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
     import("./ui/carriers.js").then(({ mountCarrierDirectory }) => mountCarrierDirectory(document.getElementById("carrierDirectory"), document.getElementById("carrierTabs")))
       .catch(() => { document.getElementById("carrierDirectory").innerHTML = '<p class="cr-note">The carrier directory could not load. Please refresh the page.</p>'; });
   </script>
