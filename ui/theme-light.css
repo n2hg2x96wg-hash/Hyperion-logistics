@@ -35,9 +35,18 @@ html[data-theme="light"] .hero3-routes path { stroke: #1d4ed8; }
 html[data-theme="light"] .hero3-routes circle { fill: #1d4ed8; } html[data-theme="light"] .hero3-routes .halo { fill: #60a5fa; }
 html[data-theme="light"] .hero3-routes .pkt { fill: #fff; filter: drop-shadow(0 0 6px rgba(37, 99, 235, 0.9)); }
 html[data-theme="light"] .track-card { background: rgba(255, 255, 255, 0.94); border-color: rgba(15, 40, 90, 0.14); box-shadow: 0 24px 50px rgba(15, 40, 90, 0.14); }
-html[data-theme="light"] .track-card label, html[data-theme="light"] .track-hint { color: #44557a; }
-html[data-theme="light"] :is(.track-form2 input, .track-band .search-group input) { background: #fff; color: #0b1a3d; border-color: rgba(15, 40, 90, 0.25); }
-html[data-theme="light"] :is(.track-form2 input, .track-band .search-group input)::placeholder { color: #7b8aa6; }
+html[data-theme="light"] .track-card { background: #fff; }
+html[data-theme="light"] .track-card label { color: #0b1a3d; }
+html[data-theme="light"] .track-hint { color: #44557a; } html[data-theme="light"] .track-hint span { color: #5b6b8a; }
+html[data-theme="light"] .track-field { background: #f7f9fd; border-color: rgba(15, 40, 90, 0.22); }
+html[data-theme="light"] .track-field:hover { border-color: rgba(15, 40, 90, 0.38); }
+html[data-theme="light"] .track-field:focus-within { background: #fff; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18); }
+html[data-theme="light"] .track-field-ico { color: #5b6b8a; } html[data-theme="light"] .track-field:focus-within .track-field-ico { color: #2563eb; }
+html[data-theme="light"] .track-form2 .track-field input { color: #0b1a3d; }
+html[data-theme="light"] :is(.track-form2 .track-field input, .track-band .search-group input)::placeholder { color: #6b7a96; }
+html[data-theme="light"] .track-band .search-group input { background: #fff; color: #0b1a3d; border-color: rgba(15, 40, 90, 0.25); }
+html[data-theme="light"] .track-card.has-error .track-field { border-color: #dc2626; }
+html[data-theme="light"] #error.show { color: #b91c1c; }
 html[data-theme="light"] #error.show { color: #b91c1c; }
 @media (max-width: 640px) {
   html[data-theme="light"] .hero3-media { background-image: url("../assets/hero/scene-mobile-day.svg"); background-color: var(--hy-bg-0); }

@@ -10,6 +10,8 @@ import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/sta
 import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageModel, modelCaption, routeOverlaySvg } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
+const LIVE_SOURCES = new Set(["gps", "carrier_api"]); // the only sources that are verified live carrier / telemetry data
+const SOURCE_TEXT = { gps: "GPS", carrier_api: "Carrier update" };
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const dtf = (() => { try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }); } catch { return null; } })();
 const fmtDateTime = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : (dtf ? dtf.format(d) : d.toLocaleString()); };
@@ -90,7 +92,7 @@ export function createTracker(root, opts = {}) {
     stopRealtime();
     const switching = state.code !== code;
     state.code = code;
-    if (switching) { state.view = null; destroyMap(); renderedCode = null; }
+    if (switching) { state.view = null; destroyMap(); drop3d(); want3d = true; failed3d = false; renderedCode = null; }
     setPhase("loading"); if (switching || !state.view) renderSkeleton();
     const res = await loadView(code, { signal: abort.signal });
     if (destroyed || res.status === "aborted" || state.code !== code) return;
@@ -178,14 +180,19 @@ export function createTracker(root, opts = {}) {
   }
 
   // ---------- location freshness (re-evaluated as time passes, same rule as the server) ----------
+  // Only a verified feed (GPS telemetry or a carrier API) can make a location "Live" or "Recently updated".
+  // Locations entered by operations are shown as the last known location, without a time: when an operator does not
+  // give one, the stored time is when the entry was made, which is not when the shipment was there.
+  const verifiedFeed = (v) => LIVE_SOURCES.has(v?.currentLocation?.source);
   function locState(v = state.view) {
     const ls = v?.locationState;
     if (!ls) return null;
+    if (!verifiedFeed(v)) { const s = ls.state === "none" ? "none" : "last"; return { ...ls, state: s, label: LOCATION_STATE_LABELS[s] }; }
     const s = locationFreshness({ updatedAt: ls.updatedAt, hasCoordinates: ls.hasCoordinates, hasName: !!v.currentLocation,
       statusCode: v.status?.code, now: Date.now() + serverOffset, liveMs: ls.liveMs, recentMs: ls.recentMs });
     return { ...ls, state: s, label: LOCATION_STATE_LABELS[s] };
   }
-  const badge = (ls) => (ls ? `<span class="hx-loc-badge is-${esc(ls.state)}" data-slot="locbadge"><i></i>${esc(ls.label)}</span>` : "");
+  const badge = (ls) => (ls && (ls.state === "live" || ls.state === "recent") ? `<span class="hx-loc-badge is-${esc(ls.state)}" data-slot="locbadge"><i></i>${esc(ls.label)}</span>` : "");
 
   // ---------- rendering ----------
   function setPhase(p) { state.phase = p; root.dataset.phase = p; opts.onState?.({ ...state }); }
@@ -200,18 +207,18 @@ export function createTracker(root, opts = {}) {
   }
 
   function renderSkeleton() {
-    destroyMap();
+    destroyMap(); drop3d();
     root.innerHTML = `<div class="hx-card hx-skeleton" role="status" aria-label="Loading shipment"><div class="hx-sk hx-sk-a"></div><div class="hx-sk hx-sk-b"></div><div class="hx-sk hx-sk-map"></div><div class="hx-sk hx-sk-c"></div></div>`;
   }
 
   const MESSAGES = {
-    notfound: { icon: "🔎", title: "Tracking number not found.", body: "Check the number and try again. Tracking numbers look like <strong>HY-123456</strong>.", retry: false },
-    invalid: { icon: "⌨️", title: "Please enter a valid tracking number.", body: "Use letters, numbers and dashes only (for example <strong>HY-123456</strong>).", retry: false },
+    notfound: { icon: "🔎", title: "Tracking number not found.", body: "Check the number on your booking confirmation and try again. Letters and numbers must match exactly.", retry: false },
+    invalid: { icon: "⌨️", title: "Please enter a valid tracking number.", body: "Tracking numbers use letters, numbers and dashes only, with at least 3 characters.", retry: false },
     error: { icon: "📡", title: "We couldn't load tracking right now.", body: "Please check your connection and try again in a moment.", retry: true },
     expired: { icon: "🔒", title: "Your tracking session has ended.", body: "For your privacy, shipment details are cleared when you leave, reload or stay inactive. Enter your tracking number again to continue.", retry: false }
   };
   function renderMessage(kind) {
-    destroyMap(); renderedCode = null;
+    destroyMap(); drop3d(); renderedCode = null;
     const msg = MESSAGES[kind];
     root.innerHTML = `<div class="hx-card hx-empty" role="alert" data-reveal><div class="hx-empty-ico">${msg.icon}</div><h3>${msg.title}</h3><p>${msg.body}</p>${msg.retry ? '<button type="button" class="hx-btn" data-act="retry">Try again</button>' : ""}</div>`;
   }
@@ -251,14 +258,21 @@ export function createTracker(root, opts = {}) {
   function sceneHtml(v, ls) {
     const pr = presentation(v);
     const loc = v.currentLocation?.name;
-    const when = ls?.updatedAt || v.lastUpdated;
     const photo = stagePhoto(v); const model = stageModel(v);
     const media = photo ? stagePhotoHtml(photo) + (photo.key === "ship" ? routeOverlaySvg(v) : "") : sceneSvg(pr);
     return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}"${model ? ` data-model="${esc(model)}"` : ""}>
-      <div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>
-      <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}${when ? ` · <time datetime="${esc(when)}">${esc(fmtDateTime(when))}</time>` : ""}</span>
-      <small data-slot="scenecap">${photo?.key === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage."}</small>
-      ${model ? `<button type="button" class="hx-btn-sec hx-3d-open hx-press" data-act="3d" aria-controls="hx3d"><span aria-hidden="true">⟳</span> Explore in 3D</button>` : ""}</figcaption></figure>`;
+      <div class="hx-scene-media"><div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>${model ? bar3dHtml() : ""}</div>
+      <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}</span>
+      <small data-slot="scenecap">${photo?.key === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage."}</small></figcaption></figure>`;
+  }
+
+  function bar3dHtml() {
+    const hint = fine ? "Drag to rotate · click, then scroll to zoom" : "Swipe sideways to rotate · pinch to zoom";
+    return `<div class="hx-3d-bar" data-slot="3dbar" data-mode="loading">
+      <div class="hx-segs hx-3d-mode" role="group" aria-label="Scene view"><button type="button" class="hx-seg" data-act="3d" aria-pressed="true" aria-controls="hx3d">3D</button><button type="button" class="hx-seg" data-act="3d-close" aria-pressed="false">Photo</button></div>
+      <span class="hx-3d-hint">${hint}</span>
+      <div class="hx-3d-tools"><button type="button" class="hx-3d-btn" data-act="3d-zoom-out" aria-label="Zoom out" disabled>−</button><button type="button" class="hx-3d-btn" data-act="3d-zoom-in" aria-label="Zoom in" disabled>+</button><button type="button" class="hx-3d-btn" data-act="3d-reset" aria-label="Reset view" disabled>⟲</button></div>
+      <p class="hx-3d-note" role="status" hidden>Showing photo — 3D view isn't available on this device.</p></div>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
@@ -292,7 +306,7 @@ export function createTracker(root, opts = {}) {
         <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${latest ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
         ${t.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(t.location)}</div>` : ""}
         ${t.description ? `<div class="hx-tl-desc">${esc(t.description)}</div>` : ""}
-        <div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${t.source === "carrier_api" || t.source === "gps" ? ` · ${esc(t.sourceLabel)}` : ""}</div></div></li>`; }).join("")}</ol></section>`;
+        <div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${SOURCE_TEXT[t.source] ? ` · ${SOURCE_TEXT[t.source]}` : ""}</div></div></li>`; }).join("")}</ol></section>`;
   }
 
   function render(v, isUpdate) {
@@ -305,9 +319,14 @@ export function createTracker(root, opts = {}) {
     const carrierBits = carrier ? [esc(carrier.name), carrier.serviceType ? esc(carrier.serviceType) : null].filter(Boolean).join(" · ") : "";
     const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `Carrier ref: ${esc(carrier.trackingNumber)}` : "", carrier.phone ? esc(carrier.phone) : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : "", carrier.trackingUrl ? `<a href="${esc(carrier.trackingUrl)}" target="_blank" rel="noopener noreferrer">Track on carrier site</a>` : "", carrier.custom ? "Custom carrier arrangement" : ""].filter(Boolean).join(" · ")}</div>` : "";
     const loc = v.currentLocation; const ls = locState(v);
-    const ago = v.lastUpdated ? timeAgo(v.lastUpdated, Date.now() + serverOffset) : null;
+    // Latest milestone = the newest recorded event (its own time). view.lastUpdated is not shown: it also moves when a
+    // record is merely edited, so it is not a shipment event time.
+    const latest = v.timeline?.[0] || null;
+    const ago = latest?.timestamp ? timeAgo(latest.timestamp, Date.now() + serverOffset) : null;
 
-    viewer3d?.dispose(); viewer3d = null; // a re-render (new data) starts again from the photo
+    // The 3D view survives a data update when the stage model is unchanged; otherwise it is rebuilt for the new stage.
+    const keep3d = viewer3d && viewer3dModel === stageModel(v) ? root.querySelector('[data-slot="3d"]') : null;
+    if (keep3d) keep3d.remove(); else drop3d();
     // Keep the live map element (and its Leaflet instance) across re-renders: updates move markers, never rebuild the map.
     const keepMap = v.map && map ? map.el : null;
     if (keepMap) keepMap.remove();
@@ -321,13 +340,13 @@ export function createTracker(root, opts = {}) {
         </div>
         ${sceneHtml(v, ls)}
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
-          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div><div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time">Recorded <time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time>${loc?.sourceLabel ? ` · ${esc(loc.sourceLabel)}` : ""}</span>` : ls.state !== "none" ? ' <span class="hx-loc-time">Recorded time not available</span>' : ""}</div></div>` : ""}
+          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div>${verifiedFeed(v) ? `<div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time"><time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time> · ${SOURCE_TEXT[v.currentLocation.source]}</span>` : ""}</div>` : ""}</div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
-          <div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Last recorded update</div><div class="hx-fact-value" data-ago="${esc(v.lastUpdated || "")}">${ago ? esc(ago[0].toUpperCase() + ago.slice(1)) : "Unavailable"}</div>${v.lastUpdated ? `<div class="hx-fact-sub"><time datetime="${esc(v.lastUpdated)}">${esc(fmtDateTime(v.lastUpdated))}</time>${v.timeline?.[0]?.sourceLabel ? ` · ${esc(v.timeline[0].sourceLabel)}` : ""}</div>` : ""}</div>
+          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : ""}</div>` : ""}
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
         </div>
         <div class="hx-meta" data-slot="meta"></div>
-        ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(v.exception.label)}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}${v.exception.recordedAt ? `<small>Recorded ${esc(fmtDateTime(v.exception.recordedAt))}</small>` : ""}</div></div>` : ""}
+        ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(v.exception.label)}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}</div></div>` : ""}
         ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
       </section>
       ${routeHtml(v, reveal)}
@@ -352,6 +371,7 @@ export function createTracker(root, opts = {}) {
     if (reveal) animateCounters();
     if (v.map) mountMap(v.map);
     else destroyMap();
+    mount3d(keep3d);
     if (isUpdate) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
   }
 
@@ -404,21 +424,25 @@ export function createTracker(root, opts = {}) {
     const v = state.view; if (!v) return;
     const ls = locState(v); if (!ls) return;
     root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => { if (!el.classList.contains(`is-${ls.state}`)) el.outerHTML = badge(ls); });
+    if (!badge(ls)) root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => el.remove());
     const title = root.querySelector('[data-slot="maptitle"]'); if (title) title.textContent = ls.state === "live" ? "Live tracking map" : "Shipment map";
-    root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a[0].toUpperCase() + a.slice(1); });
+    root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a; });
     if (v.map) { mapNote(v.map, ls); if (map && v.map.current && v.map.current.state !== ls.state) map.api.update(withState(v.map, ls)); }
   }
-  const withState = (data, ls) => (data.current ? { ...data, current: { ...data.current, state: ls?.state || "last" } } : data);
+  const withState = (data, ls) => {
+    if (!data.current) return data;
+    const verified = verifiedFeed(state.view);
+    return { ...data, current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? SOURCE_TEXT[state.view.currentLocation.source] : null, updatedAt: verified ? data.current.updatedAt : null } };
+  };
 
   // ---------- map ----------
   function mapNote(data, ls) {
     const note = root.querySelector('[data-slot="mapnote"]'); if (!note) return;
     const c = data.current; const when = c?.updatedAt ? fmtDateTime(c.updatedAt) : null;
-    const src = c?.sourceLabel ? ` · ${c.sourceLabel}` : "";
     let text;
-    if (c && ls?.state === "live") text = `Live — position recorded ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when})${src}.`;
-    else if (c && ls?.state === "recent") text = `Recently updated — live location unavailable. Last recorded position ${when}${src}.`;
-    else if (c) text = `Live location unavailable — last recorded location shown${when ? ` (${when})` : ""}${src}.`;
+    if (c && ls?.state === "live") text = `Live — position reported ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when}).`;
+    else if (c && ls?.state === "recent") text = `Recently updated — position reported ${when}.`;
+    else if (c) text = "Last known location shown.";
     else if (data.trail?.length) text = "Live location unavailable — showing the most recent recorded route points.";
     else if (data.origin || data.destination) text = "No location has been recorded yet — showing origin and destination only.";
     else text = "";
@@ -448,11 +472,10 @@ export function createTracker(root, opts = {}) {
     } catch { mapFailed = true; fallbackMap(el, data); }
   }
   function mapFallbackHtml(data) {
-    const v = state.view; const ls = locState(v); const c = data?.current;
+    const v = state.view; const c = data?.current;
     const rows = [
       ["Last known location", c ? (c.name || `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`) : (v?.currentLocation?.name || "Awaiting location update")],
       c ? ["Coordinates", `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`] : null,
-      ["Recorded", c?.updatedAt ? fmtDateTime(c.updatedAt) : (ls?.updatedAt ? fmtDateTime(ls.updatedAt) : "Time not available")],
       ["Status", v?.status?.label || ""],
       data?.originLabel ? ["Origin", data.originLabel] : null,
       data?.destinationLabel ? ["Destination", data.destinationLabel] : null
@@ -470,35 +493,84 @@ export function createTracker(root, opts = {}) {
   }
   function destroyMap() { mapToken++; if (map) { map.api.destroy(); map = null; } }
 
-  // ---------- optional 3D model (loaded only when asked for; the photo stays if 3D is unavailable) ----------
-  let viewer3d = null; let scene3dMod = null;
-  async function open3d(btn) {
-    const fig = btn.closest(".hx-scene"); const slot = fig?.querySelector('[data-slot="3d"]'); const model = fig?.dataset.model;
-    if (!slot || !model || viewer3d) return;
-    btn.disabled = true; btn.setAttribute("aria-busy", "true");
-    slot.hidden = false; slot.id = "hx3d";
-    slot.innerHTML = `<div class="hx-3d-status" role="status">Loading 3D view…</div>`;
-    try {
-      scene3dMod = scene3dMod || await import("./scene3d.js");
-      viewer3d = await scene3dMod.createViewer(slot, model, { reducedMotion: reducedMotion() });
-      slot.insertAdjacentHTML("beforeend", `<div class="hx-3d-bar"><span class="hx-3d-hint">Drag to rotate · pinch or scroll to zoom</span>
-        <button type="button" class="hx-btn-sec" data-act="3d-reset">Reset view</button><button type="button" class="hx-btn-sec" data-act="3d-close">Close 3D</button></div>`);
-      slot.querySelector(".hx-3d-status")?.remove();
-      fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(model);
-      fig.classList.add("is-3d"); btn.hidden = true;
-      slot.querySelector("canvas")?.focus({ preventScroll: true });
-    } catch {
-      viewer3d = null;
-      slot.innerHTML = `<div class="hx-3d-status is-error" role="status">3D view isn't available on this device. <button type="button" class="hx-link" data-act="3d-close">Back to the picture</button></div>`;
-    } finally { btn.disabled = false; btn.removeAttribute("aria-busy"); }
+  // ---------- 3D stage model: starts by itself when the scene scrolls into view ----------
+  // The stage photo is the poster while Three.js loads and stays as the fallback when 3D can't run (no WebGL, CDN
+  // blocked, slow network). "Photo" switches back for the current result only; nothing is stored.
+  let viewer3d = null; let viewer3dModel = null; let scene3dMod = null; let v3token = 0; let v3io = null;
+  let want3d = true; let failed3d = false;
+  const V3_TIMEOUT = 12000;
+  const sceneCap = (fig) => (fig.dataset.photo === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage.");
+
+  function drop3d() { v3token++; v3io?.disconnect(); v3io = null; viewer3d?.dispose(); viewer3d = null; viewer3dModel = null; }
+
+  function setBar(fig, mode) {
+    const bar = fig?.querySelector('[data-slot="3dbar"]'); if (!bar) return;
+    bar.dataset.mode = mode;
+    bar.querySelectorAll(".hx-3d-btn").forEach((b) => { b.disabled = mode !== "3d"; });
+    bar.querySelector('[data-act="3d"]')?.setAttribute("aria-pressed", String(mode === "3d" || mode === "loading"));
+    bar.querySelector('[data-act="3d-close"]')?.setAttribute("aria-pressed", String(mode === "photo"));
+    bar.querySelector(".hx-3d-note").hidden = mode !== "fallback";
   }
-  function close3d(focusButton) {
-    viewer3d?.dispose(); viewer3d = null;
-    const fig = root.querySelector(".hx-scene"); if (!fig) return;
+
+  /** After each render: re-attach a kept viewer, or arm the lazy start, or show the photo state. */
+  function mount3d(kept) {
+    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig) { drop3d(); return; }
+    if (kept) {
+      fig.querySelector('[data-slot="3d"]')?.replaceWith(kept);
+      fig.classList.add("is-3d"); setBar(fig, "3d");
+      fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(viewer3dModel);
+      return;
+    }
+    if (failed3d) { setBar(fig, "fallback"); return; }
+    if (!want3d) { setBar(fig, "photo"); return; }
+    const stage = fig.querySelector(".hx-scene-stage");
+    if (typeof IntersectionObserver === "undefined") { start3d(fig); return; }
+    v3io?.disconnect();
+    v3io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      v3io.disconnect(); v3io = null; start3d(fig);
+    }, { rootMargin: "200px 0px" });
+    v3io.observe(stage);
+  }
+
+  async function start3d(fig) {
+    const slot = fig.querySelector('[data-slot="3d"]'); const model = fig.dataset.model;
+    if (!slot || !model || viewer3d || !fig.isConnected) return;
+    const token = ++v3token;
+    slot.hidden = false; slot.id = "hx3d"; slot.innerHTML = "";
+    fig.querySelector(".hx-3d-loading")?.remove();
+    fig.querySelector(".hx-scene-stage").insertAdjacentHTML("beforeend", '<div class="hx-3d-loading" role="status"><span class="hx-spinner" aria-hidden="true"></span>Loading 3D view…</div>');
+    fig.setAttribute("aria-busy", "true"); setBar(fig, "loading");
+    const load = (async () => {
+      scene3dMod = scene3dMod || await import("./scene3d.js");
+      const v = await scene3dMod.createViewer(slot, model, { reducedMotion: reducedMotion() });
+      await v.ready; return v;
+    })();
+    let timer;
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), V3_TIMEOUT); });
+    let viewer = null;
+    try { viewer = await Promise.race([load, timeout]); }
+    catch { load.then((v) => v.dispose(), () => {}); } // a viewer that arrives after the timeout is discarded
+    finally { clearTimeout(timer); }
+    if (token !== v3token || !slot.isConnected) { viewer?.dispose(); return; }
+    fig.removeAttribute("aria-busy"); fig.querySelector(".hx-3d-loading")?.remove();
+    if (!viewer) { failed3d = true; slot.hidden = true; slot.innerHTML = ""; setBar(fig, "fallback"); return; }
+    viewer3d = viewer; viewer3dModel = model;
+    fig.classList.add("is-3d"); setBar(fig, "3d");
+    fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(model);
+  }
+
+  function show3d() {
+    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig || viewer3d) return;
+    want3d = true; failed3d = false; start3d(fig);
+  }
+  function showPhoto() {
+    want3d = false; drop3d();
+    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig) return;
     const slot = fig.querySelector('[data-slot="3d"]'); if (slot) { slot.hidden = true; slot.innerHTML = ""; }
-    fig.classList.remove("is-3d");
-    const cap = fig.querySelector('[data-slot="scenecap"]'); if (cap) cap.textContent = fig.dataset.photo === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage.";
-    const b = fig.querySelector(".hx-3d-open"); if (b) { b.hidden = false; if (focusButton) b.focus({ preventScroll: true }); }
+    fig.removeAttribute("aria-busy"); fig.querySelector(".hx-3d-loading")?.remove();
+    fig.classList.remove("is-3d"); setBar(fig, failed3d ? "fallback" : "photo");
+    fig.querySelector('[data-slot="scenecap"]').textContent = sceneCap(fig);
   }
 
   async function copyCode(btn, code) {
@@ -514,7 +586,7 @@ export function createTracker(root, opts = {}) {
   }
 
   function reset() {
-    viewer3d?.dispose(); viewer3d = null;
+    drop3d(); want3d = true; failed3d = false;
     if (abort) abort.abort();
     abort = null; inflightCode = null;
     stopRealtime(); destroyMap();
@@ -533,9 +605,11 @@ export function createTracker(root, opts = {}) {
       });
     }
     if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
-    if (act === "3d" && state.view) open3d(e.target.closest("[data-act]"));
+    if (act === "3d" && state.view) show3d();
+    if (act === "3d-close") showPhoto();
     if (act === "3d-reset") viewer3d?.reset();
-    if (act === "3d-close") close3d(true);
+    if (act === "3d-zoom-in") viewer3d?.zoom(0.85);
+    if (act === "3d-zoom-out") viewer3d?.zoom(1 / 0.85);
     if (act === "order" && state.view) {
       timelineOrder = e.target.closest("[data-order]").dataset.order;
       const card = root.querySelector(".hx-tl-card");
@@ -564,7 +638,7 @@ export function createTracker(root, opts = {}) {
     expire() { const had = !!state.code; reset(); if (had) { setPhase("expired"); renderMessage("expired"); } else { root.innerHTML = ""; setPhase("idle"); } },
     destroy() {
       destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect();
-      root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave); viewer3d?.dispose(); viewer3d = null;
+      root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave); drop3d();
       document.removeEventListener("visibilitychange", visibilityHandler); root.innerHTML = "";
     }
   };
