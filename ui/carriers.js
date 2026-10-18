@@ -15,35 +15,17 @@ function fallback() {
 }
 
 const brand = (c) => (/^#[0-9a-f]{3,6}$/i.test(c.brandColor || "") ? c.brandColor : "#64748b");
-const intStatus = (c) => (["live", "link"].includes(c.integration?.status) ? c.integration.status : "manual");
 
-// How updates reach Hyperion (integration) and the business relationship (partnership) are separate facts.
-const ICON = {
-  manual: '<path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m14 6 4 4"/>',
-  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-  live: '<path d="M4 12h3l2-6 4 12 2-6h5"/>',
-  partner: '<path d="m9 12 2 2 4-4"/><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/>'
-};
-const STATES = {
-  manual: { chip: "Manual updates", text: "Statuses and positions are entered by Hyperion operations; nothing is received from the carrier automatically." },
-  link: { chip: "Official tracking link", text: "Hyperion links to the carrier's own tracking page; updates are not received automatically." },
-  live: { chip: "Live API", text: "Updates arrive automatically from the carrier's system through a connected, working integration." },
-  partner: { chip: "Verified partner", text: "Hyperion has a confirmed business partnership with this carrier." }
-};
-const icon = (k) => `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-const chip = (k) => `<span class="cr-chip ${k}">${icon(k)}${esc(STATES[k].chip)}</span>`;
-
-/** One line per state so visitors can read the chips. */
-export function carrierLegend() {
-  return `<details class="cr-legend-wrap"><summary>What the carrier labels mean</summary><ul class="cr-legend">${["manual", "link", "live", "partner"]
-    .map((k) => `<li>${chip(k)}<span>${esc(STATES[k].text)}</span></li>`).join("")}</ul></details>`;
-}
+// The public directory identifies carriers only. The way each carrier's updates arrive is an internal detail shown in the
+// admin carrier list, not here. A "Verified partner" badge appears only for a partnership an admin recorded with
+// evidence (none today).
+const PARTNER_BADGE = '<span class="cr-chip partner"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/></svg>Verified partner</span>';
 
 function tile(c, open) {
   const mark = c.logoUrl ? `<img src="${esc(c.logoUrl)}" alt="${esc(c.name)}" loading="lazy" decoding="async">` : `<span class="wm">${esc(c.name)}</span>`;
   return `<button type="button" class="cr-tile" data-id="${esc(c.id)}" aria-expanded="${open}" aria-controls="cr-detail" style="--brand:${esc(brand(c))}">
     ${mark}<span class="meta">${esc(CARRIER_CATEGORIES[c.category] || c.categoryLabel || "")}</span>
-    <span class="chips">${chip(intStatus(c))}${c.partner === true ? chip("partner") : ""}</span></button>`;
+    ${c.partner === true ? `<span class="chips">${PARTNER_BADGE}</span>` : ""}</button>`;
 }
 
 function detail(c) {
@@ -52,16 +34,10 @@ function detail(c) {
     ${c.description ? `<p>${esc(c.description)}</p>` : ""}
     ${c.coverage ? `<p>Coverage: ${esc(c.coverage)}</p>` : ""}
     ${c.custom && c.note ? `<p>${esc(c.note)}</p>` : ""}
-    <dl class="cr-facts">
-      <div><dt>How updates reach Hyperion</dt><dd>${chip(intStatus(c))}<span>${esc(STATES[intStatus(c)].text)}</span></dd></div>
-      <div><dt>Relationship</dt><dd>${c.partner === true ? `${chip("partner")}<span>${esc(STATES.partner.text)}</span>`
-        : "<span>Listed to identify the carrier your shipment moves with; not a partnership.</span>"}</dd></div>
-    </dl>
-    ${c.website ? `<div class="row"><a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a></div>` : ""}</div>`;
+    ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? PARTNER_BADGE : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a>` : ""}</div>` : ""}</div>`;
 }
 
-export async function mountCarrierDirectory(root, tabsRoot, legendRoot) {
-  if (legendRoot) legendRoot.innerHTML = carrierLegend();
+export async function mountCarrierDirectory(root, tabsRoot) {
   let carriers;
   try {
     const r = await fetch("/api/public?view=carriers", { headers: { Accept: "application/json" } });

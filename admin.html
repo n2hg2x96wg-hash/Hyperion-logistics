@@ -1535,11 +1535,17 @@
         return;
       }
       const stateOf = (c) => (c.archived ? "archived" : c.active === false ? "inactive" : "active");
+      // Operational detail for staff only (the public directory does not show it).
+      const updatesLabel = (c) => {
+        const how = c.lastProviderUpdateAt ? `Carrier API · last update ${escapeHtml(new Date(c.lastProviderUpdateAt).toLocaleString())}`
+          : c.trackingUrl ? "Official tracking link" : "Manual (operations)";
+        return `<span>${how}</span>${c.verifiedPartner ? '<br><span class="courier-badge" title="Partnership recorded with evidence">verified partner</span>' : ""}`;
+      };
       const stateLabel = { active: "Active", inactive: "Inactive", archived: "Archived" };
       container.innerHTML = `
         <div style="overflow:auto;">
           <table class="shipments-table courier-table">
-            <thead><tr><th>Courier</th><th>ID</th><th>Prefix</th><th>Region</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Courier</th><th>ID</th><th>Prefix</th><th>Region</th><th>Contact</th><th>Updates</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               ${rows.map((c) => { const st = stateOf(c); const id = escapeHtml(c.id); return `
                 <tr class="${st === "archived" ? "is-archived" : ""}">
@@ -1548,6 +1554,7 @@
                   <td data-label="Prefix"><span class="courier-chip" style="background: ${escapeHtml(c.brandColor)}33; color: ${escapeHtml(c.brandColor)};">${escapeHtml(c.prefix)}</span></td>
                   <td data-label="Region">${escapeHtml(c.region) || "—"}</td>
                   <td data-label="Contact">${escapeHtml(c.phone) || (/^https?:\/\//.test(c.website) ? `<a href="${escapeHtml(c.website)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;">Website</a>` : "—")}</td>
+                  <td data-label="Updates">${updatesLabel(c)}</td>
                   <td data-label="Status"><span class="courier-state ${st}">${stateLabel[st]}</span></td>
                   <td data-label="Actions"><div class="courier-actions">
                     <button type="button" class="btn-action" onclick="editCourier('${id}')">Edit</button>
