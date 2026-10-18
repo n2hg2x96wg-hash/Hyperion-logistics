@@ -409,7 +409,7 @@ for (const w of [390, 768, 1280]) {
     const scene = await page.$eval(".hx-scene", (f) => ({ stage: f.dataset.stage, mode: f.dataset.mode, text: f.textContent.replace(/\s+/g, " "), h: f.querySelector(".hx-scene-stage").getBoundingClientRect().height }));
     assert.equal(scene.stage, "transit", "IN_TRANSIT -> transit stage");
     assert.equal(scene.mode, "van", "DHL is an express carrier in the catalogue");
-    assert.match(scene.text, /Illustration of the current stage, not a live position\./);
+    assert.match(scene.text, /Illustration of the current shipment stage\./);
     assert.ok(scene.h > 100, "illustration has its reserved size");
     const head = await page.textContent(".hx-progress-head");
     assert.match(head, /Stage \d of \d/); assert.ok(!head.includes("%"), "no percentage");

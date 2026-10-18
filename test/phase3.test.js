@@ -386,7 +386,7 @@ test("tracking presentation: the stage comes from the recorded status, the vehic
   const svg = sceneSvg({ stage: "transit", mode: "ship" });
   assert.match(svg, /aria-hidden="true"/); assert.ok(!/<text/.test(svg), "the picture carries no text (no invented place names)");
   const tracker = read("tracker/tracker.js");
-  assert.match(tracker, /Illustration of the current stage, not a live position\./);
+  assert.match(tracker, /Illustration of the current shipment stage\./);
   assert.ok(!/% of the journey|%<\/|pct\}%/.test(tracker), "no invented percentage in the progress display");
   assert.match(tracker, /Stage <strong>\$\{cur \+ 1\}<\/strong> of \$\{n\}/);
 });

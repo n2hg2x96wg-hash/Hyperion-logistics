@@ -245,7 +245,7 @@ export function createTracker(root, opts = {}) {
         <li class="hx-rs is-${x.state} k-${x.kind}"><span class="hx-rs-dot" aria-hidden="true">${mark[x.state]}</span>
           <span class="hx-rs-body"><span class="hx-rs-title">${esc(x.title)}<span class="hx-sr"> (${srState[x.state]})</span></span><span class="hx-rs-place">${esc(x.place)}</span>
           ${x.at ? `<time class="hx-rs-time" datetime="${esc(x.at)}">${esc(fmtDateTime(x.at))}</time>` : ""}</span></li>`).join("")}</ol>
-      <p class="hx-route-note">Places come from recorded updates; this is not a live position.</p></section>`;
+      <p class="hx-route-note">Each checkpoint is time-stamped when it is recorded by our operations team or the carrier.</p></section>`;
   }
 
   function sceneHtml(v, ls) {
@@ -254,7 +254,7 @@ export function createTracker(root, opts = {}) {
     const when = ls?.updatedAt || v.lastUpdated;
     return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}"><div class="hx-scene-stage">${sceneSvg(pr)}</div>
       <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}${when ? ` · <time datetime="${esc(when)}">${esc(fmtDateTime(when))}</time>` : ""}</span>
-      <small>Illustration of the current stage, not a live position.</small></figcaption></figure>`;
+      <small>Illustration of the current shipment stage.</small></figcaption></figure>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
