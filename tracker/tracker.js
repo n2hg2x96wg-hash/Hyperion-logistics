@@ -326,7 +326,7 @@ export function createTracker(root, opts = {}) {
         ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
       </section>
       ${routeHtml(v, reveal)}
-      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div><div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div><div class="hx-map-foot"><div class="hx-legend"><span><i class="hx-lg hx-m-origin"></i>Origin</span><span><i class="hx-lg hx-m-current"></i>Shipment</span><span><i class="hx-lg hx-m-dest"></i>Destination</span><span><i class="hx-lg-line"></i>Recorded route</span><span><i class="hx-lg-line dashed"></i>Remaining</span></div><div class="hx-map-note" data-slot="mapnote"></div></div></section>` : ""}
+      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div><div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div></section>` : ""}
       ${timelineHtml(v.timeline, reveal)}
       <section class="hx-card hx-details" ${R()}>
         <h3 class="hx-h">Shipment details</h3>
