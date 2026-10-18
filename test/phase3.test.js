@@ -615,7 +615,7 @@ test("homepage network: a worldwide connections globe that needs no admin data a
   assert.equal(run(11), run(11)); assert.notEqual(run(11), run(12));
   // copy: a visualisation, never shipment data
   const src = read("ui/network-globe.js"); const h = read("index.html");
-  assert.match(h, /Freight connections shown for illustration &mdash; not live shipments\./);
+  assert.ok(!/not live shipments|Network visualisation/.test(h), "no disclaimer band around the globe (owner's choice); cards say 'Freight connection', never a shipment");
   assert.ok(!/data-ng-toggle|data-ng-next|ng-btn|>Play<|>Pause</.test(h + src), "no play/pause or manual controls: it runs by itself");
   assert.match(h, /Worldwide freight connections/);
   const prose = (src + read("ui/network-routes.js")).replace(/\/\/.*$/gm, "");

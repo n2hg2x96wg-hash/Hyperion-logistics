@@ -723,7 +723,7 @@ test("homepage network globe: runs by itself with no controls or admin data, car
   for (let i = 0; i < 12 && seen.size < 6; i++) { await page.waitForTimeout(800); (await page.getAttribute("#freightNetwork", "data-routes")).split(" ").forEach((k) => seen.add(k)); }
   assert.ok(seen.size >= 5, `several connections over time: ${[...seen]}`);
   const text = (await page.textContent("#freightNetwork")).replace(/\s+/g, " ");
-  assert.match(text, /Worldwide freight connections/); assert.match(text, /Freight connections shown for illustration — not live shipments\./);
+  assert.match(text, /Worldwide freight connections/);
   assert.match(text, /Freight connection/); assert.match(text, /km apart/);
   assert.ok(!/In Transit|Delivered|\bGPS\b|tracking number|Illustrative network/i.test(text), "no shipment statuses, codes or the old disclaimer");
   assert.ok(!text.includes(codes.good) && !text.includes(codes.sea), "never shows tracking codes");
