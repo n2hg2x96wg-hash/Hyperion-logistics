@@ -155,7 +155,7 @@ export async function createMap(el, { onStatus, interactiveHint = true } = {}) {
     const cur = data.current;
     placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}`, "Current location",
       popupNode(cur?.state === "live" ? "Current location (live)" : "Last recorded location", [
-        cur?.name, cur?.updatedAt ? `Recorded ${fmt(cur.updatedAt)}` : "Time of this position is unknown",
+        cur?.name, cur?.updatedAt ? `Reported ${fmt(cur.updatedAt)}` : null, // the tracker passes a time only for GPS / carrier positions
         cur?.sourceLabel ? `Source: ${cur.sourceLabel}` : null, cur?.state && cur.state !== "live" ? STATE_LABEL[cur.state] : null
       ]), 1000);
 

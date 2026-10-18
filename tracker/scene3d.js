@@ -1,10 +1,11 @@
-// Explorable 3D model for a tracking stage (warehouse, vessel, aircraft, delivery van). Loaded only when a visitor
-// taps "Explore in 3D"; Three.js itself comes from the CDN on that first tap. The models are built in code and show a
-// TYPICAL place or vehicle for the recorded stage: they carry no shipment data, names, places or positions.
+// Explorable 3D model for a tracking stage (warehouse, vessel, aircraft, delivery van). The tracker loads this module
+// when the scene first scrolls into view; Three.js itself comes from the CDN at that point. The models are built in
+// code and show a TYPICAL place or vehicle for the recorded stage: they carry no shipment data, names, places or positions.
 //
-// Controls: drag to rotate, pinch / wheel to zoom, arrow keys and +/- on the focused canvas, Reset. The canvas only
-// captures touches while it is open, so the page scrolls normally otherwise. Rendering stops when the canvas is
-// off-screen or the tab is hidden, and dispose() frees the GPU context.
+// Controls: drag to rotate (touch: sideways swipe only, so vertical swipes keep scrolling the page), pinch to zoom,
+// wheel zoom only once the canvas has been clicked or focused, arrow keys and +/- on the focused canvas, zoom() and
+// reset() for the on-screen buttons. Rendering stops when the canvas is off-screen or the tab is hidden, and
+// dispose() frees the GPU context.
 const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 
 const CAMERA = {
@@ -25,7 +26,8 @@ export async function createViewer(container, model, { reducedMotion = false } =
   const dark = document.documentElement.dataset.theme !== "light";
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const coarse = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   const canvas = renderer.domElement;
@@ -59,17 +61,17 @@ export async function createViewer(container, model, { reducedMotion = false } =
     camera.lookAt(target); request();
   };
   const pointers = new Map(); let pinch = 0;
-  const onDown = (e) => { canvas.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 2) pinch = spread(); };
+  const onDown = (e) => { if (e.pointerType === "mouse") canvas.focus({ preventScroll: true }); canvas.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 2) pinch = spread(); };
   const spread = () => { const [a, b] = [...pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
   const onMove = (e) => {
     const p = pointers.get(e.pointerId); if (!p) return;
-    if (pointers.size === 1) { view.yaw -= (e.clientX - p.x) * 0.008; view.pitch += (e.clientY - p.y) * 0.006; }
+    if (pointers.size === 1) { view.yaw -= (e.clientX - p.x) * 0.008; if (e.pointerType !== "touch") view.pitch += (e.clientY - p.y) * 0.006; }
     p.x = e.clientX; p.y = e.clientY;
     if (pointers.size === 2) { const d = spread(); view.radius *= pinch / d; pinch = d; }
     place();
   };
   const onUp = (e) => { pointers.delete(e.pointerId); if (pointers.size < 2) pinch = 0; };
-  const onWheel = (e) => { e.preventDefault(); view.radius *= Math.exp(e.deltaY * 0.0012); place(); };
+  const onWheel = (e) => { if (document.activeElement !== canvas) return; /* never hijack page scrolling */ e.preventDefault(); view.radius *= Math.exp(e.deltaY * 0.0012); place(); };
   const onKey = (e) => {
     const k = e.key; let used = true;
     if (k === "ArrowLeft") view.yaw += 0.12; else if (k === "ArrowRight") view.yaw -= 0.12;
@@ -84,9 +86,10 @@ export async function createViewer(container, model, { reducedMotion = false } =
 
   // ---------- size, visibility and the render loop ----------
   let raf = 0; let visible = true; let disposed = false; const clock = new THREE.Clock();
+  let firstFrame; const ready = new Promise((r) => { firstFrame = r; setTimeout(r, 1500); }); // resolves once a frame is on screen
   const resize = () => { const w = container.clientWidth || 600; const h = container.clientHeight || 240; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); request(); };
   const animate = !reducedMotion && typeof tick === "function";
-  const frame = () => { raf = 0; if (disposed) return; if (animate) tick(clock.getElapsedTime()); renderer.render(scene, camera); if (animate && visible && !document.hidden) raf = requestAnimationFrame(frame); };
+  const frame = () => { raf = 0; if (disposed) return; if (animate) tick(clock.getElapsedTime()); renderer.render(scene, camera); firstFrame(); if (animate && visible && !document.hidden) raf = requestAnimationFrame(frame); };
   function request() { if (!raf && !disposed) raf = requestAnimationFrame(frame); }
   const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null; ro?.observe(container);
   const io = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(([en]) => { visible = en.isIntersecting; if (visible) request(); }) : null; io?.observe(container);
@@ -95,6 +98,8 @@ export async function createViewer(container, model, { reducedMotion = false } =
 
   return {
     get view() { return { ...view }; },
+    ready,
+    zoom(f) { view.radius *= f; place(); },
     reset() { Object.assign(view, { radius: cfg.radius, yaw: cfg.yaw, pitch: cfg.pitch }); place(); },
     dispose() {
       if (disposed) return; disposed = true;

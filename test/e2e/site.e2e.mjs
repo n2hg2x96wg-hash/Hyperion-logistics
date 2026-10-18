@@ -422,7 +422,11 @@ for (const w of [390, 768, 1280]) {
     const route = await page.$$eval(".hx-rs", (li) => li.map((x) => ({ place: x.querySelector(".hx-rs-place").textContent, cls: x.className })));
     assert.equal(route[0].place, "Houston, United States"); assert.match(route[0].cls, /k-origin/);
     assert.equal(route.at(-1).place, "Lisbon, Portugal"); assert.match(route.at(-1).cls, /is-upcoming/, "destination upcoming while in transit");
-    assert.match(await page.textContent(".hx-fact-updated"), /Last recorded update/);
+    assert.match(await page.textContent(".hx-fact-updated"), /Latest milestone/);
+    const rootText = await page.textContent(".hx-tracker");
+    assert.ok(!/Operations update|Recorded time|Last recorded update/.test(rootText), "no back-office labels or entry times for clients");
+    assert.ok(!/Live tracking map/.test(rootText) && await page.locator(".hx-loc-badge").count() === 0, "a manually recorded location never reads as live");
+    assert.ok(await page.locator(".hx-timeline time[datetime]").count() >= 1, "milestone times stay in the timeline");
     await page.click(".hx-copy");
     await page.waitForFunction(() => document.querySelector("[data-copy-label]")?.textContent === "Copied");
     assert.equal(await page.evaluate(() => navigator.clipboard.readText()), codes.good);
@@ -543,10 +547,11 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   assert.ok(labels.includes("Suez Canal"), labels.join(","));
   assert.equal(await page.locator(".hx-route-overlay .is-current").count(), 1);
   assert.equal(await page.locator(".hx-route-overlay .is-upcoming text").textContent(), "Rotterdam", "destination still to come");
-  // open the 3D view, rotate, reset, close
-  await page.click('[data-act="3d"]');
+  // the 3D view starts by itself (no click): loading state, then the canvas over the reserved stage
   await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector(".hx-scene").classList.contains("is-3d") && !document.querySelector(".hx-3d-loading"));
   assert.match(await page.textContent('[data-slot="scenecap"]'), /3D model of a typical vessel for this stage, not the actual facility or vehicle\./);
+  assert.equal(await page.getAttribute('[data-act="3d"]', "aria-pressed"), "true");
   await page.waitForTimeout(400);
   const shot1 = await page.locator(".hx-3d-canvas").screenshot();
   const b = await page.locator(".hx-3d-canvas").boundingBox();
@@ -555,13 +560,24 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.waitForTimeout(300);
   const shot2 = await page.locator(".hx-3d-canvas").screenshot();
   assert.ok(!shot1.equals(shot2), "dragging rotates the model");
+  await page.click('[data-act="3d-zoom-in"]'); await page.waitForTimeout(200);
+  const shot3 = await page.locator(".hx-3d-canvas").screenshot();
+  assert.ok(!shot3.equals(shot2), "zoom button zooms");
   await page.click('[data-act="3d-reset"]'); await page.waitForTimeout(200);
+  // the wheel scrolls the page unless the canvas was clicked/focused first
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.evaluate(() => { window.__wheelPrevented = null; addEventListener("wheel", (e) => { window.__wheelPrevented = e.defaultPrevented; }, { once: true }); });
+  const y0 = await page.evaluate(() => scrollY); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.wheel(0, 400);
+  await page.waitForFunction(() => window.__wheelPrevented !== null);
+  assert.equal(await page.evaluate(() => window.__wheelPrevented), false, "the 3D canvas does not cancel the wheel");
+  await page.waitForFunction((y) => scrollY > y, y0, { timeout: 5000 }); // wheel scrolling is animated, so wait for it to land
+  // back to the photo and to 3D again
   await page.click('[data-act="3d-close"]');
-  assert.equal(await page.locator(".hx-3d-canvas").count(), 0, "closing frees the 3D canvas");
-  assert.ok(await page.isVisible(".hx-3d-open"), "button back after closing");
-  // the page still scrolls normally after using the 3D view
-  const y0 = await page.evaluate(() => scrollY); await page.mouse.wheel(0, 600); await page.waitForTimeout(300);
-  assert.ok(await page.evaluate(() => scrollY) > y0);
+  assert.equal(await page.locator(".hx-3d-canvas").count(), 0, "the photo view frees the 3D canvas");
+  assert.ok(await page.isVisible(".hx-scene-photo img"));
+  assert.equal(await page.getAttribute('[data-act="3d-close"]', "aria-pressed"), "true");
+  await page.click('[data-act="3d"]');
+  await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
   // a facility shipment gets the owner's facility photo and the warehouse model
   await page.fill("#trackingInput", codes.hub); await page.keyboard.press("Enter");
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.hub);
@@ -571,6 +587,7 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.good);
   assert.equal(await page.locator(".hx-scene .hx-scene-svg").count(), 1);
   assert.equal(await page.locator('[data-act="3d"]').count(), 0);
+  assert.equal(await page.locator(".hx-3d-canvas").count(), 0, "no 3D canvas for stages without a model");
   assert.deepEqual(errors, []);
   await ctx.close();
 });
@@ -581,13 +598,125 @@ test("3D view falls back to the photo with a clear message when WebGL is unavail
   const page = await ctx.newPage();
   await page.goto(`${base}/track.html`);
   await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
-  await page.waitForSelector('[data-act="3d"]');
-  await page.click('[data-act="3d"]');
-  await page.waitForFunction(() => /3D view isn't available on this device/.test(document.querySelector(".hx-3d")?.textContent || ""));
-  await page.click('.hx-3d [data-act="3d-close"]');
+  await page.waitForFunction(() => /3D view isn't available on this device/.test(document.querySelector(".hx-3d-note:not([hidden])")?.textContent || ""), null, { timeout: 15000 });
   assert.ok(await page.isVisible(".hx-scene-photo img"), "the photo is still there");
+  assert.equal(await page.locator(".hx-3d-canvas").count(), 0);
+  assert.equal(await page.isVisible(".hx-3d-tools"), false, "no 3D controls without 3D");
   assert.ok(await noOverflow(page));
   await ctx.close();
+});
+
+test("3D view: loading state while Three.js downloads, photo fallback when the CDN is blocked, canvas leaves vertical swipes to the page", async () => {
+  // slow CDN: the loading overlay is shown over the photo
+  let ctx = await newContext({ width: 390, height: 844 });
+  let release; const gate = new Promise((r) => { release = r; });
+  await ctx.route(/three@[^/]+\/build\//, async (r) => { await gate; r.abort(); });
+  let page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-3d-loading", { timeout: 15000 });
+  assert.match(await page.textContent(".hx-3d-loading"), /Loading 3D view/);
+  assert.equal(await page.getAttribute(".hx-scene", "aria-busy"), "true");
+  assert.ok(await page.isDisabled('[data-act="3d-reset"]'), "controls wait for the model");
+  release();
+  // blocked CDN: photo stays with the note, the rest of the page keeps working
+  await page.waitForFunction(() => !document.querySelector(".hx-3d-loading") && !document.querySelector(".hx-3d-note").hidden, null, { timeout: 15000 });
+  assert.ok(await page.isVisible(".hx-scene-photo img"));
+  assert.ok(await page.isVisible(".hx-timeline"));
+  await ctx.close();
+  // touch: the canvas leaves vertical swipes to the page (touch-action: pan-y) and has 44px-class targets
+  ctx = await newContext({ width: 390, height: 844 });
+  page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
+  assert.equal(await page.$eval(".hx-3d-canvas", (c) => getComputedStyle(c).touchAction), "pan-y");
+  const sizes = await page.$$eval(".hx-3d-btn, .hx-3d-mode .hx-seg", (b) => b.map((x) => { const r = x.getBoundingClientRect(); return Math.min(r.width, r.height); }));
+  assert.ok(sizes.every((n) => n >= 40), `touch targets ${sizes}`);
+  assert.ok(await noOverflow(page));
+  await shot(page, "tracking-3d-390");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("reduced motion: the 3D model still loads but stays still", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+  const cdn = process.env.HX_CDN_DIR;
+  if (cdn) await ctx.route(/cdn\.jsdelivr\.net\/npm\/three@[^/]+\/build\/(.*)/, (r) => r.fulfill({ status: 200, contentType: "text/javascript", body: fs.readFileSync(path.join(cdn, "three", "build", r.request().url().match(/build\/([^?]+)/)[1])) }));
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-3d-canvas", { timeout: 20000 });
+  await page.waitForTimeout(600);
+  const a = await page.locator(".hx-3d-canvas").screenshot(); await page.waitForTimeout(700);
+  const b = await page.locator(".hx-3d-canvas").screenshot();
+  assert.ok(a.equals(b), "no idle animation with reduced motion");
+  await ctx.close();
+});
+
+test("recorded vs. live: only a verified GPS / carrier position is labelled live", async () => {
+  const ctx = await newContext({ width: 1280, height: 900 });
+  await ctx.route(/\/api\/stream/, (r) => r.abort());
+  await ctx.route(/\/api\/track\?/, async (r) => {
+    const res = await r.fetch(); const body = await res.json().catch(() => null);
+    if (body?.shipment?.currentLocation) {
+      const now = new Date().toISOString();
+      body.shipment.currentLocation = { ...body.shipment.currentLocation, source: "gps", sourceLabel: "GPS telemetry", updatedAt: now };
+      body.shipment.locationState = { ...body.shipment.locationState, updatedAt: now };
+      if (body.shipment.map?.current) body.shipment.map.current = { ...body.shipment.map.current, updatedAt: now, sourceLabel: "GPS telemetry" };
+    }
+    r.fulfill({ response: res, json: body });
+  });
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html`);
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForSelector(".hx-fact-loc");
+  assert.match(await page.textContent(".hx-fact-loc"), /Current location/);
+  assert.match(await page.textContent(".hx-fact-loc .hx-loc-badge"), /Live/);
+  assert.match(await page.textContent(".hx-fact-loc"), /GPS/);
+  assert.match(await page.textContent('[data-slot="maptitle"]'), /Live tracking map/);
+  await ctx.close();
+});
+
+test("homepage tracking form: loading, invalid, unknown and network-error states, both themes, no overflow", async () => {
+  for (const theme of ["dark", "light"]) for (const w of [390, 768, 1280]) {
+    const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
+    if (theme === "light") await ctx.addInitScript(() => { try { localStorage.setItem("hx-theme", "light"); } catch {} });
+    let hold = null;
+    await ctx.route(/\/api\/track\?/, async (r) => { if (hold) await hold; r.continue(); });
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    await page.goto(`${base}/index.html?map=flat`);
+    assert.equal(await page.getAttribute("#trackingInput", "placeholder"), "Enter your tracking number");
+    assert.ok(parseFloat(await page.$eval("#trackingInput", (i) => getComputedStyle(i).fontSize)) >= 16, "no iOS zoom on focus");
+    const bh = await page.$eval(".btn-track", (b) => b.getBoundingClientRect().height); assert.ok(bh >= 44);
+    // invalid
+    await page.fill("#trackingInput", "!"); await page.click(".btn-track");
+    await page.waitForFunction(() => document.getElementById("error").classList.contains("show"));
+    assert.match(await page.textContent("#error"), /valid tracking number/);
+    assert.equal(await page.getAttribute("#trackingInput", "aria-invalid"), "");
+    // loading
+    let go; hold = new Promise((r) => { go = r; });
+    await page.fill("#trackingInput", "HY-000000"); await page.click(".btn-track");
+    await page.waitForFunction(() => document.getElementById("btn-text").textContent === "Tracking…");
+    assert.ok(await page.isDisabled(".btn-track")); assert.equal(await page.getAttribute(".btn-track", "aria-busy"), "");
+    if (w === 390) await shot(page, `form-loading-${theme}-390`);
+    go(); hold = null;
+    // unknown
+    await page.waitForFunction(() => /Tracking number not found/.test(document.getElementById("error").textContent));
+    assert.equal(await page.textContent("#btn-text"), "Track shipment");
+    assert.ok(await noOverflow(page), `overflow ${theme} ${w}`);
+    await shot(page, `form-error-${theme}-${w}`);
+    // network error, then retry recovers
+    await ctx.route(/\/api\/track\?/, (r) => r.abort(), { times: 1 });
+    await page.fill("#trackingInput", codes.good); await page.click(".btn-track");
+    await page.waitForFunction(() => /couldn't load tracking/.test(document.getElementById("trackerRoot").textContent));
+    assert.match(await page.textContent("#error"), /couldn't load tracking/);
+    await page.click('[data-act="retry"]');
+    await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.good, { timeout: 15000 });
+    assert.equal(await page.textContent("#error"), "", "message cleared on success");
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  }
 });
 
 test("homepage freight: recorded routes panel shows only published shipments and disappears when there are none", async () => {

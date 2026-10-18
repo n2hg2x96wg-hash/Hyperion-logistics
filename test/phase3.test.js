@@ -3,6 +3,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 
 process.env.STORE = "memory";
 process.env.GEOCODER = "off";
@@ -454,7 +455,49 @@ test("tracker: manual check never overlaps, reports its real outcome, and the ti
   assert.match(t, /Last checked \$\{/, "check time labelled separately from the last recorded event");
   assert.match(t, /let timelineOrder = "oldest";/);
   assert.match(t, /const latestId = items\[0\]\?\.id;/, "'Latest' still marks the newest recorded event in either order");
-  assert.match(t, /\$\{loc\?\.sourceLabel \? ` · \$\{esc\(loc\.sourceLabel\)\}` : ""\}/, "the location says how it was recorded");
+});
+
+test("tracker: no back-office timestamps or labels for clients; only verified feeds read as live", () => {
+  const t = read("tracker/tracker.js");
+  assert.doesNotMatch(t, /sourceLabel\)/, "back-office source labels (e.g. \"Operations update\") are never rendered");
+  assert.doesNotMatch(t, /fmtDateTime\(v\.lastUpdated\)|data-ago="\$\{esc\(v\.lastUpdated/, "the record-edit time is not shown as an event time");
+  assert.doesNotMatch(t, /recordedAt/, "the exception entry time is not shown");
+  assert.doesNotMatch(t, /\["Recorded", /, "the map fallback has no entry-time row");
+  assert.match(t, /const LIVE_SOURCES = new Set\(\["gps", "carrier_api"\]\);/);
+  assert.match(t, /if \(!verifiedFeed\(v\)\) \{ const s = ls\.state === "none" \? "none" : "last";/, "manual locations never read as live or recent");
+  assert.match(t, /const latest = v\.timeline\?\.\[0\] \|\| null;/, "the latest milestone is the newest recorded event");
+  assert.match(t, /🕒 Latest milestone/);
+  assert.match(t, /<time datetime="\$\{esc\(t\.timestamp\)\}">/, "event times stay in the timeline");
+  assert.match(read("tracker/map.js"), /cur\?\.updatedAt \? `Reported \$\{fmt\(cur\.updatedAt\)\}` : null/);
+  const cc = read("ui/globe/command-center.js");
+  assert.match(cc, /o\.mode === "admin" \|\| VERIFIED_LABELS\.has\(a\.sourceLabel\)/, "homepage feed hides back-office labels");
+});
+
+test("tracker: 3D starts by itself when the scene is in view, with a loading state, timeout and photo fallback", () => {
+  const t = read("tracker/tracker.js");
+  assert.match(t, /v3io = new IntersectionObserver\(/, "lazy: starts when the scene scrolls into view");
+  assert.match(t, /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\);/, "the 3D module is loaded lazily");
+  assert.match(t, /Loading 3D view…/);
+  assert.match(t, /const V3_TIMEOUT = 12000;/);
+  assert.match(t, /Showing photo — 3D view isn't available on this device\./);
+  for (const a of ["3d", "3d-close", "3d-reset", "3d-zoom-in", "3d-zoom-out"]) assert.ok(t.includes(`data-act="${a}"`) || t.includes(`act === "${a}"`), a);
+  assert.doesNotMatch(t, /Explore in 3D/);
+  const s3d = read("tracker/scene3d.js");
+  assert.match(s3d, /if \(document\.activeElement !== canvas\) return;/, "wheel never hijacks page scrolling");
+  assert.match(s3d, /if \(e\.pointerType !== "touch"\) view\.pitch/, "touch drags only rotate sideways");
+  assert.match(read("tracker/tracker.css"), /touch-action: pan-y;/);
+  // lazily imported modules are not loaded by other unit tests, so check that they parse
+  for (const f of ["tracker/scene3d.js", "tracker/tracker.js", "tracker/map.js"]) assert.equal(spawnSync(process.execPath, ["--check", new URL(`../${f}`, import.meta.url).pathname]).status, 0, f);
+});
+
+test("homepage tracking form: ids kept, neutral placeholder, loading and error states", () => {
+  const h = read("index.html");
+  for (const id of ['id="trackForm"', 'id="trackingInput"', 'id="trackHint"', 'id="error"', 'id="btn-text"', 'onclick="track()"', "btn-track"]) assert.ok(h.includes(id), id);
+  assert.match(h, /placeholder="Enter your tracking number"/);
+  assert.doesNotMatch(h, /HY-\d{3,}/, "no example code that could look like a real shipment");
+  assert.match(h, /label\.textContent = busy \? "Tracking…" : "Track shipment"/);
+  for (const k of ["invalid", "notfound", "error"]) assert.match(h, new RegExp(`${k}: "`), k);
+  assert.match(read("ui/site-v2.css"), /\.track-field:focus-within \{/);
 });
 
 test("stage photos and 3D models: every status maps safely, files exist, captions are honest, Three.js only on demand", async () => {

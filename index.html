@@ -148,11 +148,14 @@
           <div class="track-card" id="trackForm">
             <label for="trackingInput">Tracking number</label>
             <div class="track-form2 track-form">
-              <input id="trackingInput" type="text" placeholder="e.g. HY-123456" inputmode="text" aria-describedby="trackHint">
-              <button class="btn-primary2 btn-track hx-press" type="button" onclick="track()"><span id="btn-text">Track shipment</span></button>
+              <div class="track-field">
+                <svg class="track-field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+                <input id="trackingInput" type="text" placeholder="Enter your tracking number" inputmode="text" aria-describedby="trackHint error">
+              </div>
+              <button class="btn-primary2 btn-track hx-press" type="button" onclick="track()"><span class="btn-spin" aria-hidden="true"></span><span id="btn-text">Track shipment</span></button>
             </div>
-            <p class="track-hint" id="trackHint">Your tracking number is on your booking confirmation. We never store it in your browser.</p>
             <div id="error" class="error-message" role="alert"></div>
+            <p class="track-hint" id="trackHint">Find it on your booking confirmation. <span>We don't store it in your browser.</span></p>
           </div>
           <ul class="hero3-facts">
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Every milestone time-stamped</li>
@@ -364,7 +367,7 @@
         </div>
         <ul class="caps" data-reveal-stagger>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
-            <div><strong>Recorded positions, clearly labelled</strong><span>Each position shows when it was recorded and where it came from. Nothing is estimated or simulated.</span></div></li>
+            <div><strong>Recorded positions, clearly labelled</strong><span>Recorded positions are never shown as live. Only verified carrier or GPS data is marked live. Nothing is estimated or simulated.</span></div></li>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
             <div><strong>Private by default</strong><span>Shipment details are checked on our servers; only what you are allowed to see reaches your browser.</span></div></li>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span>
@@ -387,7 +390,7 @@
       <div class="wrap">
         <div class="section-head" data-reveal><div><div class="kicker">How it works</div><h2 id="howTitle">From booking to doorstep in three steps</h2></div></div>
         <ol class="steps" data-reveal-stagger>
-          <li data-reveal><h3>Enter your tracking number</h3><p>Use the number from your booking confirmation, for example HY-123456.</p></li>
+          <li data-reveal><h3>Enter your tracking number</h3><p>Use the number from your booking confirmation.</p></li>
           <li data-reveal><h3>See where it stands</h3><p>Status, last recorded location, route map, timeline and delivery estimate in one view.</p></li>
           <li data-reveal><h3>Keep the page open</h3><p>New updates appear on their own. Close the page and nothing about your shipment stays on your device.</p></li>
         </ol>
@@ -443,9 +446,15 @@
     const button = document.querySelector(".btn-track");
     const tracker = createTracker(document.getElementById("trackerRoot"), {
       onState: (s) => {
-        if (button) button.disabled = s.phase === "loading";
+        const busy = s.phase === "loading";
+        if (button) { button.disabled = busy; button.classList.toggle("is-busy", busy); button.toggleAttribute("aria-busy", busy); }
+        const label = document.getElementById("btn-text"); if (label) label.textContent = busy ? "Tracking…" : "Track shipment";
+        // A short message next to the field; the full explanation is in the results below it.
         const err = document.getElementById("error");
-        if (err) { err.classList.remove("show"); err.textContent = ""; }
+        const msg = { invalid: "Please enter a valid tracking number.", notfound: "Tracking number not found.", error: "We couldn't load tracking right now. Please try again." }[s.phase] || "";
+        if (err) { err.classList.toggle("show", !!msg); err.textContent = msg; }
+        input.toggleAttribute("aria-invalid", s.phase === "invalid" || s.phase === "notfound");
+        document.getElementById("trackForm")?.classList.toggle("has-error", !!msg);
         if (s.phase === "ready" && !window.__hxScrolled) { window.__hxScrolled = true; document.getElementById("results-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
       }
     });

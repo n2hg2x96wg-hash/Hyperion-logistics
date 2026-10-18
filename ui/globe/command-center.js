@@ -3,7 +3,10 @@
 // tracking form) work before any of this runs, and a failure here never affects shipment tracking.
 import { globeSupported } from "./globe.js";
 import { prefersReducedMotion } from "./geo.js";
-import { timeAgo } from "../../shared/status.js";
+import { timeAgo, EVENT_SOURCES } from "../../shared/status.js";
+
+// Visitors see a source only for verified feeds (GPS / carrier API); back-office labels stay in the admin console.
+const VERIFIED_LABELS = new Set([EVENT_SOURCES.gps, EVENT_SOURCES.carrier_api]);
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
@@ -136,7 +139,7 @@ export function mountCommandCenter(o) {
         <span class="cc-feed-main">
           <span class="cc-feed-top"><strong>${esc(a.title)}</strong><time datetime="${esc(a.at)}">${esc(a.at ? timeAgo(a.at) : "time not recorded")}</time></span>
           <span class="cc-feed-route">${esc(a.from || "Origin not set")} → ${esc(a.to || "Destination not set")}</span>
-          <span class="cc-feed-meta">${esc(a.ref)}${a.place ? ` · ${esc(a.place)}` : ""} · ${esc(a.sourceLabel)}</span>
+          <span class="cc-feed-meta">${esc(a.ref)}${a.place ? ` · ${esc(a.place)}` : ""}${o.mode === "admin" || VERIFIED_LABELS.has(a.sourceLabel) ? ` · ${esc(a.sourceLabel)}` : ""}</span>
         </span></button></li>`).join("");
   }
 
@@ -163,7 +166,7 @@ export function mountCommandCenter(o) {
     if (!r) { o.cardEl.hidden = true; return; }
     o.cardEl.hidden = false;
     const pos = r.current
-      ? `<div class="cc-card-row"><span class="cc-key cc-key-current"></span><div><strong>Recorded position</strong><br>${esc(r.current.place || `${r.current.lat}, ${r.current.lng}`)}<br><small>${r.current.recordedAt ? `${esc(fmt(r.current.recordedAt))} · ` : "Time not recorded · "}${esc(r.current.sourceLabel || "Operations update")}</small></div></div>`
+      ? `<div class="cc-card-row"><span class="cc-key cc-key-current"></span><div><strong>Recorded position</strong><br>${esc(r.current.place || `${r.current.lat}, ${r.current.lng}`)}${o.mode === "admin" ? `<br><small>${r.current.recordedAt ? `${esc(fmt(r.current.recordedAt))} · ` : "Time not recorded · "}${esc(r.current.sourceLabel || EVENT_SOURCES.admin)}</small>` : VERIFIED_LABELS.has(r.current.sourceLabel) && r.current.recordedAt ? `<br><small>${esc(fmt(r.current.recordedAt))} · ${esc(r.current.sourceLabel)}</small>` : ""}</div></div>`
       : `<div class="cc-card-row"><span class="cc-key"></span><div><strong>Current position not recorded yet</strong><br><small>Only the planned route is shown.</small></div></div>`;
     o.cardEl.innerHTML = `
       <div class="cc-card-head"><span class="cc-ref">${esc(r.ref)}</span><span class="cc-pill tone-${esc(r.status.tone)}">${esc(r.status.label)}${r.deliveredRecently ? " · recently" : ""}</span>
