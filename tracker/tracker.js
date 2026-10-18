@@ -7,7 +7,7 @@
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
 import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
-import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageModel, modelCaption, routeOverlaySvg } from "./scene.js";
+import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageScene, modelCaption, routeOverlaySvg } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const LIVE_SOURCES = new Set(["gps", "carrier_api"]); // the only sources that are verified live carrier / telemetry data
@@ -92,7 +92,7 @@ export function createTracker(root, opts = {}) {
     stopRealtime();
     const switching = state.code !== code;
     state.code = code;
-    if (switching) { state.view = null; destroyMap(); drop3d(); want3d = true; failed3d = false; renderedCode = null; }
+    if (switching) { state.view = null; destroyMap(); drop3d(); want3d = true; if (failed3d !== "slow") failed3d = null; renderedCode = null; } // a slow device stays on photos
     setPhase("loading"); if (switching || !state.view) renderSkeleton();
     const res = await loadView(code, { signal: abort.signal });
     if (destroyed || res.status === "aborted" || state.code !== code) return;
@@ -258,10 +258,10 @@ export function createTracker(root, opts = {}) {
   function sceneHtml(v, ls) {
     const pr = presentation(v);
     const loc = v.currentLocation?.name;
-    const photo = stagePhoto(v); const model = stageModel(v);
+    const photo = stagePhoto(v); const sc = stageScene(v);
     const media = photo ? stagePhotoHtml(photo) + (photo.key === "ship" ? routeOverlaySvg(v) : "") : sceneSvg(pr);
-    return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}"${model ? ` data-model="${esc(model)}"` : ""}>
-      <div class="hx-scene-media"><div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>${model ? bar3dHtml() : ""}</div>
+    return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}" data-scene="${esc(sc.scene)}" data-animate="${sc.animate}" data-state="${esc(sc.state)}">
+      <div class="hx-scene-media"><div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>${bar3dHtml()}</div>
       <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}</span>
       <small data-slot="scenecap">${photo?.key === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage."}</small></figcaption></figure>`;
   }
@@ -271,8 +271,9 @@ export function createTracker(root, opts = {}) {
     return `<div class="hx-3d-bar" data-slot="3dbar" data-mode="loading">
       <div class="hx-segs hx-3d-mode" role="group" aria-label="Scene view"><button type="button" class="hx-seg" data-act="3d" aria-pressed="true" aria-controls="hx3d">3D</button><button type="button" class="hx-seg" data-act="3d-close" aria-pressed="false">Photo</button></div>
       <span class="hx-3d-hint">${hint}</span>
+      <div class="hx-segs hx-3d-views" role="group" aria-label="Camera views" data-slot="3dviews"></div>
       <div class="hx-3d-tools"><button type="button" class="hx-3d-btn" data-act="3d-zoom-out" aria-label="Zoom out" disabled>−</button><button type="button" class="hx-3d-btn" data-act="3d-zoom-in" aria-label="Zoom in" disabled>+</button><button type="button" class="hx-3d-btn" data-act="3d-reset" aria-label="Reset view" disabled>⟲</button></div>
-      <p class="hx-3d-note" role="status" hidden>Showing photo — 3D view isn't available on this device.</p></div>`;
+      <p class="hx-3d-note" role="status" hidden></p></div>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
@@ -325,7 +326,7 @@ export function createTracker(root, opts = {}) {
     const ago = latest?.timestamp ? timeAgo(latest.timestamp, Date.now() + serverOffset) : null;
 
     // The 3D view survives a data update when the stage model is unchanged; otherwise it is rebuilt for the new stage.
-    const keep3d = viewer3d && viewer3dModel === stageModel(v) ? root.querySelector('[data-slot="3d"]') : null;
+    const next3d = stageScene(v); const keep3d = viewer3d && viewer3dKey === `${next3d.scene}:${next3d.animate}:${next3d.state}` ? root.querySelector('[data-slot="3d"]') : null;
     if (keep3d) keep3d.remove(); else drop3d();
     // Keep the live map element (and its Leaflet instance) across re-renders: updates move markers, never rebuild the map.
     const keepMap = v.map && map ? map.el : null;
@@ -493,32 +494,41 @@ export function createTracker(root, opts = {}) {
   }
   function destroyMap() { mapToken++; if (map) { map.api.destroy(); map = null; } }
 
-  // ---------- 3D stage model: starts by itself when the scene scrolls into view ----------
-  // The stage photo is the poster while Three.js loads and stays as the fallback when 3D can't run (no WebGL, CDN
-  // blocked, slow network). "Photo" switches back for the current result only; nothing is stored.
-  let viewer3d = null; let viewer3dModel = null; let scene3dMod = null; let v3token = 0; let v3io = null;
-  let want3d = true; let failed3d = false;
-  const V3_TIMEOUT = 12000;
+  // ---------- 3D stage scene: starts by itself when the scene scrolls into view ----------
+  // The stage photo (or drawing) is the poster while Three.js loads and stays as the fallback when 3D can't run: no
+  // WebGL, CDN blocked, slow network, or a device too slow to draw it smoothly. "Photo" switches back for the current
+  // result only; nothing is stored.
+  let viewer3d = null; let viewer3dKey = null; let scene3dMod = null; let v3token = 0; let v3io = null;
+  let want3d = true; let failed3d = null; // null | "unavailable" | "slow"
+  const V3_TIMEOUT = 15000;
+  const FALLBACK_NOTE = { unavailable: "Showing photo — 3D view isn't available on this device.", slow: "Showing photo — 3D view turned off to keep this page smooth on this device." };
   const sceneCap = (fig) => (fig.dataset.photo === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage.");
+  const figKey = (fig) => `${fig.dataset.scene}:${fig.dataset.animate === "true"}:${fig.dataset.state}`;
 
-  function drop3d() { v3token++; v3io?.disconnect(); v3io = null; viewer3d?.dispose(); viewer3d = null; viewer3dModel = null; }
+  function drop3d() { v3token++; v3io?.disconnect(); v3io = null; viewer3d?.dispose(); viewer3d = null; viewer3dKey = null; }
 
   function setBar(fig, mode) {
     const bar = fig?.querySelector('[data-slot="3dbar"]'); if (!bar) return;
     bar.dataset.mode = mode;
-    bar.querySelectorAll(".hx-3d-btn").forEach((b) => { b.disabled = mode !== "3d"; });
+    bar.querySelectorAll(".hx-3d-btn, .hx-3d-views .hx-seg").forEach((b) => { b.disabled = mode !== "3d"; });
     bar.querySelector('[data-act="3d"]')?.setAttribute("aria-pressed", String(mode === "3d" || mode === "loading"));
     bar.querySelector('[data-act="3d-close"]')?.setAttribute("aria-pressed", String(mode === "photo"));
-    bar.querySelector(".hx-3d-note").hidden = mode !== "fallback";
+    const note = bar.querySelector(".hx-3d-note"); note.hidden = mode !== "fallback"; note.textContent = mode === "fallback" ? FALLBACK_NOTE[failed3d] || FALLBACK_NOTE.unavailable : "";
   }
+  function setViews(fig, active) {
+    const box = fig.querySelector('[data-slot="3dviews"]'); if (!box || !viewer3d) return;
+    if (!box.childElementCount) box.innerHTML = viewer3d.views.map((x) => `<button type="button" class="hx-seg" data-act="3d-view" data-view="${esc(x.id)}" aria-pressed="false">${esc(x.label)}</button>`).join("");
+    box.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === active)));
+  }
+  const captionFor = (fig) => modelCaption(fig.dataset.scene, fig.dataset.state);
 
   /** After each render: re-attach a kept viewer, or arm the lazy start, or show the photo state. */
   function mount3d(kept) {
-    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig) { drop3d(); return; }
+    const fig = root.querySelector(".hx-scene[data-scene]"); if (!fig) { drop3d(); return; }
     if (kept) {
       fig.querySelector('[data-slot="3d"]')?.replaceWith(kept);
-      fig.classList.add("is-3d"); setBar(fig, "3d");
-      fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(viewer3dModel);
+      fig.classList.add("is-3d"); setBar(fig, "3d"); setViews(fig, viewer3d.activeView);
+      fig.querySelector('[data-slot="scenecap"]').textContent = captionFor(fig);
       return;
     }
     if (failed3d) { setBar(fig, "fallback"); return; }
@@ -534,43 +544,49 @@ export function createTracker(root, opts = {}) {
   }
 
   async function start3d(fig) {
-    const slot = fig.querySelector('[data-slot="3d"]'); const model = fig.dataset.model;
-    if (!slot || !model || viewer3d || !fig.isConnected) return;
+    const slot = fig.querySelector('[data-slot="3d"]'); const scene = fig.dataset.scene;
+    if (!slot || !scene || viewer3d || !fig.isConnected) return;
     const token = ++v3token;
     slot.hidden = false; slot.id = "hx3d"; slot.innerHTML = "";
     fig.querySelector(".hx-3d-loading")?.remove();
     fig.querySelector(".hx-scene-stage").insertAdjacentHTML("beforeend", '<div class="hx-3d-loading" role="status"><span class="hx-spinner" aria-hidden="true"></span>Loading 3D view…</div>');
     fig.setAttribute("aria-busy", "true"); setBar(fig, "loading");
+    let built = false; // the scene exists but is still being drawn / measured
     const load = (async () => {
       scene3dMod = scene3dMod || await import("./scene3d.js");
-      const v = await scene3dMod.createViewer(slot, model, { reducedMotion: reducedMotion() });
-      await v.ready; return v;
+      const v = await scene3dMod.createViewer(slot, scene, { reducedMotion: reducedMotion(), animate: fig.dataset.animate === "true" }); built = true;
+      try { await v.ready; } catch (err) { v.dispose(); throw err; }
+      return v;
     })();
-    let timer;
+    let timer; let reason = "unavailable";
     const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), V3_TIMEOUT); });
     let viewer = null;
     try { viewer = await Promise.race([load, timeout]); }
-    catch { load.then((v) => v.dispose(), () => {}); } // a viewer that arrives after the timeout is discarded
+    catch (err) { if (err?.code === "slow" || built) reason = "slow"; load.then((v) => v.dispose(), () => {}); } // a viewer that arrives after the timeout is discarded
     finally { clearTimeout(timer); }
     if (token !== v3token || !slot.isConnected) { viewer?.dispose(); return; }
     fig.removeAttribute("aria-busy"); fig.querySelector(".hx-3d-loading")?.remove();
-    if (!viewer) { failed3d = true; slot.hidden = true; slot.innerHTML = ""; setBar(fig, "fallback"); return; }
-    viewer3d = viewer; viewer3dModel = model;
-    fig.classList.add("is-3d"); setBar(fig, "3d");
-    fig.querySelector('[data-slot="scenecap"]').textContent = modelCaption(model);
+    if (!viewer) { failed3d = reason; slot.hidden = true; slot.innerHTML = ""; setBar(fig, "fallback"); return; }
+    viewer3d = viewer; viewer3dKey = figKey(fig); viewer3d.activeView = viewer3d.views[0]?.id;
+    fig.classList.add("is-3d"); setBar(fig, "3d"); setViews(fig, viewer3d.activeView);
+    fig.querySelector('[data-slot="scenecap"]').textContent = captionFor(fig);
   }
 
   function show3d() {
-    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig || viewer3d) return;
-    want3d = true; failed3d = false; start3d(fig);
+    const fig = root.querySelector(".hx-scene[data-scene]"); if (!fig || viewer3d) return;
+    want3d = true; failed3d = null; start3d(fig);
   }
   function showPhoto() {
     want3d = false; drop3d();
-    const fig = root.querySelector(".hx-scene[data-model]"); if (!fig) return;
+    const fig = root.querySelector(".hx-scene[data-scene]"); if (!fig) return;
     const slot = fig.querySelector('[data-slot="3d"]'); if (slot) { slot.hidden = true; slot.innerHTML = ""; }
     fig.removeAttribute("aria-busy"); fig.querySelector(".hx-3d-loading")?.remove();
     fig.classList.remove("is-3d"); setBar(fig, failed3d ? "fallback" : "photo");
     fig.querySelector('[data-slot="scenecap"]').textContent = sceneCap(fig);
+  }
+  function show3dView(id) {
+    const fig = root.querySelector(".hx-scene[data-scene]"); if (!fig || !viewer3d) return;
+    viewer3d.setView(id); viewer3d.activeView = id; setViews(fig, id);
   }
 
   async function copyCode(btn, code) {
@@ -586,7 +602,7 @@ export function createTracker(root, opts = {}) {
   }
 
   function reset() {
-    drop3d(); want3d = true; failed3d = false;
+    drop3d(); want3d = true; if (failed3d !== "slow") failed3d = null;
     if (abort) abort.abort();
     abort = null; inflightCode = null;
     stopRealtime(); destroyMap();
@@ -607,7 +623,8 @@ export function createTracker(root, opts = {}) {
     if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
     if (act === "3d" && state.view) show3d();
     if (act === "3d-close") showPhoto();
-    if (act === "3d-reset") viewer3d?.reset();
+    if (act === "3d-reset" && viewer3d) { viewer3d.reset(); show3dView(viewer3d.views[0]?.id); }
+    if (act === "3d-view") show3dView(e.target.closest("[data-view]").dataset.view);
     if (act === "3d-zoom-in") viewer3d?.zoom(0.85);
     if (act === "3d-zoom-out") viewer3d?.zoom(1 / 0.85);
     if (act === "order" && state.view) {

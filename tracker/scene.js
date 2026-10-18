@@ -10,19 +10,20 @@ const STAGE_BY_STATUS = {
   AT_FACILITY: "facility", CUSTOMS: "facility", OUT_FOR_DELIVERY: "out-for-delivery", DELIVERED: "delivered",
   DELAYED: "held", EXCEPTION: "held", CANCELLED: "cancelled"
 };
-const MODE_BY_CATEGORY = { ocean: "ship", air: "plane", regional: "truck", express: "van" };
+// Only single-mode carriers say how a shipment travels: ocean lines sail, cargo airlines fly. Express, regional and
+// custom carriers run several modes, so their shipments need a recorded service type (air / sea / road) to get one.
+const MODE_BY_CATEGORY = { ocean: "ship", air: "plane" };
 const MODE_WORDS = [
   [/\b(ocean|sea|vessel|maritime|fcl|lcl)\b/i, "ship"],
   [/\b(air|flight|airfreight|air freight)\b/i, "plane"],
-  [/\b(road|truck|trucking|ground|ltl|ftl|haulage)\b/i, "truck"],
-  [/\b(express|courier|parcel|same[- ]day|next[- ]day)\b/i, "van"]
+  [/\b(road|truck|trucking|ground|ltl|ftl|haulage)\b/i, "truck"]
 ];
 
 export const STAGE_TEXT = {
   registered: "Shipment registered", processing: "Processing", transit: "In transit", facility: "At a facility",
   "out-for-delivery": "Out for delivery", delivered: "Delivered", held: "On hold", cancelled: "Cancelled", neutral: "Shipment"
 };
-const MODE_TEXT = { ship: "sea freight", plane: "air freight", truck: "road freight", van: "courier" };
+const MODE_TEXT = { ship: "sea freight", plane: "air freight", truck: "road freight" };
 
 /** Transport mode from recorded data only, or null when the data does not say. */
 export function shipmentMode(view) {
@@ -38,7 +39,9 @@ export function shipmentMode(view) {
 export function presentation(view) {
   const stage = STAGE_BY_STATUS[view?.status?.code] || "neutral";
   const mode = shipmentMode(view);
-  const label = stage === "transit" && mode ? `${STAGE_TEXT.transit} · ${MODE_TEXT[mode]}` : STAGE_TEXT[stage];
+  const code = view?.status?.code;
+  const label = code === "PICKED_UP" ? "Picked up" : code === "CUSTOMS" ? "In customs"
+    : stage === "transit" && mode ? `${STAGE_TEXT.transit} · ${MODE_TEXT[mode]}` : STAGE_TEXT[stage];
   return { stage, mode, label };
 }
 
@@ -122,16 +125,14 @@ export function routeStops(view) {
 // Photos illustrate the kind of place or vehicle for the recorded stage; they never claim to show the actual facility,
 // vessel or parcel. Stages without a fitting photo keep the drawn illustration above.
 const PHOTOS = {
-  dc: { file: "dc", widths: [720, 1179], w: 1179, h: 704, alt: "Illustration: a large distribution centre with trucks at its loading bays" },
-  bays: { file: "bays", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: warehouse loading bays with dock doors" },
-  forklift: { file: "forklift", widths: [342], w: 342, h: 250, alt: "Illustration: forklifts moving containers inside a logistics facility" },
+  dock: { file: "dock", widths: [720, 1179], w: 1179, h: 784, alt: "Illustration: a distribution warehouse with trucks at its loading docks at dusk" },
+  aerial: { file: "aerial", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: aerial view of a large distribution centre with trailers at its loading bays" },
   campus: { file: "campus", widths: [720, 1099], w: 1099, h: 638, alt: "Illustration: a secured logistics campus with a gated entrance" },
   ship: { file: "ship", widths: [342], w: 342, h: 250, alt: "Illustration: a container ship at sea, seen from above" },
   air: { file: "air", widths: [342], w: 342, h: 250, alt: "Illustration: a cargo aircraft being loaded at an airport" },
   dusk: { file: "dusk", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: a distribution warehouse with a delivery van in front" }
 };
-const PHOTO_BY_STATUS = { CREATED: "dc", PROCESSING: "bays", AT_FACILITY: "forklift", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk" };
-const MODEL_TEXT = { warehouse: "warehouse", ship: "vessel", plane: "aircraft", delivery: "delivery van" };
+const PHOTO_BY_STATUS = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk" };
 
 /** Photo for the recorded stage, or null when the drawn illustration should be used. */
 export function stagePhoto(view) {
@@ -143,15 +144,35 @@ export function stagePhoto(view) {
   return key ? { key, ...PHOTOS[key] } : null;
 }
 
-/** Which 3D model can be explored for this stage (null = none). */
-export function stageModel(view) {
-  const { stage, mode } = presentation(view);
-  if (["registered", "processing", "facility"].includes(stage)) return "warehouse";
-  if (stage === "transit" && (mode === "ship" || mode === "plane")) return mode;
-  if (stage === "out-for-delivery") return "delivery";
-  return null;
+// ---------- 3D scene for the recorded stage (tracker/3d/scenes) ----------
+const SCENE_BY_STATUS = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs",
+  OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered" };
+const SCENE_BY_MODE = { ship: "ship", plane: "air", truck: "road" };
+const SCENE_TEXT = { processing: "warehouse where shipments are prepared", collection: "dispatch dock where shipments are collected", ship: "container vessel at sea",
+  air: "cargo aircraft at an airport", road: "freight truck on a highway", neutral: "pallet of parcels", facility: "distribution centre",
+  customs: "cargo customs inspection area", delivery: "delivery van on a residential street", delivered: "parcel on a front porch" };
+
+function sceneFor(code, view) {
+  if (code === "IN_TRANSIT") return SCENE_BY_MODE[shipmentMode(view)] || "neutral"; // no recorded mode: no vehicle is implied
+  return SCENE_BY_STATUS[code] || null;
 }
-export const modelCaption = (model) => `3D model of a typical ${MODEL_TEXT[model]} for this stage, not the actual facility or vehicle.`;
+
+/**
+ * { scene, animate, state } for the recorded status. On hold (delayed / exception) shows the last confirmed stage's
+ * scene, or the neutral one, without movement; cancelled and unknown statuses get the neutral scene, also still.
+ */
+export function stageScene(view) {
+  const code = view?.status?.code;
+  if (code === "CANCELLED") return { scene: "neutral", animate: false, state: "cancelled" };
+  const direct = sceneFor(code, view);
+  if (direct) return { scene: direct, animate: true, state: "normal" };
+  if (code === "DELAYED" || code === "EXCEPTION") return { scene: sceneFor(view?.progress?.stage, view) || "neutral", animate: false, state: "held" };
+  return { scene: "neutral", animate: false, state: "unknown" };
+}
+export function modelCaption(scene, state = "normal") {
+  const base = `3D illustration of a typical ${SCENE_TEXT[scene] || SCENE_TEXT.neutral} for this stage — not the actual facility, vehicle or parcel.`;
+  return state === "held" ? `${base} Shown without movement while the shipment is on hold.` : state === "cancelled" ? `${base} Shown without movement: the shipment is cancelled.` : base;
+}
 
 /** <picture> markup for a stage photo; fixed width/height so nothing shifts while it loads. */
 export function stagePhotoHtml(p) {

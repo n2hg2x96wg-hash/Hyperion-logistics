@@ -237,6 +237,18 @@
           </aside>
         </div>
       </div>
+      <!-- Global network: published routes only (masked, city level); an unlabelled illustrative network when none are
+           published, clearly tagged as not shipment data. See ui/network.js. -->
+      <div class="wrap">
+        <figure class="freight-network" id="freightNetwork" data-state="loading" data-reveal aria-labelledby="freightNetworkTitle">
+          <figcaption class="nw-head">
+            <div><h3 id="freightNetworkTitle">International shipping network</h3><p class="nw-tag" data-slot="nwtag">Loading routes…</p></div>
+            <ul class="nw-legend" hidden><li><i class="k-origin"></i>Origin</li><li><i class="k-current"></i>Last recorded position</li><li><i class="k-destination"></i>Destination</li><li><i class="k-line"></i>Travelled</li><li><i class="k-dash"></i>Planned</li></ul>
+          </figcaption>
+          <svg class="nw-map" viewBox="0 0 1000 470" role="img" aria-labelledby="freightNetworkTitle"><rect class="nw-sea" width="1000" height="470"/><path class="nw-land"/><g class="nw-routes"></g></svg>
+          <p class="nw-note" data-slot="nwnote" hidden></p>
+        </figure>
+      </div>
       <div class="wrap">
         <ul class="freight-services" data-reveal-stagger aria-label="Freight services">
           <li data-reveal><a href="#svc-ocean" class="freight-card">
@@ -495,11 +507,13 @@
         <div class="fr-route"><span>${esc(r.originLabel || "Origin not set")}</span><i aria-hidden="true"></i><span>${esc(r.destinationLabel || "Destination not set")}</span></div>
         ${r.current?.place ? `<div class="fr-now">Last recorded at ${esc(r.current.place)}</div>` : ""}</li>`).join("");
     }
+    const network = import("./ui/network.js").then(({ mountNetwork }) => mountNetwork(document.getElementById("freightNetwork")));
+    network.catch(() => {});
     import("./ui/globe/command-center.js").then(({ mountCommandCenter }) => mountCommandCenter({
       mapEl: document.getElementById("ccMap"), feedEl: document.getElementById("ccFeed"),
       tableEl: document.getElementById("ccTable"),
       cardEl: document.getElementById("ccCard"), statusEl: document.getElementById("ccStatus"), mode: "public", pollMs: 30000,
-      onData: (d) => { setActivity(Array.isArray(d?.routes) && d.routes.length ? "ready" : "empty"); renderFreightRoutes(d?.routes); },
+      onData: (d) => { setActivity(Array.isArray(d?.routes) && d.routes.length ? "ready" : "empty"); renderFreightRoutes(d?.routes); network.then((n) => n.render(d), () => {}); },
       load: async () => {
         try {
           const r = await fetch("/api/public?view=overview", { headers: { Accept: "application/json" } });
@@ -507,11 +521,12 @@
           return await r.json();
         } catch (err) {
           if (activity.dataset.state !== "ready") setActivity("error");
+          network.then((n) => n.error(), () => {});
           console.warn("[activity] public shipment data unavailable:", err?.message);
           throw err;
         }
       }
-    })).catch(() => { setActivity("error"); document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
+    })).catch(() => { setActivity("error"); network.then((n) => n.error(), () => {}); document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
     import("./ui/carriers.js").then(({ mountCarrierDirectory }) => mountCarrierDirectory(document.getElementById("carrierDirectory"), document.getElementById("carrierTabs")))
       .catch(() => { document.getElementById("carrierDirectory").innerHTML = '<p class="cr-note">The carrier directory could not load. Please refresh the page.</p>'; });
   </script>
