@@ -838,6 +838,10 @@
         </div>
         <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-action" id="bannerBackupBtn" type="button">1. Download full backup</button><button class="btn-action" id="migrateBtn" type="button" disabled title="Download a full backup first">2. Run data migration</button></span></div>
         <div class="kpi-grid" id="kpiGrid" data-reveal-stagger></div>
+        <section class="dash-status" aria-labelledby="dashStatusTitle">
+          <h4 id="dashStatusTitle">Shipments by status</h4>
+          <ul class="status-bars" id="dashStatus"></ul>
+        </section>
         <section class="loc-check" id="locCheck" aria-labelledby="locCheckTitle">
           <div class="loc-check-head">
             <div><h4 id="locCheckTitle">Location data check</h4><p id="locCheckSummary">Checking stored coordinates…</p></div>
@@ -897,6 +901,11 @@
             <div class="form-group">
               <label for="clientRef">Client / account reference</label>
               <input id="clientRef" type="text" placeholder="Internal only - never shown to clients" maxlength="120">
+            </div>
+            <div class="form-group">
+              <label for="notifyEmail">Customer email for notifications (optional)</label>
+              <input id="notifyEmail" type="email" inputmode="email" autocomplete="off" maxlength="254" placeholder="customer@example.com" aria-describedby="notifyEmailHint">
+              <p class="field-hint" id="notifyEmailHint">Only used to email this customer when a milestone is recorded. Never shown on the tracking page.</p>
             </div>
           </div>
 
@@ -1141,6 +1150,9 @@
           </form>
           <h4 style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin:0 0 10px;">Event history</h4>
           <ul class="ev-list" id="evList"></ul>
+          <h4 class="ev-history-title">Change history</h4>
+          <p class="hint">Every saved change to this shipment, from the activity log (read only). Times here are when the change was saved.</p>
+          <div class="ev-history" id="evHistory"></div>
         </div>
       </div>
 
@@ -1262,6 +1274,24 @@
       <div class="card-header"><h3 id="clientViewTitle">Client</h3><p>Registered client account</p></div>
       <dl class="client-dl" id="clientViewBody"></dl>
       <div class="form-footer"><button type="button" class="btn btn-reset" data-close="clientViewModal">Close</button></div>
+    </div>
+  </div>
+
+  <!-- iPhone / tablet quick navigation (the full menu stays under "More") -->
+  <nav class="tabbar" id="tabBar" aria-label="Quick navigation">
+    <button type="button" data-tab="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12 12 4l9 8M5 10v10h14V10"/></svg><span>Overview</span></button>
+    <button type="button" data-tab="shipments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg><span>Shipments</span></button>
+    <button type="button" data-tab="tracking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Update</span></button>
+    <button type="button" data-tab="more" aria-controls="consoleNav" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>More</span></button>
+  </nav>
+
+  <!-- Generic confirmation (archive / delete). Deleting asks for the tracking number to be typed. -->
+  <div class="modal-overlay" id="confirmModal" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+    <div class="modal-card confirm-card">
+      <h3 id="confirmTitle"></h3>
+      <p id="confirmBody"></p>
+      <div class="form-group hidden" id="confirmTypeWrap"><label for="confirmType" id="confirmTypeLabel"></label><input id="confirmType" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+      <div class="confirm-actions"><button type="button" class="btn-action" id="confirmCancel">Cancel</button><button type="button" class="btn-danger-solid" id="confirmOk"></button></div>
     </div>
   </div>
 
@@ -1400,6 +1430,7 @@
           <div class="form-group"><label for="shipmentStatusInput">Status *</label><select id="shipmentStatusInput" required></select></div>
           <div class="form-group"><label for="shipmentServiceInput">Service type</label><input id="shipmentServiceInput" type="text" maxlength="80"></div>
           <div class="form-group"><label for="shipmentClientRefInput">Client / account reference</label><input id="shipmentClientRefInput" type="text" maxlength="120"></div>
+          <div class="form-group"><label for="shipmentNotifyEmailInput">Customer email for notifications (optional)</label><input id="shipmentNotifyEmailInput" type="email" inputmode="email" autocomplete="off" maxlength="254" aria-describedby="shipmentNotifyEmailHint"><p class="field-hint" id="shipmentNotifyEmailHint">Only used to email this customer when a milestone is recorded. Never shown on the tracking page.</p></div>
         </div>
 
         <div class="section-label">🚚 Courier Information</div>

@@ -11,6 +11,7 @@ export default async function handler(req, res) {
     adminPassword: env("ADMIN_PASSWORD"),
     sessionSecret: (process.env.SESSION_SECRET || "").length >= 16,
     notifications: env("NOTIFY_WEBHOOK_URL"),
+    emailNotifications: env("RESEND_API_KEY") && env("NOTIFY_EMAIL_FROM"),
     courierWebhook: env("PROVIDER_GENERIC_SECRET")
   };
   const map = resolveMapConfig();
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
     database,
     required: { FIREBASE_SERVICE_ACCOUNT: checks.firebaseServiceAccount, ADMIN_PASSWORD: checks.adminPassword, SESSION_SECRET_16plus_chars: checks.sessionSecret },
     map: { provider: map.label, keyConfigured: map.keyConfigured, issues: map.issues },
-    optional: { MAP_PROVIDER_or_MAP_TILE_URL: map.primary !== "osm", NOTIFY_WEBHOOK_URL: checks.notifications, PROVIDER_GENERIC_SECRET: checks.courierWebhook },
+    optional: { MAP_PROVIDER_or_MAP_TILE_URL: map.primary !== "osm", NOTIFY_WEBHOOK_URL: checks.notifications, RESEND_API_KEY_and_NOTIFY_EMAIL_FROM: checks.emailNotifications, PROVIDER_GENERIC_SECRET: checks.courierWebhook },
     nextStep: ready ? "Ready. Open /admin.html, sign in, and run the data migration from the dashboard." : "Set the missing required environment variables in Vercel, then redeploy."
   });
 }

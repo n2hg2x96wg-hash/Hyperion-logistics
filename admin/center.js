@@ -125,6 +125,35 @@ export function initControlCenter(host) {
     if (view === "globe") loadGlobal();
     if (WORKSPACE_VIEWS.includes(view)) renderWorkspace();
     $("consoleNav")?.classList.remove("open"); $("consoleMenu")?.setAttribute("aria-expanded", "false");
+    document.querySelectorAll("#tabBar [data-tab]").forEach((b) => {
+      const on = b.dataset.tab === view || (b.dataset.tab === "tracking" && WORKSPACE_VIEWS.includes(view));
+      if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+      if (b.dataset.tab === "more") b.setAttribute("aria-expanded", "false");
+    });
+  }
+  $("tabBar")?.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]"); if (!b) return;
+    if (b.dataset.tab !== "more") { switchView(b.dataset.tab); window.scrollTo({ top: 0 }); return; }
+    const open = $("consoleNav").classList.toggle("open");
+    b.setAttribute("aria-expanded", String(open)); $("consoleMenu")?.setAttribute("aria-expanded", String(open));
+    if (open) window.scrollTo({ top: 0 });
+  });
+
+  // ---------- in-page confirmation (replaces window.confirm for archive / delete) ----------
+  function confirmDialog({ title, body, ok, typed }) {
+    const m = $("confirmModal");
+    $("confirmTitle").textContent = title; $("confirmBody").textContent = body; $("confirmOk").textContent = ok;
+    $("confirmTypeWrap").classList.toggle("hidden", !typed); $("confirmType").value = "";
+    if (typed) $("confirmTypeLabel").textContent = `Type ${typed} to confirm`;
+    $("confirmOk").disabled = !!typed;
+    m.classList.add("show");
+    (typed ? $("confirmType") : $("confirmCancel")).focus();
+    return new Promise((resolve) => {
+      const done = (v) => { m.classList.remove("show"); $("confirmOk").onclick = $("confirmCancel").onclick = $("confirmType").oninput = m.onkeydown = null; resolve(v); };
+      $("confirmType").oninput = () => { $("confirmOk").disabled = $("confirmType").value.trim().toUpperCase() !== typed; };
+      $("confirmOk").onclick = () => done(true); $("confirmCancel").onclick = () => done(false);
+      m.onkeydown = (e) => { if (e.key === "Escape") done(false); };
+    });
   }
   $("consoleMenu")?.addEventListener("click", () => {
     const open = $("consoleNav").classList.toggle("open"); $("consoleMenu").setAttribute("aria-expanded", String(open));
@@ -242,6 +271,12 @@ export function initControlCenter(host) {
       $("kpiGrid").innerHTML = tile("Needs attention <small>delayed + exceptions</small>", attention, attention ? "bad attention" : "good attention") + tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
         tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived) + (t.unclassified ? tile("Not yet classified", t.unclassified, "warn") : "");
       $("lastUpdated").textContent = `refreshed ${fmt(d.generatedAt)}`;
+      // shipments by status: straight from the counts the server already computed (archived shipments excluded)
+      const by = d.byStatus || {}; const max = Math.max(1, ...Object.values(by));
+      $("dashStatus").innerHTML = STATUS_CODES.filter((c) => by[c]).map((c) => `<li><button type="button" class="status-bar" data-status="${c}">${pill(c)}<span class="sb-track"><i style="width:${Math.max(4, (by[c] / max) * 100).toFixed(1)}%"></i></span><strong>${by[c]}</strong></button></li>`).join("")
+        || "<li><small>No shipments yet.</small></li>";
+      // registered clients: only for admins allowed to see the client directory; never estimated
+      if (can("clients")) api("listClients").then((r) => { const n = Array.isArray(r?.clients) ? r.clients.length : Array.isArray(r?.items) ? r.items.length : null; if (n != null && !$("kpiClients")) $("kpiGrid").insertAdjacentHTML("beforeend", `<div class="kpi" id="kpiClients"><div class="kpi-label">Registered clients</div><div class="kpi-value">${n}</div></div>`); }).catch(() => {});
       loadLocationCheck();
       const banner = $("migrationBanner");
       banner.classList.toggle("hidden", !d.needsMigration);
@@ -260,6 +295,10 @@ export function initControlCenter(host) {
     });
   }
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-open]")?.dataset.open; if (c) openShipment(c, "tracking"); });
+  $("dashStatus").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-status]"); if (!b) return;
+    $("fStatus").value = b.dataset.status; switchView("shipments"); runSearch(true);
+  });
 
   // ---------- location data check (read-only report; fixes only on explicit confirmation) ----------
   const POINT_LABEL = { origin: "Origin", destination: "Destination", current: "Current position" };
@@ -362,7 +401,7 @@ export function initControlCenter(host) {
       const lat = numOrUndef("latitude"); const lng = numOrUndef("longitude");
       const shipment = {
         trackingCode: nv("id") || undefined, statusCode: $("status").value, courier: nv("courier"), courierTrackingNumber: nv("courierTrackingNumber"),
-        serviceType: nv("serviceType"), clientRef: nv("clientRef"), origin: nv("origin"), destination: nv("destination"), location: nv("location"),
+        serviceType: nv("serviceType"), clientRef: nv("clientRef"), notifyEmail: nv("notifyEmail") || undefined, origin: nv("origin"), destination: nv("destination"), location: nv("location"),
         distance: nv("distance"), fee: nv("fee"), etaDate: nv("etaDate") || undefined, notes: nv("notes"), internalNotes: nv("internalNotes"),
         package: packageFrom("pkg")
       };
@@ -425,11 +464,11 @@ export function initControlCenter(host) {
     catch { host.showToast("Copy is not available in this browser — select the tracking number instead", "error"); }
   }
   async function setArchived(code, archived) {
-    if (archived && !confirm(`Archive ${code}? It will disappear from public tracking but all data is kept.`)) return;
+    if (archived && !(await confirmDialog({ title: `Archive ${code}?`, body: "It disappears from public tracking and the homepage. All data, events and history are kept, and you can restore it at any time.", ok: "Archive shipment" }))) return;
     await guarded(`arch:${code}`, null, async () => { await api(archived ? "archive" : "unarchive", { code }); host.showToast(archived ? "Shipment archived" : "Shipment restored", "success"); runSearch(true); });
   }
   async function deleteShipment(code) {
-    if (!confirm(`Permanently delete ${code} including its events and location history? Consider archiving instead. This cannot be undone.`)) return;
+    if (!(await confirmDialog({ title: `Permanently delete ${code}?`, body: "This removes the shipment with its events and location history and cannot be undone. Archiving keeps everything instead.", ok: "Delete permanently", typed: code }))) return;
     await guarded(`del:${code}`, null, async () => { await api("delete", { code }); host.showToast("Shipment deleted", "success"); if (state.sel?.shipment.id === code) state.sel = null; runSearch(true); });
   }
 
@@ -439,7 +478,7 @@ export function initControlCenter(host) {
     await guarded("edit-open", null, async () => {
       const full = await api("get", { code }); const s = full.shipment; editing = s;
       const set = (id, v) => { $(id).value = v ?? ""; };
-      set("shipmentIdInput", s.id); $("shipmentStatusInput").innerHTML = statusOptions(s.statusCode); set("shipmentServiceInput", s.serviceType); set("shipmentClientRefInput", s.clientRef);
+      set("shipmentIdInput", s.id); $("shipmentStatusInput").innerHTML = statusOptions(s.statusCode); set("shipmentServiceInput", s.serviceType); set("shipmentClientRefInput", s.clientRef); set("shipmentNotifyEmailInput", s.notifyEmail);
       // Keep the shipment's courier selectable even if it is now inactive/archived (or a legacy id), so saving never clears it.
       const cSel = $("shipmentCourierInput");
       if (s.courier && cSel && ![...cSel.options].some((o) => o.value === s.courier)) cSel.add(new Option(`${host.findCourier?.(s.courier)?.name || s.courier} (inactive)`, s.courier));
@@ -460,7 +499,7 @@ export function initControlCenter(host) {
       const s = editing; const changes = {};
       const cmp = (key, value, prev = s[key]) => { if ((value ?? "") !== (prev ?? "")) changes[key] = value; };
       cmp("statusCode", $("shipmentStatusInput").value, s.statusCode);
-      cmp("serviceType", nv("shipmentServiceInput")); cmp("clientRef", nv("shipmentClientRefInput")); cmp("courier", nv("shipmentCourierInput"));
+      cmp("serviceType", nv("shipmentServiceInput")); cmp("clientRef", nv("shipmentClientRefInput")); cmp("notifyEmail", nv("shipmentNotifyEmailInput")); cmp("courier", nv("shipmentCourierInput"));
       cmp("courierTrackingNumber", nv("shipmentCourierTrackingNumberInput")); cmp("origin", nv("shipmentOriginInput")); cmp("destination", nv("shipmentDestinationInput"));
       cmp("location", nv("shipmentLocationInput")); cmp("distance", nv("shipmentDistanceInput")); cmp("fee", nv("shipmentFeeInput"));
       cmp("notes", nv("shipmentNotesInput")); cmp("internalNotes", nv("shipmentInternalNotesInput"));
@@ -536,7 +575,10 @@ export function initControlCenter(host) {
       ["Tracking number", `<strong>${esc(s.id)}</strong>`], ["Status", pill(s.statusCode)], ["Carrier", `${esc(cr?.name || s.courier || "—")}${cr?.type === "custom" ? '<span class="courier-badge custom">custom</span>' : ""}`],
       ["Current location", `${esc(s.location || "—")}<br><span class="pill ${({ live: "success", recent: "info", last: "warn", none: "neutral" })[fresh]}">${esc(LOCATION_STATE_LABELS[fresh])} (client view)</span>`],
       ["Coordinates", typeof s.latitude === "number" ? `${s.latitude}, ${s.longitude}` : "—"], ["Last location update", `${esc(fmt(s.locationUpdatedAt))}${s.locationUpdatedAt ? `<br><small style="text-transform:none;letter-spacing:0;font-weight:500">${esc(src)}</small>` : ""}`],
-      ["ETA", esc(eta)], ["Exception", esc(s.exception ? `${EXCEPTION_TYPES[s.exception.type] || s.exception.type}` : "None recorded")]
+      ["ETA", esc(eta)], ["Exception", esc(s.exception ? `${EXCEPTION_TYPES[s.exception.type] || s.exception.type}` : "None recorded")],
+      ["Latest event", (() => { const e = [...(state.sel.events || [])].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))[0];
+        return e ? `${esc(e.title)}<br><small style="text-transform:none;letter-spacing:0;font-weight:500">event time ${esc(fmt(e.timestamp))}${e.clientVisible === false ? " · hidden from client" : ""}</small>` : "None recorded"; })()],
+      ["Client sees", `${s.publicMap ? "Tracking page + homepage map" : "Tracking page only"}<br><span class="trk-actions"><button type="button" class="btn-action" data-ws="preview">Preview client view</button><a class="btn-action" href="track.html?code=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Open public page</a></span>`]
     ].map(([k, v]) => `<div><small>${k}</small>${v}</div>`).join("");
     $("locName").value = s.location || ""; $("locLat").value = s.latitude ?? ""; $("locLng").value = s.longitude ?? ""; $("locNote").value = "";
     $("locTime").value = nowLocalInput(); $("locCoordErr").textContent = ""; $("locMsg").textContent = ""; $("locMsg").className = "form-msg";
@@ -670,7 +712,20 @@ export function initControlCenter(host) {
     $("evList").innerHTML = evs.length ? evs.map((e) => `<li><div>${e.statusCode ? pill(e.statusCode) : ""} <strong>${esc(e.title)}</strong> ${e.clientVisible === false ? '<span class="pill warn">hidden from client</span>' : ""}</div>
       <div>${esc(e.location || "")}${e.location && e.description ? " — " : ""}${esc(e.description || "")}</div>
       <div class="meta">${esc(fmt(e.timestamp))}${typeof e.lat === "number" ? ` · 📍 ${e.lat}, ${e.lng}` : ""} · ${esc(e.kind)} · source: ${esc(e.source)} · by ${esc(e.actor || "system")}</div></li>`).join("") : '<li class="meta">No events recorded yet.</li>';
+    loadHistory(state.sel.shipment.id);
   }
+  // read-only per-shipment change history from the existing activity log
+  async function loadHistory(code) {
+    const box = $("evHistory"); box.innerHTML = '<p class="hint">Loading change history…</p>';
+    try {
+      const { items } = await api("audit", { limit: 50, code });
+      if (state.sel?.shipment.id !== code) return;
+      const brief = (o) => (o ? Object.entries(o).map(([k, v]) => `${k}: ${typeof v === "object" && v !== null ? JSON.stringify(v) : v}`).join(", ") : "");
+      box.innerHTML = items.length ? `<ol class="history-list">${items.map((a) => `<li><div><strong>${esc(a.action)}</strong> <small>by ${esc(a.actor)}</small></div>
+        ${a.next ? `<div class="history-change">${esc(brief(a.previous) || "—")} → ${esc(brief(a.next))}</div>` : ""}<div class="meta">saved ${esc(fmt(a.at))}</div></li>`).join("")}</ol>` : '<p class="hint">No changes recorded yet.</p>';
+    } catch { box.innerHTML = '<p class="hint">Change history could not be loaded. It is still available under Activity Logs.</p>'; }
+  }
+  document.addEventListener("click", (e) => { if (e.target.closest('[data-ws="preview"]') && state.sel) switchView("preview"); });
   $("eventForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const when = new Date(`${$("evDate").value}T${$("evTime").value}`);
@@ -726,7 +781,7 @@ export function initControlCenter(host) {
           <div class="panel"><h4>Database</h4><p><strong>${esc(s.store)}</strong></p><p class="hint">Shipments, events, locations and the audit log are written server-side only.</p></div>
           <div class="panel"><h4>Map</h4><p>${esc(s.map.provider)}</p>${s.map.issues?.length ? `<p class="hint" style="color:#b91c1c">${s.map.issues.map(esc).join("<br>")}</p>` : ""}<p class="hint">Fallbacks: ${esc((s.map.fallbacks || []).join(", "))}. To use a keyed provider set MAP_PROVIDER (maptiler, stadia or mapbox) and MAP_TILE_KEY (a public, domain-restricted key) in the server environment.</p></div>
           <div class="panel"><h4>Realtime</h4><p>${s.realtime.sse ? "Server-sent events" : "Polling only"} · fallback polling every ${Math.round(s.realtime.pollMs / 1000)}s</p></div>
-          <div class="panel"><h4>Notifications</h4><p>${yes(s.notifications.configured)}</p><p class="hint">${s.notifications.configured ? `Providers: ${esc(s.notifications.providers.join(", "))}` : "No email/SMS/push provider is connected. Set NOTIFY_WEBHOOK_URL to forward events."}</p></div>
+          <div class="panel"><h4>Notifications</h4><p>${yes(s.notifications.configured)}</p><p class="hint">${s.notifications.configured ? `Providers: ${esc(s.notifications.providers.join(", "))}` : "Nothing is sent. Set RESEND_API_KEY + NOTIFY_EMAIL_FROM (+ SITE_URL) to e-mail customers who have a notification address, or NOTIFY_WEBHOOK_URL to forward events."}</p></div>
           <div class="panel"><h4>Courier / GPS providers</h4>${s.providers.map((p) => `<p>${esc(p.id)} (${esc(p.source)}) ${yes(p.configured)}</p>`).join("")}<p class="hint">Webhook: POST /api/provider?provider=&lt;id&gt; with X-Hyperion-Signature.</p></div>
           <div class="panel"><h4>Geocoding</h4><p>${esc(s.geocoding)}</p></div>
           <div class="panel"><h4>Status reference</h4><p class="hint">${s.statuses.map((x) => esc(x.label)).join(" · ")}</p></div>

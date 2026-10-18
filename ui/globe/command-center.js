@@ -94,13 +94,14 @@ export function mountCommandCenter(o) {
     if (state.selected && !routes.some((r) => r.key === state.selected)) state.selected = null;
     renderStats(d.stats);
     renderFeed(d, routes);
-    renderTable(routes);
+    renderTable(routes, d.activity);
     renderCard();
     o.onData?.(d);
     o.mapEl.classList.toggle("cc-empty", !routes.length);
-    const updated = d.stats?.lastUpdated;
-    status(updated ? `Last update ${timeAgo(updated)}` : "No shipment updates recorded yet", "ok");
-    if (o.statusEl && updated) o.statusEl.title = `Last recorded shipment update: ${fmt(updated)}`;
+    // Public visitors see the newest recorded EVENT time; stats.lastUpdated is when a record was last edited (admin only).
+    const updated = o.mode === "admin" ? d.stats?.lastUpdated : (d.activity || []).map((a) => a.at).filter(Boolean).sort().at(-1);
+    status(updated ? `Last ${o.mode === "admin" ? "update" : "recorded milestone"} ${timeAgo(updated)}` : "No shipment updates recorded yet", "ok");
+    if (o.statusEl) o.statusEl.title = updated ? `${o.mode === "admin" ? "Last recorded shipment update" : "Newest recorded milestone"}: ${fmt(updated)}` : "";
   }
 
   function renderStats(s) {
@@ -143,7 +144,7 @@ export function mountCommandCenter(o) {
         </span></button></li>`).join("");
   }
 
-  function renderTable(routes) {
+  function renderTable(routes, activity = []) {
     if (!o.tableEl) return;
     if (!routes.length) {
       o.tableEl.innerHTML = `<tr class="cc-row-empty"><td colspan="4">${o.mode === "admin" ? "No active shipments with coordinates yet." :
@@ -151,7 +152,8 @@ export function mountCommandCenter(o) {
       return;
     }
     o.tableEl.innerHTML = routes.slice(0, 12).map((r) => {
-      const at = r.current?.recordedAt || r.updatedAt;
+      // public: the route's newest recorded event, else its recorded position time; never the record-edit time
+      const at = o.mode === "admin" ? r.current?.recordedAt || r.updatedAt : activity.find((a) => a.routeKey === r.key)?.at || r.current?.recordedAt || null;
       return `<tr data-route="${esc(r.key)}" tabindex="0" class="${r.key === state.selected ? "is-selected" : ""}">
         <td data-label="Shipment"><span class="cc-ref">${esc(r.ref)}</span></td>
         <td data-label="Route"><span class="cc-route">${esc(r.originLabel || "Origin not set")}<i aria-hidden="true">→</i>${esc(r.destinationLabel || "Destination not set")}</span></td>

@@ -7,7 +7,7 @@
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
 import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
-import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageScene, modelCaption, routeOverlaySvg } from "./scene.js";
+import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageScene, modelCaption, routeOverlaySvg, STATUS_HELP } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const LIVE_SOURCES = new Set(["gps", "carrier_api"]); // the only sources that are verified live carrier / telemetry data
@@ -336,14 +336,14 @@ export function createTracker(root, opts = {}) {
       ${preview ? `<div class="hx-preview-banner" role="note"><strong>PREVIEW MODE</strong> — this is exactly what the client sees for this tracking number. Nothing here is editable.</div>` : ""}
       <section class="hx-card hx-header" ${R()}>
         <div class="hx-header-top">
-          <div class="hx-id"><div class="hx-kicker">Tracking number</div><div class="hx-code-row"><h2 class="hx-code">${esc(v.trackingCode)}</h2><button type="button" class="hx-copy hx-press" data-act="copy" aria-label="Copy tracking number"><span aria-hidden="true">⧉</span> <span data-copy-label>Copy</span></button></div></div>
+          <div class="hx-id"><div class="hx-kicker">Tracking number</div><div class="hx-code-row"><h2 class="hx-code">${esc(v.trackingCode)}</h2><button type="button" class="hx-copy hx-press" data-act="copy" aria-label="Copy tracking number"><span aria-hidden="true">⧉</span> <span data-copy-label>Copy</span></button></div>${v.origin || v.destination ? `<div class="hx-od"><span>${esc(v.origin || "Origin not set")}</span><i aria-hidden="true"></i><span>${esc(v.destination || "Destination not set")}</span></div>` : ""}</div>
           <div class="hx-status"><div class="hx-kicker">Current status</div><span class="hx-pill tone-${esc(v.status.tone)}${v.status.code && !["DELIVERED", "CANCELLED"].includes(v.status.code) ? " is-active" : ""}"><i aria-hidden="true"></i>${esc(v.status.label)}</span></div>
         </div>
         ${sceneHtml(v, ls)}
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
           ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div>${verifiedFeed(v) ? `<div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time"><time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time> · ${SOURCE_TEXT[v.currentLocation.source]}</span>` : ""}</div>` : ""}</div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
-          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : ""}</div>` : ""}
+          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest recorded milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : ""}</div>` : ""}
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
         </div>
         <div class="hx-meta" data-slot="meta"></div>
@@ -364,6 +364,7 @@ export function createTracker(root, opts = {}) {
         </div>
       </section>
       ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} Shipment notes</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
+      ${STATUS_HELP[v.status?.code] ? `<details class="hx-card hx-help" ${R()}><summary>What does “${esc(v.status.label)}” mean?</summary><p>${esc(STATUS_HELP[v.status.code])}</p></details>` : ""}
       ${supportCardHtml(v.trackingCode, R())}`;
     animateProgress(v, isUpdate);
     renderedCode = v.trackingCode;

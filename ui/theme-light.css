@@ -68,16 +68,6 @@ html[data-theme="light"] .freight-stage .eyebrow { color: #1d4ed8; }
   html[data-theme="light"] .freight-media { border-radius: 0 0 18px 18px; }
   html[data-theme="light"] .freight-media::after { background: linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 20%, rgba(245, 248, 254, 0) 70%, var(--hy-bg-0) 100%); }
 }
-html[data-theme="light"] .freight-routes { background: rgba(255, 255, 255, 0.92); border-color: rgba(15, 40, 90, 0.12); color: #0b1a3d; box-shadow: 0 18px 40px rgba(15, 40, 90, 0.14); }
-html[data-theme="light"] .freight-routes h3, html[data-theme="light"] .fr-route { color: #0b1a3d; }
-html[data-theme="light"] :is(.fr-sub, .fr-now) { color: #51627f; }
-html[data-theme="light"] .fr-list li { border-top-color: rgba(15, 40, 90, 0.1); }
-html[data-theme="light"] .fr-route i { background: repeating-linear-gradient(90deg, #2563eb 0 6px, transparent 6px 10px); }
-html[data-theme="light"] .fr-route i::after { border-left-color: #2563eb; }
-html[data-theme="light"] .fr-more { color: #1d4ed8 !important; }
-html[data-theme="light"] .fr-pill { background: #e7efff; color: #1d4ed8; } html[data-theme="light"] .fr-pill.tone-success { background: #e7f7ed; color: #166534; }
-html[data-theme="light"] .fr-pill.tone-warn { background: #fff4e0; color: #92400e; } html[data-theme="light"] .fr-pill.tone-danger { background: #fdecec; color: #991b1b; }
-html[data-theme="light"] .fr-pill.tone-neutral { background: #eef2f7; color: #334155; }
 
 /* tracking pages: the band uses the daylight scene */
 html[data-theme="light"] .track-band::before { background: linear-gradient(90deg, rgba(245, 248, 254, 0.96), rgba(245, 248, 254, 0.72)), #cfe5f7 url("../assets/hero/scene-day.svg") center 62% / cover no-repeat; }
@@ -160,12 +150,27 @@ html[data-theme="light"] :is(a, button, input, select, textarea):focus-visible {
 
 /* freight network (light theme) */
 html[data-theme="light"] .freight-network { background: #fff; border-color: rgba(15, 40, 90, 0.12); box-shadow: 0 18px 40px rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] .nw-sea-1 { stop-color: #eef5ff; } html[data-theme="light"] .nw-sea-2 { stop-color: #dbe8f8; }
+html[data-theme="light"] .nw-card { background: #f7f9fd; border-color: rgba(15, 40, 90, 0.12); color: #0b1a3d; }
+html[data-theme="light"] .nw-card:hover, html[data-theme="light"] .nw-card:focus-within { border-color: #2563eb; }
+html[data-theme="light"] :is(.nw-ref, .nw-card-route, .nw-card-mile strong) { color: #0b1a3d; }
+html[data-theme="light"] .nw-card-mile { background: #fff; border: 1px solid rgba(15, 40, 90, 0.08); }
+html[data-theme="light"] :is(.nw-card-mile small, .nw-card-mile time) { color: #51627f; }
+html[data-theme="light"] .nw-mode { background: #e7efff; color: #1d4ed8; }
+html[data-theme="light"] .nw-chip { color: #44557a; border-color: rgba(15, 40, 90, 0.2); } html[data-theme="light"] .nw-card-foot a { color: #1d4ed8; }
+html[data-theme="light"] .nw-card-route i { background: repeating-linear-gradient(180deg, #2563eb 0 5px, transparent 5px 9px); }
+html[data-theme="light"] .nw-card-route i::before { border-color: #2563eb; background: #fff; } html[data-theme="light"] .nw-card-route i::after { border-color: #0b1a3d; background: #fff; }
+html[data-theme="light"] .nw-pill { background: #e7efff; color: #1d4ed8; } html[data-theme="light"] .nw-pill.tone-success { background: #e7f7ed; color: #166534; }
+html[data-theme="light"] .nw-pill.tone-warn { background: #fff4e0; color: #92400e; } html[data-theme="light"] .nw-pill.tone-danger { background: #fdecec; color: #991b1b; }
+html[data-theme="light"] .nw-pill.tone-neutral { background: #eef2f7; color: #334155; }
+html[data-theme="light"] .nw-arc.is-hot { stroke: #1d4ed8; }
 html[data-theme="light"] .nw-head h3 { color: #0b1a3d; } html[data-theme="light"] .nw-tag { color: #1d4ed8; }
 html[data-theme="light"] .freight-network:is([data-state="illustrative"], [data-state="error"]) .nw-tag { color: #b45309; }
 html[data-theme="light"] .nw-legend, html[data-theme="light"] .nw-note { color: #44557a; }
-html[data-theme="light"] .nw-sea { fill: #e7f0fb; } html[data-theme="light"] .nw-land { fill: #c9d6e8; stroke: #b3c3da; }
+html[data-theme="light"] .nw-land { fill: #c9d6e8; stroke: #b3c3da; }
 html[data-theme="light"] .nw-arc.is-travelled { stroke: #2563eb; } html[data-theme="light"] .nw-arc.is-remaining, html[data-theme="light"] .nw-arc.is-planned { stroke: #64748b; }
 html[data-theme="light"] .nw-arc.is-illustrative { stroke: rgba(37, 99, 235, 0.4); } html[data-theme="light"] .nw-dot.is-illustrative { fill: rgba(37, 99, 235, 0.5); }
 html[data-theme="light"] .nw-dot.is-origin, html[data-theme="light"] .nw-dot.is-destination { fill: #fff; } html[data-theme="light"] .nw-dot.is-origin { stroke: #2563eb; } html[data-theme="light"] .nw-dot.is-destination { stroke: #0b1a3d; }
 html[data-theme="light"] .nw-label { fill: #0b1a3d; stroke: #e7f0fb; }
 html[data-theme="light"] .nw-legend .k-origin { border-color: #2563eb; } html[data-theme="light"] .nw-legend .k-destination { border-color: #0b1a3d; } html[data-theme="light"] .nw-legend .k-line { border-top-color: #2563eb; }
+html[data-theme="light"] .track-title { color: #0b1a3d; }
