@@ -132,7 +132,9 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
   .hero3-copy > :nth-child(2) { animation-delay: .08s; } .hero3-copy > :nth-child(3) { animation-delay: .16s; }
   .hero3-copy > :nth-child(4) { animation-delay: .24s; } .hero3-copy > :nth-child(5) { animation-delay: .32s; } .hero3-copy > :nth-child(6) { animation-delay: .4s; }
   .hero3-routes path { stroke-dasharray: 1 1; animation: hero-route 2.2s .5s cubic-bezier(.4, 0, .2, 1) both; }
-  .hero3-routes .r3 { stroke-dasharray: 0.01 0.012; animation: none; }
+  /* one dotted line keeps a slow, quiet drift once the scene has settled (hidden below 1024px, off for reduced motion) */
+  .hero3-routes .r3 { stroke-dasharray: 0.01 0.012; animation: hero-drift 18s linear 3s infinite; }
+  @keyframes hero-drift { to { stroke-dashoffset: -0.22; } }
   .hero3-routes .r2 { animation-delay: .8s; }
   .hero3-routes circle { animation: hero-node .6s 1.9s ease-out both; }
   @keyframes hero-scene { from { opacity: 0; transform: scale(1.07); } to { opacity: 1; transform: scale(1.02); } }

@@ -367,3 +367,27 @@ html[data-theme="light"] .hx-support-text h2, html[data-theme="light"] .hx-suppo
 html[data-theme="light"] :is(.hx-support-text p, .hx-support-text h3 span, .hx-support-text h2 span) { color: #2c3e5f; }
 html[data-theme="light"] .hx-support-email { color: #1d4ed8; } html[data-theme="light"] .hx-support-icon { color: #1d4ed8; background: #dbeafe; }
 html[data-theme="light"] .hx-preview-banner { color: #7c2d12; }
+
+/* ---------- refresh feedback, timeline order, card depth ---------- */
+.hx-refresh-note { flex-basis: 100%; margin: 0; min-height: 1.2em; font-size: 12.5px; color: var(--hx-muted); }
+.hx-refresh-note:empty { min-height: 0; }
+.hx-btn-sec:disabled { opacity: .7; cursor: progress; }
+.hx-tl-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.hx-tl-head .hx-h { margin: 0; }
+.hx-segs { display: inline-flex; padding: 3px; border-radius: 10px; border: 1px solid var(--hx-line); background: rgba(15,23,42,.45); }
+.hx-seg { min-height: 36px; padding: 6px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--hx-muted); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.hx-seg[aria-pressed="true"] { background: var(--hx-accent); color: #fff; }
+.hx-seg:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+/* layered depth: a faint top highlight and a soft two-step shadow, no heavy 3D */
+.hx-card { box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.25), 0 16px 40px rgba(2,6,23,.35); }
+.hx-header { background: linear-gradient(180deg, rgba(37,99,235,.10), rgba(30,41,59,.62) 140px); }
+@media (prefers-reduced-motion: no-preference) {
+  .hx-copy, .hx-btn-sec, .hx-seg { transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease; }
+  .hx-copy.is-done { animation: hx-pop .35s ease; }
+  @keyframes hx-pop { 50% { transform: scale(1.06); } }
+}
+html[data-theme="light"] .hx-segs { background: #f3f7fe; border-color: rgba(15,40,90,.12); }
+html[data-theme="light"] .hx-seg { color: #44557a; } html[data-theme="light"] .hx-seg[aria-pressed="true"] { color: #fff; }
+html[data-theme="light"] .hx-card { box-shadow: 0 1px 2px rgba(15,40,90,.06), 0 14px 34px rgba(15,40,90,.08); }
+html[data-theme="light"] .hx-header { background: linear-gradient(180deg, #eef4ff, #ffffff 140px); }
+html[data-theme="light"] .hx-refresh-note { color: #44557a; }

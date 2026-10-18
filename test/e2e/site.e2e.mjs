@@ -382,8 +382,8 @@ test("theme toggle: switches, persists across pages and the admin, applies befor
   // a tracking result in the light theme: dark text on light cards
   await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
   await page.waitForSelector(".hx-header .hx-code");
-  const card = await page.$eval(".hx-header", (c) => ({ bg: getComputedStyle(c).backgroundColor, fg: getComputedStyle(c.querySelector(".hx-code")).color }));
-  assert.equal(card.bg, "rgb(255, 255, 255)"); assert.equal(card.fg, "rgb(11, 26, 61)");
+  const card = await page.$eval(".hx-header", (c) => ({ bg: getComputedStyle(c).backgroundImage, fg: getComputedStyle(c.querySelector(".hx-code")).color }));
+  assert.match(card.bg, /rgb\(255, 255, 255\)/, "light card surface"); assert.equal(card.fg, "rgb(11, 26, 61)");
   await shot(page, "theme-light-track-390");
   // the admin console follows the same choice
   await page.goto(`${base}/admin.html`);
@@ -431,6 +431,56 @@ for (const w of [390, 768, 1280]) {
     await ctx.close();
   });
 }
+
+test("tracking edge cases: invalid code, network failure with retry, missing optional data, single-flight manual check, timeline order", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  const page = await ctx.newPage(); const errors = watchErrors(page);
+  await page.goto(`${base}/track.html`);
+  // invalid code: clear message, no request result invented
+  await page.fill("#trackingInput", "!!"); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /Please enter a valid tracking number/.test(document.getElementById("results").textContent));
+  // network failure on lookup: an error message with a working retry
+  await ctx.route(/\/api\/track\?/, (r) => r.abort());
+  await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => /We couldn't load tracking right now/.test(document.getElementById("results").textContent));
+  assert.equal(await page.locator('[data-act="retry"]').count(), 1);
+  await ctx.unroute(/\/api\/track\?/);
+  await page.click('[data-act="retry"]');
+  await page.waitForSelector(".hx-header .hx-code");
+  // timeline: oldest first by default, "Latest" marks the newest record, order can be flipped
+  const order = () => page.$$eval(".hx-timeline > .hx-tl", (li) => li.map((x) => ({ latest: x.classList.contains("latest"), t: x.querySelector("time").dateTime })));
+  let tl = await order();
+  if (tl.length > 1) {
+    assert.ok(Date.parse(tl[0].t) <= Date.parse(tl.at(-1).t), "oldest first");
+    assert.ok(tl.at(-1).latest, "newest record marked Latest");
+    await page.click('.hx-seg[data-order="latest"]');
+    tl = await order();
+    assert.ok(Date.parse(tl[0].t) >= Date.parse(tl.at(-1).t), "latest first after switching");
+    assert.ok(tl[0].latest);
+    assert.equal(await page.getAttribute('.hx-seg[data-order="latest"]', "aria-pressed"), "true");
+  }
+  // manual check: two quick taps send one request, and the outcome is reported
+  let calls = 0; page.on("request", (r) => { if (r.url().includes("/api/track?")) calls++; });
+  await page.evaluate(() => { const b = document.querySelector('[data-act="refresh"]'); b.click(); b.click(); });
+  await page.waitForFunction(() => /Checked|New information/.test(document.querySelector(".hx-refresh-note")?.textContent || ""));
+  assert.equal(calls, 1, "one request for overlapping taps");
+  assert.match(await page.textContent(".hx-checked"), /Last checked/);
+  // a failed check keeps the last loaded data and says so
+  await ctx.route(/\/api\/track\?/, (r) => r.abort());
+  await page.click('[data-act="refresh"]');
+  await page.waitForFunction(() => /Couldn't check right now/.test(document.querySelector(".hx-refresh-note")?.textContent || ""));
+  assert.ok(await page.isVisible(".hx-header .hx-code"), "last loaded shipment stays on screen");
+  await ctx.unroute(/\/api\/track\?/);
+  // missing optional data: neutral wording, nothing invented
+  await page.fill("#trackingInput", codes.none); await page.keyboard.press("Enter");
+  await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.none);
+  const caption = await page.textContent(".hx-scene figcaption");
+  assert.match(caption, /No location recorded yet/);
+  const stops = await page.$$eval(".hx-rs-place", (x) => x.map((e) => e.textContent));
+  assert.deepEqual(stops, ["Somewhere", "Elsewhere"], "only the recorded origin and destination");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
 
 test("tracking result with reduced motion: every block visible at once, illustration static", async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce", isMobile: true, hasTouch: true });

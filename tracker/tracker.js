@@ -55,7 +55,8 @@ export function createTracker(root, opts = {}) {
   const state = { code: null, view: null, phase: "idle", transport: "none", lastCheckedAt: null };
   let abort = null; let inflightCode = null; let map = null; let mapMod = null; let mapFailed = false; let mapToken = 0;
   let es = null; let pollTimer = null; let pollDelay = 0; let esFailures = 0; let sseRetryAt = 0; let tick = null; let destroyed = false;
-  let serverOffset = 0; let renderedCode = null; let shownStage = null; // progress stage last drawn, so the bar animates only on a real change
+  let serverOffset = 0; let renderedCode = null; let refreshNote = ""; let noteFor = null; let noteTimer = null;
+  const REFRESH_NOTES = { updated: "✓ New information loaded.", unchanged: "✓ Checked — no new updates since the last recorded one.", error: "Couldn't check right now — showing the last loaded information." }; let shownStage = null; // progress stage last drawn, so the bar animates only on a real change
   let cfg = { pollMs: 20000, sse: true };
   const visibilityHandler = () => { if (!document.hidden && state.code && state.view && useRealtime) pollNow(); };
 
@@ -101,27 +102,35 @@ export function createTracker(root, opts = {}) {
     else { state.view = null; setPhase("error"); renderMessage("error"); }
   }
 
-  async function refresh() {
-    if (!state.code) return;
-    if (preview) { const res = await loadView(state.code, {}); if (res.status === "ok") applyView(res.view); return; }
-    await pollNow(true);
+  /** Manual check. Never overlaps itself; resolves to "updated" | "unchanged" | "error" for the on-screen feedback. */
+  let refreshing = null;
+  function refresh() {
+    if (!state.code) return Promise.resolve("error");
+    if (!refreshing) refreshing = (async () => {
+      const before = state.view?.version;
+      if (preview) { const res = await loadView(state.code, {}); if (res.status === "ok") applyView(res.view); return res.status === "ok" ? (res.view.version !== before ? "updated" : "unchanged") : "error"; }
+      const st = await pollNow(true);
+      return st === "ok" ? (state.view?.version !== before ? "updated" : "unchanged") : st === "unchanged" ? "unchanged" : "error";
+    })().finally(() => { refreshing = null; });
+    return refreshing;
   }
 
   async function pollNow(force = false) {
-    if (!state.code || destroyed) return;
+    if (!state.code || destroyed) return "error";
     clearTimeout(pollTimer);
     const code = state.code;
     const res = await loadView(code, { version: force ? null : state.view?.version });
-    if (destroyed || code !== state.code) return;
+    if (destroyed || code !== state.code) return "error";
     state.lastCheckedAt = Date.now();
     if (res.status === "ok") { applyView(res.view); pollDelay = 0; setTransport(state.transport === "live" ? "live" : "polling"); }
     else if (res.status === "unchanged") { pollDelay = 0; renderMeta(); if (state.transport === "offline") setTransport("polling"); }
-    else if (res.status === "notfound") { state.view = null; setPhase("notfound"); renderMessage("notfound"); stopRealtime(); return; }
+    else if (res.status === "notfound") { state.view = null; setPhase("notfound"); renderMessage("notfound"); stopRealtime(); return "notfound"; }
     else { // keep last valid data, back off
       pollDelay = Math.min((pollDelay || cfg.pollMs) * 2, 120000); if (res.retryAfter) pollDelay = Math.max(pollDelay, res.retryAfter * 1000);
       setTransport("offline");
     }
     if (state.transport !== "live") schedulePoll();
+    return res.status;
   }
 
   // ---------- realtime (SSE -> polling) ----------
@@ -265,15 +274,21 @@ export function createTracker(root, opts = {}) {
     return `<div class="hx-info" ${attrs}><div class="hx-info-label">${icon} ${esc(label)}</div><div class="hx-info-value">${value}</div>${extra}</div>`;
   }
 
+  let timelineOrder = "oldest"; // the journey reads in the order it happened; visitors can flip it
   function timelineHtml(items, reveal) {
     if (!items) return "";
     if (!items.length) return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline</h3><p class="hx-muted">No tracking events have been recorded yet.</p></section>`;
-    return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline <small class="hx-h-sub"><span data-count="${items.length}">${items.length}</span> update${items.length === 1 ? "" : "s"} · latest first</small></h3><ol class="hx-timeline" ${reveal ? "data-reveal-stagger" : ""}>${items.map((t, i) => `
-      <li class="hx-tl tone-${esc(t.tone)} ${i === 0 ? "latest" : ""}" ${reveal ? "data-reveal" : ""}><span class="hx-tl-dot"></span>
-        <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${i === 0 ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
+    const latestId = items[0]?.id; // the API sends the newest first
+    const list = timelineOrder === "oldest" ? items.slice().reverse() : items;
+    const sw = (k, label) => `<button type="button" class="hx-seg" data-act="order" data-order="${k}" aria-pressed="${timelineOrder === k}">${label}</button>`;
+    return `<section class="hx-card hx-tl-card" ${reveal ? "data-reveal" : ""}><div class="hx-tl-head"><h3 class="hx-h">Shipment timeline <small class="hx-h-sub"><span data-count="${items.length}">${items.length}</span> recorded update${items.length === 1 ? "" : "s"}</small></h3>
+      ${items.length > 1 ? `<div class="hx-segs" role="group" aria-label="Timeline order">${sw("oldest", "Oldest first")}${sw("latest", "Latest first")}</div>` : ""}</div>
+      <ol class="hx-timeline is-${timelineOrder}" ${reveal ? "data-reveal-stagger" : ""}>${list.map((t) => { const latest = t.id === latestId; return `
+      <li class="hx-tl tone-${esc(t.tone)} ${latest ? "latest" : ""}" ${reveal ? "data-reveal" : ""} ${latest ? 'aria-current="step"' : ""}><span class="hx-tl-dot"></span>
+        <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${latest ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
         ${t.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(t.location)}</div>` : ""}
         ${t.description ? `<div class="hx-tl-desc">${esc(t.description)}</div>` : ""}
-        <div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${t.source === "carrier_api" || t.source === "gps" ? ` · ${esc(t.sourceLabel)}` : ""}</div></div></li>`).join("")}</ol></section>`;
+        <div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${t.source === "carrier_api" || t.source === "gps" ? ` · ${esc(t.sourceLabel)}` : ""}</div></div></li>`; }).join("")}</ol></section>`;
   }
 
   function render(v, isUpdate) {
@@ -301,7 +316,7 @@ export function createTracker(root, opts = {}) {
         </div>
         ${sceneHtml(v, ls)}
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
-          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div><div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time">Recorded <time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time></span>` : ls.state !== "none" ? ' <span class="hx-loc-time">Recorded time not available</span>' : ""}</div></div>` : ""}
+          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div><div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time">Recorded <time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time>${loc?.sourceLabel ? ` · ${esc(loc.sourceLabel)}` : ""}</span>` : ls.state !== "none" ? ' <span class="hx-loc-time">Recorded time not available</span>' : ""}</div></div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
           <div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Last recorded update</div><div class="hx-fact-value" data-ago="${esc(v.lastUpdated || "")}">${ago ? esc(ago[0].toUpperCase() + ago.slice(1)) : "Unavailable"}</div>${v.lastUpdated ? `<div class="hx-fact-sub"><time datetime="${esc(v.lastUpdated)}">${esc(fmtDateTime(v.lastUpdated))}</time>${v.timeline?.[0]?.sourceLabel ? ` · ${esc(v.timeline[0].sourceLabel)}` : ""}</div>` : ""}</div>
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
@@ -368,14 +383,15 @@ export function createTracker(root, opts = {}) {
   function renderMeta() {
     const slot = root.querySelector('[data-slot="meta"]'); const v = state.view;
     if (!slot || !v) return;
+    if (noteFor && noteFor !== v.trackingCode) { refreshNote = ""; noteFor = null; }
     const t = state.transport;
     const secs = Math.round((pollDelay || cfg.pollMs || 20000) / 1000);
     // Connection state only. Whether the SHIPMENT is live is the location badge's job, based on recorded data.
     const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : t === "live" ? '<span class="hx-conn ok"><i></i>Checks for new updates automatically</span>'
       : t === "polling" ? `<span class="hx-conn poll"><i></i>Checks for new updates every ${secs}s</span>`
       : t === "offline" ? '<span class="hx-conn off"><i></i>Offline — showing last known update</span>' : '<span class="hx-conn poll"><i></i>Connecting for updates…</span>';
-    const checked = state.lastCheckedAt ? `<small class="hx-checked">Checked ${esc(new Date(state.lastCheckedAt + serverOffset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</small>` : "";
-    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Check for new updates now"><span aria-hidden="true">↻</span> Check now</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div>`;
+    const checked = state.lastCheckedAt ? `<small class="hx-checked">Last checked ${esc(new Date(state.lastCheckedAt + serverOffset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</small>` : "";
+    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Check for new updates now"><span aria-hidden="true">↻</span> Check now</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div><p class="hx-refresh-note" role="status" aria-live="polite">${esc(refreshNote)}</p>`;
   }
 
   /** Re-evaluate "Live" / "Recently updated" / "Last known" as time passes without new data. */
@@ -471,8 +487,20 @@ export function createTracker(root, opts = {}) {
   // ---------- events ----------
   root.addEventListener("click", (e) => {
     const act = e.target.closest("[data-act]")?.dataset.act;
-    if (act === "refresh") { const b = e.target.closest("[data-act]"); b.classList.add("is-busy"); Promise.resolve(refresh()).finally(() => { renderMeta(); }); }
+    if (act === "refresh") {
+      const b = e.target.closest("[data-act]"); if (b.disabled) return;
+      b.classList.add("is-busy"); b.disabled = true; b.setAttribute("aria-busy", "true");
+      refresh().then((r) => { refreshNote = REFRESH_NOTES[r] || ""; noteFor = state.view?.trackingCode || null; }).finally(() => {
+        renderMeta();
+        clearTimeout(noteTimer); noteTimer = setTimeout(() => { refreshNote = ""; root.querySelector(".hx-refresh-note")?.replaceChildren(); }, 6000);
+      });
+    }
     if (act === "support") { e.preventDefault(); root.querySelector("#hx-support")?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" }); root.querySelector("#hx-support .hx-support-btn")?.focus({ preventScroll: true }); }
+    if (act === "order" && state.view) {
+      timelineOrder = e.target.closest("[data-order]").dataset.order;
+      const card = root.querySelector(".hx-tl-card");
+      if (card) { const t = document.createElement("div"); t.innerHTML = timelineHtml(state.view.timeline, false); card.replaceWith(t.firstElementChild); root.querySelector(`.hx-seg[data-order="${timelineOrder}"]`)?.focus({ preventScroll: true }); }
+    }
     if (act === "copy" && state.view) copyCode(e.target.closest("[data-act]"), state.view.trackingCode);
     if (act === "retry" && state.code) { const c = state.code; state.code = null; inflightCode = null; track(c); }
   });

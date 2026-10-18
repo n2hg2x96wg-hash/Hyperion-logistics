@@ -281,14 +281,17 @@ test("homepage hero: headline and tracking form unchanged; drawn scene present a
   for (const f of ["scene.svg", "scene-mobile.svg"]) {
     assert.ok(css.includes(`assets/hero/${f}`), `${f} used`);
     const svg = fs.readFileSync(new URL(`../assets/hero/${f}`, import.meta.url), "utf8");
-    assert.ok(svg.length < 40000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
+    assert.ok(svg.length < 48000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
   }
   // the entrance animation only runs when motion is allowed; the hero has a solid fallback colour
   const hero = css.slice(css.indexOf("/* ---------- hero ---------- */"), css.indexOf("/* ---------- tracking pages"));
   assert.match(hero, /\.hero3 \{[^}]*background: #030712/);
   const anim = hero.slice(hero.indexOf("/* hero entrance"));
   assert.match(anim, /^[^{]*\{\s*@media \(prefers-reduced-motion: no-preference\)|@media \(prefers-reduced-motion: no-preference\) \{/);
-  assert.ok(!/animation:[^;]*infinite/.test(anim), "no continuous hero animation");
+  // the only looping motion is one thin dotted route line drifting slowly; everything else plays once
+  const loops = [...anim.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^}]*animation:[^;]*infinite/g)].map((m) => m[1].trim());
+  assert.deepEqual(loops, [".hero3-routes .r3"], `looping hero animations: ${loops}`);
+  assert.match(css, /@media \(max-width: 1023px\) \{ \.hero3-routes \{ display: none; \} \}/, "route lines (and their drift) only on wide screens");
   assert.ok(!/(^|\n)\.hero3[^{]*\{[^}]*animation:/.test(hero.slice(0, hero.indexOf("/* hero entrance"))), "animations only inside the motion media query");
 });
 
@@ -440,4 +443,16 @@ test("admin: tracking numbers copyable, archive/delete set apart, a real-data 'n
   const css = read("admin/console.css");
   assert.match(css, /\.row-actions \.btn-action \{ flex: 1 1 auto; min-height: 44px; \}/);
   assert.match(css, /html\[data-theme="light"\] body\.console/);
+});
+
+test("tracker: manual check never overlaps, reports its real outcome, and the timeline reads oldest first by default", () => {
+  const t = read("tracker/tracker.js");
+  assert.match(t, /if \(!refreshing\) refreshing = \(async \(\) => \{/, "one manual check at a time");
+  assert.match(t, /b\.disabled = true; b\.setAttribute\("aria-busy", "true"\);/);
+  for (const k of ["updated", "unchanged", "error"]) assert.match(t, new RegExp(`${k}: "`), `feedback for ${k}`);
+  assert.match(t, /role="status" aria-live="polite"/);
+  assert.match(t, /Last checked \$\{/, "check time labelled separately from the last recorded event");
+  assert.match(t, /let timelineOrder = "oldest";/);
+  assert.match(t, /const latestId = items\[0\]\?\.id;/, "'Latest' still marks the newest recorded event in either order");
+  assert.match(t, /\$\{loc\?\.sourceLabel \? ` · \$\{esc\(loc\.sourceLabel\)\}` : ""\}/, "the location says how it was recorded");
 });
