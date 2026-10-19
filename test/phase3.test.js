@@ -710,3 +710,15 @@ test("shipment map data: recorded coordinates first, city-level fallbacks flagge
   assert.match(src, /if \(!layers\.current\) \{ fit\(\); onStatus\?\.\("no-current"\); return; \}/, "Locate never pretends");
   assert.match(src, /renderer: outlineRenderer/); assert.match(src, /shifted\(-360\), \.\.\.shifted\(0\), \.\.\.shifted\(360\)/);
 });
+
+test("HubSpot: one async tracking script on each public page, none on admin pages, Smartsupp replaced", () => {
+  const tag = '<script type="text/javascript" id="hs-script-loader" async defer src="https://js-eu1.hs-scripts.com/149584581.js"></script>';
+  for (const page of ["index.html", "track.html", "tracking-enhanced.html", "investment.html", "client-dashboard.html"]) {
+    const h = read(page);
+    assert.equal(h.split(tag).length - 1, 1, `${page}: the HubSpot script exactly once`);
+    assert.equal((h.match(/hs-script-loader|hs-scripts\.com/g) || []).length, 2, `${page}: no second HubSpot loader`);
+    assert.ok(h.indexOf(tag) < h.indexOf("</head>"), `${page}: in <head>`);
+    assert.ok(!/smartsupp/i.test(h), `${page}: one chat only (Smartsupp removed)`);
+  }
+  for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/hs-scripts|hs-script-loader/.test(read(page)), `${page}: staff pages are not tracked`);
+});
