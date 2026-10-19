@@ -495,3 +495,5 @@ html[data-theme="light"] .hx-map .hx-map-label { background: rgba(255, 255, 255,
 html[data-theme="light"] .hx-routesum { background: #f4f8fe; border-color: rgba(15, 40, 90, .1); }
 html[data-theme="light"] :is(.hx-rsum-end small, .hx-rsum-meta, .hx-map-cap) { color: #51627f; }
 html[data-theme="light"] .hx-rsum-line { background: #dbe4f0; }
+/* a latest location placed from the city table (not a recorded coordinate) reads as approximate: dashed ring, no fill glow */
+.hx-marker.hx-m-current.is-approx { border-style: dashed; box-shadow: 0 0 0 4px rgba(217, 119, 6, .18), 0 2px 8px rgba(0,0,0,.35); }

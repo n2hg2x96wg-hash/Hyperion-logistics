@@ -7,6 +7,7 @@
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
 import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
+import { resolveMapData, hasPoints } from "./map-data.js";
 import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageScene, modelCaption, routeOverlaySvg, STATUS_HELP } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
@@ -392,7 +393,7 @@ export function createTracker(root, opts = {}) {
     if (keepMap) root.querySelector('[data-slot="map"]')?.replaceWith(keepMap);
     renderMeta();
     if (reveal) animateCounters();
-    if (v.map) mountMap(v.map);
+    if (v.map) mountMap(resolveMapData(v));
     else destroyMap();
     mount3d(keep3d);
     if (isUpdate) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
@@ -450,11 +451,11 @@ export function createTracker(root, opts = {}) {
     if (!badge(ls)) root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => el.remove());
     const title = root.querySelector('[data-slot="maptitle"]'); if (title) title.textContent = ls.state === "live" ? "Live tracking map" : "Shipment map";
     root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a; });
-    if (v.map) { mapNote(v.map, ls); if (map && v.map.current && v.map.current.state !== ls.state) map.api.update(withState(v.map, ls)); }
+    if (v.map) { const md = resolveMapData(v); mapNote(md, ls); if (map && md.current && md.current.state !== ls.state) map.api.update(withState(md, ls)); }
   }
   const withState = (data, ls) => {
     if (!data.current) return data;
-    const verified = verifiedFeed(state.view);
+    const verified = verifiedFeed(state.view) && !data.current.approx && !data.current.fromTrail; // fallbacks are never "verified"
     const moving = ["IN_TRANSIT", "OUT_FOR_DELIVERY"].includes(state.view?.status?.code);
     return { ...data, mode: moving ? presentation(state.view).mode : null,
       current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? SOURCE_TEXT[state.view.currentLocation.source] : null, updatedAt: verified ? data.current.updatedAt : null } };
@@ -464,14 +465,16 @@ export function createTracker(root, opts = {}) {
   function mapNote(data, ls) {
     const note = root.querySelector('[data-slot="mapnote"]'); if (!note) return;
     const c = data.current; const when = c?.updatedAt ? fmtDateTime(c.updatedAt) : null;
+    const ends = data.resolved?.origin || data.resolved?.destination ? " Origin and destination are shown at city level." : "";
     let text;
-    if (c && ls?.state === "live") text = `Live — position reported ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when}).`;
-    else if (c && ls?.state === "recent") text = `Recently updated — position reported ${when}.`;
+    if (c && !c.approx && !c.fromTrail && ls?.state === "live") text = `Live — position reported ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when}).`;
+    else if (c && !c.approx && !c.fromTrail && ls?.state === "recent") text = `Recently updated — position reported ${when}.`;
+    else if (c?.fromTrail) text = `Latest recorded checkpoint shown${c.name ? `: ${c.name}` : ""}.`;
+    else if (c?.approx && data.resolved?.current) text = `Latest recorded place, shown at city level${c.name ? `: ${c.name}` : ""}.`;
     else if (c) text = verifiedFeed(state.view) ? "Last known location shown." : "Latest recorded location shown (approximate, city level).";
-    else if (data.trail?.length) text = "Live location unavailable — showing the most recent recorded route points.";
-    else if (data.origin || data.destination) text = "No location has been recorded yet — showing origin and destination only.";
+    else if (data.origin || data.destination) text = "No location has been recorded yet — showing origin and destination.";
     else text = "";
-    note.textContent = text;
+    note.textContent = `${text}${ends}`.trim();
   }
 
   async function mountMap(data) {
@@ -479,19 +482,19 @@ export function createTracker(root, opts = {}) {
     if (!el) return;
     const ls = locState();
     mapNote(data, ls);
-    const hasAny = data.current || data.origin || data.destination || data.trail?.length;
-    if (!hasAny) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = '<div class="hx-map-msg"><strong>Awaiting location update</strong><br>No coordinates have been recorded for this shipment yet. The map will appear as soon as a location is recorded.</div>'; return; }
+    if (!hasPoints(data)) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = '<div class="hx-map-msg"><strong>Awaiting location update</strong><br>No coordinates have been recorded for this shipment yet. The map will appear as soon as a location is recorded.</div>'; return; }
     if (map && map.el === el) { map.api.update(withState(data, ls)); if (el.querySelector(".hx-map-fallback")) showMapUnavailable(el, data); return; }
     destroyMap();
     if (mapFailed) { fallbackMap(el, data); return; }
     const token = ++mapToken;
     try {
       mapMod = mapMod || await import("./map.js");
-      const api = await mapMod.createMap(el, { initial: withState(state.view?.map || data, locState()), onStatus: (s) => {
+      const api = await mapMod.createMap(el, { initial: withState(state.view ? resolveMapData(state.view) : data, locState()), onStatus: (s) => {
         // No tiles from any provider: never leave a blank map. Show a clear panel with the recorded facts instead.
-        if (s === "tiles-unavailable") showMapUnavailable(el, state.view?.map || data);
+        if (s === "tiles-unavailable") showMapUnavailable(el, state.view ? resolveMapData(state.view) : data);
         if (s === "tiles-ok") el.querySelector(".hx-map-fallback")?.remove();
         if (s === "street-unavailable") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = "The street map isn't available right now; showing the outline map."; }
+        if (s === "no-current") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = "No location has been recorded yet — showing the route."; }
       } });
       if (destroyed || token !== mapToken || !el.isConnected) { api.destroy(); return; }
       map = { el, api };

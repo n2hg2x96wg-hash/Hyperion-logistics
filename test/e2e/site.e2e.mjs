@@ -54,6 +54,13 @@ before(async () => {
   for (const location of ["Port of Shanghai, China", "Port of Singapore", "Suez Canal, Egypt"])
     assert.equal((await api(page, { action: "addEvent", code: codes.sea, statusCode: "IN_TRANSIT", location, description: "In transit", applyToShipment: true })).status, 200);
   await create("hub", { courier: "dhl", statusCode: "AT_FACILITY", origin: "Lagos, Nigeria", destination: "London, United Kingdom" });
+  // the live LA → Seoul case: a record with place names only (no stored coordinates, the geocoder is off here)
+  await create("laSeoul", { origin: "Los Angeles, California", destination: "Seoul, Republic of Korea" });
+  // with coordinates and a recorded checkpoint in the Pacific
+  await create("laSeoulCp", { origin: "Los Angeles, California", destination: "Seoul, Republic of Korea", originLat: 34.05, originLng: -118.24, destinationLat: 37.57, destinationLng: 126.98 });
+  assert.equal((await api(page, { action: "addEvent", code: codes.laSeoulCp, statusCode: "IN_TRANSIT", location: "Honolulu, Hawaii", latitude: 21.31, longitude: -157.86, description: "Transit stop", applyToShipment: true })).status, 200);
+  // across the date line, the other way
+  await create("tokyoLa", { origin: "Tokyo, Japan", destination: "Los Angeles, California", originLat: 35.68, originLng: 139.69, destinationLat: 34.05, destinationLng: -118.24 });
   await ctx.close();
 });
 after(async () => { await browser?.close(); server?.close(); });
@@ -801,6 +808,89 @@ test("shipment map opens on the shipment (not the world), with labels, a themed 
     assert.deepEqual(errors, []);
     await ctx.close();
   }
+});
+
+test("client map opens on the shipment: LA → Seoul framed over the Pacific, honest notes, both map styles, live updates, no leftovers", async () => {
+  const pacific = (center) => { const lng = Number(center.split(",")[1]); return lng > 120 || lng < -110; };
+  const read = (page) => page.$eval(".hx-map", (e) => ({ zoom: Number(e.dataset.zoom), center: e.dataset.center, latest: e.dataset.latest, points: Number(e.dataset.points),
+    markers: [...e.querySelectorAll(".leaflet-marker-icon")].map((m) => { const b = e.getBoundingClientRect(); const r = m.getBoundingClientRect(); const x = r.left + r.width / 2; const y = r.top + r.height / 2; return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom; }),
+    labels: [...e.querySelectorAll(".hx-map-label")].map((x) => x.textContent), land: e.querySelectorAll(".leaflet-tile-pane path").length, note: document.querySelector('[data-slot="mapnote"]').textContent }));
+  for (const [w, theme] of [[390, "dark"], [768, "light"], [1280, "dark"], [1280, "light"]]) {
+    const ctx = await newContext({ width: w, height: 900 });
+    await ctx.addInitScript((t) => { try { localStorage.setItem("hx-theme", t); } catch {} }, theme);
+    const page = await ctx.newPage(); const errors = watchErrors(page);
+    // 1. no stored coordinates: endpoints from the verified city table, no invented latest location
+    await page.goto(`${base}/track.html?code=${codes.laSeoul}`);
+    await page.waitForSelector(".hx-map[data-zoom] .leaflet-marker-icon", { timeout: 20000 });
+    await page.waitForTimeout(400);
+    let m = await read(page);
+    assert.ok(m.points >= 2 && m.markers.length >= 2 && m.markers.every(Boolean), `${w}: every marker inside the map ${JSON.stringify(m)}`);
+    assert.ok(pacific(m.center) && m.zoom >= 1 && m.zoom <= 5, `${w}: framed over the Pacific, not Algeria: ${m.center} @ ${m.zoom}`);
+    assert.ok(m.labels.some((l) => /^Destination · Seoul/.test(l)) && m.labels.some((l) => /^Origin/.test(l)), m.labels.join("|"));
+    assert.match(m.note, /Los Angeles/, "the latest recorded place is named in the note");
+    assert.match(m.note, /Origin and destination are shown at city level\./);
+    assert.ok(m.land > 50, `${w}: the outline map actually draws land (${m.land} paths)`);
+    assert.equal(await page.locator(".hx-map-msg").count(), 0);
+    // 4. switching map styles keeps the shipment framed
+    await page.click(".hx-map-ctl button[aria-pressed]");
+    await page.waitForFunction(() => /street map isn't available|Outline map/.test(document.querySelector('[data-slot="mapnote"]').textContent + document.querySelector(".hx-map-ctl button[aria-pressed]").textContent), null, { timeout: 15000 });
+    const m2 = await read(page); assert.equal(m2.center, m.center, "style switch keeps the view"); assert.equal(m2.zoom, m.zoom);
+    // 2 + 6. a second tracking code: checkpoint shown as the latest location, nothing left from the first shipment
+    await page.fill("#trackingInput", codes.laSeoulCp); await page.keyboard.press("Enter");
+    await page.waitForFunction(() => document.querySelector(".hx-map")?.dataset.latest === "21.31,-157.86", null, { timeout: 20000 });
+    await page.waitForTimeout(300);
+    m = await read(page);
+    assert.ok(pacific(m.center) && m.markers.every(Boolean) && m.markers.length === 3, JSON.stringify(m));
+    assert.ok(m.labels.some((l) => /^Latest · Honolulu/.test(l)), m.labels.join("|"));
+    assert.equal(m.labels.length, 3, `${w}/${theme}: no labels left over: ${m.labels.join("|")} maps=${await page.locator(".leaflet-container").count()} panes=${await page.locator(".hx-map .leaflet-tooltip-pane").count()}`);
+    // 3. a new location while the page is open: "Check now" moves the latest marker without a reload
+    if (w === 1280 && theme === "light") { // last pass: this moves the shipment to Tokyo
+      await page.goto(`${base}/admin.html`);
+      assert.equal((await api(page, { action: "login", password: process.env.ADMIN_PASSWORD })).status, 200);
+      await page.goto(`${base}/track.html?code=${codes.laSeoulCp}`);
+      await page.waitForFunction(() => document.querySelector(".hx-map")?.dataset.latest === "21.31,-157.86", null, { timeout: 20000 });
+      assert.equal((await api(page, { action: "updateLocation", code: codes.laSeoulCp, locationName: "Tokyo, Japan", latitude: 35.68, longitude: 139.69 })).status, 200);
+      await page.click('[data-act="refresh"]');
+      await page.waitForFunction(() => document.querySelector(".hx-map")?.dataset.latest === "35.68,139.69", null, { timeout: 20000 });
+      m = await read(page); assert.ok(m.markers.every(Boolean) && pacific(m.center), JSON.stringify(m));
+      // Locate goes to the latest recorded location
+      await page.click(".hx-map-ctl button:has-text('Locate')");
+      await page.waitForFunction(() => /^3[0-9]\.\d+,1[23]\d\./.test(document.querySelector(".hx-map").dataset.center), null, { timeout: 8000 }); // the fly-to animation lands on Tokyo
+      await page.waitForTimeout(1500);
+      assert.match((await read(page)).center, /^3[0-9]\.\d+,1[23]\d\./, "and stays there (no automatic re-framing pulls it back)");
+    }
+    // 5. across the date line the other way
+    await page.fill("#trackingInput", codes.tokyoLa); await page.keyboard.press("Enter");
+    await page.waitForFunction(() => /Destination · Los Angeles/.test(document.querySelector(".hx-map")?.textContent || "") && !/Honolulu|Seoul/.test(document.querySelector(".hx-map").textContent), null, { timeout: 20000 });
+    await page.waitForTimeout(300);
+    m = await read(page); assert.ok(pacific(m.center) && m.markers.every(Boolean), `Tokyo → LA: ${JSON.stringify(m)}`);
+    assert.ok(await noOverflow(page));
+    await shot(page, `client-map-${theme}-${w}`);
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  }
+});
+
+test("client map: no location recorded and no known places shows the honest panel; Locate never pretends", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  // a record with place names for its endpoints but no recorded location at all
+  await ctx.route(/\/api\/track\?/, async (r) => {
+    const res = await r.fetch(); const body = await res.json().catch(() => null);
+    if (body?.shipment) { delete body.shipment.currentLocation; body.shipment.timeline = (body.shipment.timeline || []).map((t) => ({ ...t, location: "" })); }
+    r.fulfill({ response: res, json: body });
+  });
+  await ctx.route(/\/api\/stream/, (r) => r.abort());
+  const page = await ctx.newPage();
+  await page.goto(`${base}/track.html?code=${codes.laSeoul}`);
+  await page.waitForSelector(".hx-map[data-zoom] .leaflet-marker-icon", { timeout: 20000 });
+  assert.equal(await page.getAttribute(".hx-map", "data-latest"), "", "no latest location invented");
+  assert.match(await page.textContent('[data-slot="mapnote"]'), /No location has been recorded yet — showing origin and destination\./);
+  await page.click(".hx-map-ctl button:has-text('Locate')");
+  await page.waitForFunction(() => /showing the route/.test(document.querySelector('[data-slot="mapnote"]').textContent));
+  await page.goto(`${base}/track.html?code=${codes.none}`);
+  await page.waitForSelector(".hx-map-msg", { timeout: 15000 });
+  assert.match(await page.textContent(".hx-map-msg"), /Awaiting location update/);
+  await ctx.close();
 });
 
 test("recorded vs. live: only a verified GPS / carrier position is labelled live", async () => {
