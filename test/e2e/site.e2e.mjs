@@ -147,6 +147,57 @@ for (const w of WIDTHS) {
   });
 }
 
+test("carrier gallery: picture cards rise into view, tilt under a mouse, fall back without a picture, still with reduced motion", async () => {
+  // desktop: every card gets a picture, reveals on scroll, tilts under the pointer; details and tabs still work
+  let ctx = await newContext({ width: 1280, height: 900 });
+  let page = await ctx.newPage(); let errors = watchErrors(page);
+  await ctx.route(/assets\/stages\/bays-/, (r) => r.abort()); // one picture fails: its cards keep a clean fallback
+  await page.goto(base + "/index.html");
+  await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
+  const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
+  assert.equal(before, 0, "cards wait below the fold until scrolled to");
+  await page.locator("#carriers .cr-grid").scrollIntoViewIfNeeded();
+  for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 250); await page.waitForTimeout(120); }
+  await page.waitForFunction(() => [...document.querySelectorAll("#carriers .cr-tile")].every((t) => t.classList.contains("is-in")));
+  const cards = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => ({ id: t.dataset.id, name: t.querySelector(".wm")?.textContent, meta: t.querySelector(".meta")?.textContent,
+    src: t.querySelector(".cr-media img")?.getAttribute("src"), noImg: t.classList.contains("no-img") })));
+  assert.equal(cards.length, 23, "all carriers are still listed");
+  for (const c of cards) { assert.ok(c.name && c.meta, `${c.id}: name and category shown`); assert.ok(c.src, `${c.id}: has a picture`); }
+  assert.equal(cards.find((c) => c.id === "ups").src, "assets/carriers/ups-480.jpg");
+  assert.equal(cards.find((c) => c.id === "maersk").src, "assets/carriers/maersk-480.jpg");
+  assert.ok(cards.filter((c) => c.noImg).length >= 1 && cards.filter((c) => c.noImg).every((c) => /bays/.test(c.src)), "a failed picture leaves the fallback panel");
+  const loaded = await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img", (is) => is.every((i) => i.complete && i.naturalWidth > 0));
+  assert.ok(loaded, "every other picture loads");
+  const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
+  await tile.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
+  const box = await tile.boundingBox();
+  await page.mouse.move(box.x + box.width * 0.9, box.y + box.height * 0.2); await page.waitForTimeout(150);
+  const tilt = await tile.evaluate((t) => [t.classList.contains("is-tilt"), parseFloat(t.style.getPropertyValue("--ry")), parseFloat(t.style.getPropertyValue("--rx"))]);
+  assert.ok(tilt[0] && tilt[1] > 0 && tilt[1] <= 6 && tilt[2] > 0 && tilt[2] <= 5, `restrained tilt ${tilt}`);
+  await page.mouse.move(5, 5); await page.waitForTimeout(100);
+  assert.equal(await tile.evaluate((t) => t.classList.contains("is-tilt")), false, "the card settles when the pointer leaves");
+  await tile.click();
+  assert.match(await page.textContent("#cr-detail"), /Maersk/);
+  assert.equal(await tile.evaluate((t) => t.classList.contains("is-in")), true, "re-rendering does not replay the entrance");
+  await page.click('#carrierTabs [data-filter="air"]');
+  assert.equal(await page.locator("#carriers .cr-tile").count(), 4);
+  assert.equal(await page.locator("#carriers .cr-tile:not(.is-in)").count(), 0);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+
+  // reduced motion: cards are visible at once, flat, with no tilt
+  ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
+  await ctx.route(/(fonts\.(googleapis|gstatic)\.com|smartsupp|tawk\.to|gstatic\.com\/firebasejs|cdn\.jsdelivr\.net)/, (r) => r.abort());
+  page = await ctx.newPage(); errors = watchErrors(page);
+  await page.goto(base + "/index.html");
+  await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
+  const still = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => [t.classList.contains("is-in"), getComputedStyle(t).transform, getComputedStyle(t).opacity]));
+  assert.ok(still.length === 8 && still.every(([inn, tr, op]) => inn && tr === "none" && op === "1"), JSON.stringify(still.slice(0, 2)));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
 for (const w of WIDTHS) {
   test(`freight showcase at ${w}px: image loads, fits the screen, buttons work`, async () => {
     const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });

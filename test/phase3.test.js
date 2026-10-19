@@ -723,3 +723,25 @@ test("tawk.to: one chat loader on each public page, guarded against double loads
   }
   for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/tawk\.to|hs-scripts/i.test(read(page)), `${page}: staff pages have no customer chat`);
 });
+
+test("carrier cards: every carrier has an existing picture; livery photos only on their own carrier; credits recorded", async () => {
+  const { CARRIERS, carrierCategory } = await import("../shared/carriers.js");
+  const { carrierMedia, CARRIER_MEDIA_SOURCES } = await import("../ui/carrier-media.js");
+  const exists = (f) => fs.existsSync(new URL(`../${f}`, import.meta.url));
+  for (const c of CARRIERS) {
+    const m = carrierMedia({ id: c.id, category: carrierCategory(c) });
+    for (const w of m.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(exists(`${m.base}-${w}.${ext}`), `${c.id}: ${m.base}-${w}.${ext}`);
+    if (m.brand) assert.equal(m.brand, c.id, `${c.id} must not show another carrier's livery`);
+  }
+  assert.equal(carrierMedia({ id: "ups", category: "express" }).key, "ups");
+  assert.equal(carrierMedia({ id: "emiratesskycargo", category: "air" }).key, "emirates");
+  assert.equal(carrierMedia({ id: "maersk", category: "ocean" }).key, "maersk");
+  assert.ok(!carrierMedia({ id: "tesla-transport", category: "custom" }).brand, "Tesla Transport uses an unbranded picture");
+  assert.equal(carrierMedia({ id: "new-carrier", category: "ocean" }).key, "ship", "unknown carriers get their category picture");
+  const credits = read("assets/carriers/CREDITS.md");
+  for (const [k, s] of Object.entries(CARRIER_MEDIA_SOURCES)) if (s.base.startsWith("assets/carriers/")) assert.ok(credits.includes(`\`${k}-*\``), `credits for ${k}`);
+  const src = read("ui/carriers.js");
+  assert.match(src, /alt=""/, "pictures are decorative: the card text names the carrier");
+  assert.match(src, /loading="lazy"/);
+  assert.match(src, /prefers-reduced-motion: reduce/);
+});
