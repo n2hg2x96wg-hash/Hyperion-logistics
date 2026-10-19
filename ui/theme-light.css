@@ -135,8 +135,10 @@ html[data-theme="light"] .cc-stat { background: #fff; }
 /* carrier directory */
 html[data-theme="light"] .cr-tab { color: #2c3e5f; border-color: rgba(15, 40, 90, 0.2); background: #fff; }
 html[data-theme="light"] .cr-tab[aria-pressed="true"] { background: #0b1a3d; border-color: #0b1a3d; color: #fff; }
-html[data-theme="light"] .cr-tile { background: #fff; border-color: rgba(15, 40, 90, 0.1); }
-html[data-theme="light"] .cr-tile:hover, html[data-theme="light"] .cr-tile[aria-expanded="true"] { background: #f3f7fe; border-color: rgba(37, 99, 235, 0.45); }
+html[data-theme="light"] .cr-tile { background: #fff; border-color: #dce5f1; box-shadow: 0 10px 24px -16px rgba(7, 23, 53, 0.35); }
+html[data-theme="light"] .cr-tile:hover, html[data-theme="light"] .cr-tile:focus-visible, html[data-theme="light"] .cr-tile[aria-expanded="true"] { background: #f5f8fc; border-color: rgba(37, 136, 255, 0.6);
+  box-shadow: 0 0 0 1px rgba(37, 136, 255, 0.3), 0 20px 36px -18px rgba(7, 23, 53, 0.45); }
+html[data-theme="light"] .cr-tile .meta { color: #1a6fe0; }
 html[data-theme="light"] .cr-tile .wm, html[data-theme="light"] .cr-detail h4 { color: #0b1a3d; }
 html[data-theme="light"] .cr-detail { background: #f3f7fe; border-color: rgba(37, 99, 235, 0.3); }
 html[data-theme="light"] .cr-detail p { color: #44557a; }
