@@ -711,14 +711,15 @@ test("shipment map data: recorded coordinates first, city-level fallbacks flagge
   assert.match(src, /renderer: outlineRenderer/); assert.match(src, /shifted\(-360\), \.\.\.shifted\(0\), \.\.\.shifted\(360\)/);
 });
 
-test("HubSpot: one async tracking script on each public page, none on admin pages, Smartsupp replaced", () => {
-  const tag = '<script type="text/javascript" id="hs-script-loader" async defer src="https://js-eu1.hs-scripts.com/149584581.js"></script>';
+test("tawk.to: one chat loader on each public page, guarded against double loads, no HubSpot/Smartsupp; none on admin pages", () => {
+  const src = "https://embed.tawk.to/6ad58a3eb5a48e34d3f1d2de/default";
   for (const page of ["index.html", "track.html", "tracking-enhanced.html", "investment.html", "client-dashboard.html"]) {
     const h = read(page);
-    assert.equal(h.split(tag).length - 1, 1, `${page}: the HubSpot script exactly once`);
-    assert.equal((h.match(/hs-script-loader|hs-scripts\.com/g) || []).length, 2, `${page}: no second HubSpot loader`);
-    assert.ok(h.indexOf(tag) < h.indexOf("</head>"), `${page}: in <head>`);
-    assert.ok(!/smartsupp/i.test(h), `${page}: one chat only (Smartsupp removed)`);
+    assert.equal(h.split(src).length - 1, 1, `${page}: the tawk.to loader exactly once`);
+    assert.equal((h.match(/Start of Tawk\.to Script/g) || []).length, 1, `${page}: one tawk.to block`);
+    assert.match(h, /if \(document\.querySelector\('script\[src\*="embed\.tawk\.to"\]'\)\) return;/, `${page}: never loads twice`);
+    assert.ok(h.indexOf(src) < h.indexOf("</head>"), `${page}: in <head>`);
+    assert.ok(!/hs-scripts|hs-script-loader|smartsupp/i.test(h), `${page}: one chat only (HubSpot and Smartsupp removed)`);
   }
-  for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/hs-scripts|hs-script-loader/.test(read(page)), `${page}: staff pages are not tracked`);
+  for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/tawk\.to|hs-scripts/i.test(read(page)), `${page}: staff pages have no customer chat`);
 });

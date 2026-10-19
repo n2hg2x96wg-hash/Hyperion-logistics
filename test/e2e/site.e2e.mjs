@@ -79,7 +79,7 @@ async function newContext({ width, height }) {
   // third-party widgets and the legacy client SDK are not under test
   await ctx.route(/gstatic\.com\/firebasejs/, (r) => r.fulfill({ status: 200, contentType: "text/javascript",
     body: "export const initializeApp=()=>({}),getApps=()=>[],getFirestore=()=>({}),collection=()=>({}),getDocs=async()=>({empty:true,docs:[]}),doc=()=>({}),setDoc=async()=>{},deleteDoc=async()=>{},getDoc=async()=>({exists:()=>false}),onSnapshot=()=>()=>{},serverTimestamp=()=>0,getAuth=()=>({}),createUserWithEmailAndPassword=async()=>{},signOut=async()=>{};" }));
-  await ctx.route(/(fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|tile\.openstreetmap|arcgisonline)/, (r) => r.abort());
+  await ctx.route(/(fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|tawk\.to|tile\.openstreetmap|arcgisonline)/, (r) => r.abort());
   return ctx;
 }
 function watchErrors(page) {
@@ -239,7 +239,7 @@ for (const w of WIDTHS) {
 
 test("logistics journey: reduced motion shows everything at once; a failed image leaves a clean panel", async () => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
-  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|cdn\.jsdelivr\.net/, (r) => r.abort());
+  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|tawk\.to|cdn\.jsdelivr\.net/, (r) => r.abort());
   await ctx.route(/\/assets\/journey\//, (r) => r.abort());
   const page = await ctx.newPage();
   await page.goto(`${base}/index.html?map=flat`);
@@ -503,7 +503,7 @@ test("tracking edge cases: invalid code, network failure with retry, missing opt
 
 test("tracking result with reduced motion: every block visible at once, illustration static", async () => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce", isMobile: true, hasTouch: true });
-  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|cdn\.jsdelivr\.net/, (r) => r.abort());
+  await ctx.route(/gstatic\.com\/firebasejs|fonts\.(googleapis|gstatic)\.com|smartsupp|hs-scripts|tawk\.to|cdn\.jsdelivr\.net/, (r) => r.abort());
   const page = await ctx.newPage();
   await page.goto(`${base}/track.html`);
   await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
