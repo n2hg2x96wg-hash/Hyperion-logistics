@@ -826,7 +826,8 @@ test("client map opens on the shipment: LA → Seoul framed over the Pacific, ho
     let m = await read(page);
     assert.ok(m.points >= 2 && m.markers.length >= 2 && m.markers.every(Boolean), `${w}: every marker inside the map ${JSON.stringify(m)}`);
     assert.ok(pacific(m.center) && m.zoom >= 1 && m.zoom <= 5, `${w}: framed over the Pacific, not Algeria: ${m.center} @ ${m.zoom}`);
-    assert.ok(m.labels.some((l) => /Seoul/.test(l)) && m.labels.some((l) => /Los Angeles/.test(l)), m.labels.join("|"));
+    assert.ok(m.labels.some((l) => /^Destination · Seoul/.test(l)) && m.labels.some((l) => /^Origin/.test(l)), m.labels.join("|"));
+    assert.match(m.note, /Los Angeles/, "the latest recorded place is named in the note");
     assert.match(m.note, /Origin and destination are shown at city level\./);
     assert.ok(m.land > 50, `${w}: the outline map actually draws land (${m.land} paths)`);
     assert.equal(await page.locator(".hx-map-msg").count(), 0);
@@ -853,12 +854,14 @@ test("client map opens on the shipment: LA → Seoul framed over the Pacific, ho
       await page.waitForFunction(() => document.querySelector(".hx-map")?.dataset.latest === "35.68,139.69", null, { timeout: 20000 });
       m = await read(page); assert.ok(m.markers.every(Boolean) && pacific(m.center), JSON.stringify(m));
       // Locate goes to the latest recorded location
-      await page.click(".hx-map-ctl button:has-text('Locate')"); await page.waitForTimeout(900);
-      assert.match((await read(page)).center, /^3[0-9]\.\d+,1[23]\d\./);
+      await page.click(".hx-map-ctl button:has-text('Locate')");
+      await page.waitForFunction(() => /^3[0-9]\.\d+,1[23]\d\./.test(document.querySelector(".hx-map").dataset.center), null, { timeout: 8000 }); // the fly-to animation lands on Tokyo
+      await page.waitForTimeout(1500);
+      assert.match((await read(page)).center, /^3[0-9]\.\d+,1[23]\d\./, "and stays there (no automatic re-framing pulls it back)");
     }
     // 5. across the date line the other way
     await page.fill("#trackingInput", codes.tokyoLa); await page.keyboard.press("Enter");
-    await page.waitForFunction(() => /Tokyo/.test(document.querySelector(".hx-map")?.textContent || "") && !/Honolulu/.test(document.querySelector(".hx-map").textContent), null, { timeout: 20000 });
+    await page.waitForFunction(() => /Destination · Los Angeles/.test(document.querySelector(".hx-map")?.textContent || "") && !/Honolulu|Seoul/.test(document.querySelector(".hx-map").textContent), null, { timeout: 20000 });
     await page.waitForTimeout(300);
     m = await read(page); assert.ok(pacific(m.center) && m.markers.every(Boolean), `Tokyo → LA: ${JSON.stringify(m)}`);
     assert.ok(await noOverflow(page));

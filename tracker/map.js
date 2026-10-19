@@ -122,7 +122,9 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   const [L, cfg] = await Promise.all([loadLeaflet(), loadConfig()]);
   const touch = !!L.Browser.mobile;
   // Page scrolling must win over the map: wheel zoom waits for a click, one-finger drag waits for a tap on touch screens.
-  const map = L.map(el, { zoomControl: true, preferCanvas: true, worldCopyJump: true, minZoom: 1, zoomSnap: 0.25, zoomDelta: 1, scrollWheelZoom: false, dragging: !touch, tap: false });
+  // SVG for the few route lines and markers: Leaflet's canvas renderer can try to redraw after the map is removed when
+  // the visitor switches tracking codes mid-animation
+  const map = L.map(el, { zoomControl: true, preferCanvas: false, worldCopyJump: true, minZoom: 1, zoomSnap: 0.25, zoomDelta: 1, scrollWheelZoom: false, dragging: !touch, tap: false });
   const small = () => (el.clientWidth || 600) < 520;
   // phones keep the controls in a row along the bottom, so the route gets the top of the map
   // (room for the side labels too: "Destination · …" sits left of its marker, the others to the right)
@@ -243,6 +245,7 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
     // only a recorded location can be "located"; without one the route is framed and the note says so
     if (!layers.current) { fit(); onStatus?.("no-current"); return; }
     const target = layers.current.getLatLng();
+    userMoved = true; // the visitor chose this view: automatic re-framing must not pull it back to the whole route
     if (reducedMotion()) map.setView(target, Math.max(map.getZoom(), 6), { animate: false });
     else map.flyTo(target, Math.max(map.getZoom(), 6), { duration: 0.5 });
     layers.current.openPopup();
