@@ -147,11 +147,11 @@ for (const w of WIDTHS) {
   });
 }
 
-test("carrier gallery: picture cards rise into view, tilt under a mouse, fall back without a picture, still with reduced motion", async () => {
-  // desktop: every card gets a picture, reveals on scroll, tilts under the pointer; details and tabs still work
+test("carrier gallery: own photo or category illustration per carrier (never a stage photo), rises into view, tilts, falls back, still with reduced motion", async () => {
+  // desktop: each card shows its carrier's own photo or its category illustration; reveal on scroll; tilt; details and tabs
   let ctx = await newContext({ width: 1280, height: 900 });
   let page = await ctx.newPage(); let errors = watchErrors(page);
-  await ctx.route(/assets\/stages\/bays-/, (r) => r.abort()); // one picture fails: its cards keep a clean fallback
+  await ctx.route(/assets\/carriers\/emirates-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
   await page.goto(base + "/index.html");
   await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
   const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
@@ -159,15 +159,21 @@ test("carrier gallery: picture cards rise into view, tilt under a mouse, fall ba
   await page.locator("#carriers .cr-grid").scrollIntoViewIfNeeded();
   for (let i = 0; i < 8; i++) { await page.mouse.wheel(0, 250); await page.waitForTimeout(120); }
   await page.waitForFunction(() => [...document.querySelectorAll("#carriers .cr-tile")].every((t) => t.classList.contains("is-in")));
-  const cards = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => ({ id: t.dataset.id, name: t.querySelector(".wm")?.textContent, meta: t.querySelector(".meta")?.textContent,
-    src: t.querySelector(".cr-media img")?.getAttribute("src"), noImg: t.classList.contains("no-img") })));
+  const cards = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => ({ id: t.dataset.id, cat: t.dataset.cat, name: t.querySelector(".wm")?.textContent, meta: t.querySelector(".meta")?.textContent,
+    media: t.querySelector(".cr-media").dataset.media, src: t.querySelector(".cr-media img:not(.cr-logo)")?.getAttribute("src") || null,
+    art: !!t.querySelector(".cr-media svg.cr-art"), noImg: t.classList.contains("no-img"), html: t.innerHTML })));
   assert.equal(cards.length, 23, "all carriers are still listed");
-  for (const c of cards) { assert.ok(c.name && c.meta, `${c.id}: name and category shown`); assert.ok(c.src, `${c.id}: has a picture`); }
-  assert.equal(cards.find((c) => c.id === "ups").src, "assets/carriers/ups-480.jpg");
-  assert.equal(cards.find((c) => c.id === "maersk").src, "assets/carriers/maersk-480.jpg");
-  assert.ok(cards.filter((c) => c.noImg).length >= 1 && cards.filter((c) => c.noImg).every((c) => /bays/.test(c.src)), "a failed picture leaves the fallback panel");
-  const loaded = await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img", (is) => is.every((i) => i.complete && i.naturalWidth > 0));
-  assert.ok(loaded, "every other picture loads");
+  const by = Object.fromEntries(cards.map((c) => [c.id, c]));
+  for (const c of cards) {
+    assert.ok(c.name && c.meta, `${c.id}: name and category shown`);
+    assert.ok(!/assets\/(stages|journey|freight)\//.test(c.html), `${c.id}: no shipment-stage or homepage picture on a carrier card`);
+    assert.ok(c.media === "photo" ? c.src && !c.art : c.art && !c.src, `${c.id}: exactly one kind of picture`);
+  }
+  assert.equal(by.ups.src, "assets/carriers/ups-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-480.jpg");
+  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
+  for (const id of ["dhl", "qatarcargo", "msc", "giglogistics", "tesla-transport"]) assert.equal(by[id].media, "art", `${id}: category illustration`);
+  assert.equal(cards.filter((c) => c.noImg).length, 1);
+  assert.ok(await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img:not(.cr-logo)", (is) => is.every((i) => i.complete && i.naturalWidth > 0)), "the other photos load");
   const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
   await tile.scrollIntoViewIfNeeded(); await page.waitForTimeout(300);
   const box = await tile.boundingBox();
@@ -182,7 +188,19 @@ test("carrier gallery: picture cards rise into view, tilt under a mouse, fall ba
   await page.click('#carrierTabs [data-filter="air"]');
   assert.equal(await page.locator("#carriers .cr-tile").count(), 4);
   assert.equal(await page.locator("#carriers .cr-tile:not(.is-in)").count(), 0);
+  const air = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => [t.dataset.id, t.querySelector(".cr-media").dataset.media]));
+  for (const [id, m] of air) assert.equal(m, by[id].media, `${id}: same picture after filtering`);
+  await page.click('#carrierTabs [data-filter="all"]');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  // the tracking result picks its stage picture from the shipment's status, independently of the carrier pictures
+  await page.goto(`${base}/track.html?code=${codes.hub}`); // DHL, At facility
+  await page.waitForSelector(".hx-scene .hx-scene-photo img");
+  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/aerial-/);
+  assert.match(await page.textContent("#results"), /DHL/);
+  await page.goto(`${base}/track.html?code=${codes.sea}`); // Maersk, in transit by sea: the stage picture, not Maersk's card photo
+  await page.waitForSelector(".hx-scene .hx-scene-photo img");
+  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/ship-/);
+  assert.equal(await page.locator('#results img[src*="assets/carriers/"]').count(), 0);
   assert.deepEqual(errors, []);
   await ctx.close();
 

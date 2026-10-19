@@ -4,7 +4,7 @@
 // approved logo URL has been configured for that carrier. Cards rise into view once (one IntersectionObserver) and
 // tilt slightly under a mouse pointer; with reduced motion they simply appear.
 import { CARRIERS, CARRIER_CATEGORIES, carrierCategory, carrierLogoUrl, carrierIntegration } from "../shared/carriers.js";
-import { carrierMedia } from "./carrier-media.js";
+import { carrierMedia, categoryArtSvg } from "./carrier-media.js";
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ORDER = ["express", "air", "ocean", "regional", "custom"];
@@ -31,18 +31,24 @@ const CAT_ICON = {
 };
 const catIcon = (cat) => `<svg class="cr-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CAT_ICON[cat] || '<path d="M3 7h11v9H3Z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>'}</svg>`;
 
+// the carrier's own photo; carriers without one get their category illustration (never a shipment-stage photo)
+function media(c) {
+  const m = carrierMedia(c);
+  return m.type === "photo" ? picture(m) : categoryArtSvg(m.category, c.id);
+}
+
 function picture(m) {
   const set = (ext) => m.widths.map((w) => `${m.base}-${w}.${ext} ${w}w`).join(", ");
   const sizes = "(max-width: 374px) 40vw, (max-width: 720px) 50vw, (max-width: 1099px) 25vw, 240px";
   return `<picture><source type="image/avif" srcset="${set("avif")}" sizes="${sizes}"><source type="image/webp" srcset="${set("webp")}" sizes="${sizes}">
-      <img src="${m.base}-${m.widths[0]}.jpg" srcset="${set("jpg")}" sizes="${sizes}" alt="" width="480" height="300" loading="lazy" decoding="async" style="object-position:${m.position};--zoom:${m.zoom}"></picture>`;
+      <img src="${m.base}-${m.widths[0]}.jpg" srcset="${set("jpg")}" sizes="${sizes}" alt="" width="480" height="300" loading="lazy" decoding="async" style="object-position:${m.position}"></picture>`;
 }
 
 function tile(c, open, seen) {
   const cat = c.category;
   const logo = c.logoUrl ? `<img class="cr-logo" src="${esc(c.logoUrl)}" alt="" loading="lazy" decoding="async">` : "";
   return `<button type="button" class="cr-tile${seen ? " is-in" : ""}" data-id="${esc(c.id)}" data-cat="${esc(cat)}" aria-expanded="${open}" aria-controls="cr-detail" style="--brand:${esc(brand(c))}">
-    <span class="cr-media">${picture(carrierMedia(c))}${catIcon(cat)}${logo}</span>
+    <span class="cr-media" data-media="${carrierMedia(c).type}">${media(c)}${catIcon(cat)}${logo}</span>
     <span class="cr-body"><span class="wm">${esc(c.name)}</span><span class="meta">${esc(CARRIER_CATEGORIES[cat] || c.categoryLabel || "")}</span>
     ${c.partner === true ? `<span class="chips">${PARTNER_BADGE}</span>` : ""}</span></button>`;
 }

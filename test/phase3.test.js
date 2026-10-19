@@ -724,24 +724,59 @@ test("tawk.to: one chat loader on each public page, guarded against double loads
   for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/tawk\.to|hs-scripts/i.test(read(page)), `${page}: staff pages have no customer chat`);
 });
 
-test("carrier cards: every carrier has an existing picture; livery photos only on their own carrier; credits recorded", async () => {
+test("carrier cards: own photo by carrier id or a drawn category illustration; never a shipment-stage photo; credits recorded", async () => {
   const { CARRIERS, carrierCategory } = await import("../shared/carriers.js");
-  const { carrierMedia, CARRIER_MEDIA_SOURCES } = await import("../ui/carrier-media.js");
+  const { carrierMedia, CARRIER_PHOTOS, categoryArtSvg } = await import("../ui/carrier-media.js");
   const exists = (f) => fs.existsSync(new URL(`../${f}`, import.meta.url));
   for (const c of CARRIERS) {
     const m = carrierMedia({ id: c.id, category: carrierCategory(c) });
-    for (const w of m.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(exists(`${m.base}-${w}.${ext}`), `${c.id}: ${m.base}-${w}.${ext}`);
-    if (m.brand) assert.equal(m.brand, c.id, `${c.id} must not show another carrier's livery`);
+    if (m.type === "photo") {
+      assert.ok(m.base.startsWith("assets/carriers/"), `${c.id}: carrier photos live in assets/carriers`);
+      for (const w of m.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(exists(`${m.base}-${w}.${ext}`), `${c.id}: ${m.base}-${w}.${ext}`);
+      assert.ok(m.alt && m.alt.length > 10);
+    } else {
+      assert.equal(m.type, "art"); assert.equal(m.category, carrierCategory(c), `${c.id}: illustration of its own category`);
+      assert.match(categoryArtSvg(m.category, c.id), /^<svg class="cr-art"[^>]*aria-hidden="true"/);
+    }
   }
-  assert.equal(carrierMedia({ id: "ups", category: "express" }).key, "ups");
-  assert.equal(carrierMedia({ id: "emiratesskycargo", category: "air" }).key, "emirates");
-  assert.equal(carrierMedia({ id: "maersk", category: "ocean" }).key, "maersk");
-  assert.ok(!carrierMedia({ id: "tesla-transport", category: "custom" }).brand, "Tesla Transport uses an unbranded picture");
-  assert.equal(carrierMedia({ id: "new-carrier", category: "ocean" }).key, "ship", "unknown carriers get their category picture");
+  // explicit mapping by id: exactly the carriers whose own photos we have
+  assert.deepEqual(Object.keys(CARRIER_PHOTOS).sort(), ["emiratesskycargo", "maersk", "ups"]);
+  assert.equal(carrierMedia({ id: "dhl", category: "express" }).type, "art");
+  assert.deepEqual(carrierMedia({ id: "qatarcargo", category: "air" }), { type: "art", category: "air" });
+  assert.deepEqual(carrierMedia({ id: "msc", category: "ocean" }), { type: "art", category: "ocean" });
+  assert.deepEqual(carrierMedia({ id: "giglogistics", category: "regional" }), { type: "art", category: "regional" });
+  assert.deepEqual(carrierMedia({ id: "tesla-transport", category: "custom" }), { type: "art", category: "custom" });
+  assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups");
+  assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "art", "no prototype lookups");
+  assert.equal(carrierMedia({ id: "new-carrier", category: "nonsense" }).category, "custom");
+  // the order of the list can't move a picture: same id, same picture
+  const shuffled = CARRIERS.slice().reverse().map((c) => [c.id, JSON.stringify(carrierMedia({ id: c.id, category: carrierCategory(c) }))]);
+  for (const [id, m] of shuffled) assert.equal(m, JSON.stringify(carrierMedia({ id, category: carrierCategory(CARRIERS.find((c) => c.id === id)) })));
   const credits = read("assets/carriers/CREDITS.md");
-  for (const [k, s] of Object.entries(CARRIER_MEDIA_SOURCES)) if (s.base.startsWith("assets/carriers/")) assert.ok(credits.includes(`\`${k}-*\``), `credits for ${k}`);
+  for (const m of Object.values(CARRIER_PHOTOS)) assert.ok(credits.includes(`\`${m.base.split("/").pop()}-*\``), `credits for ${m.base}`);
   const src = read("ui/carriers.js");
   assert.match(src, /alt=""/, "pictures are decorative: the card text names the carrier");
   assert.match(src, /loading="lazy"/);
   assert.match(src, /prefers-reduced-motion: reduce/);
+});
+
+test("carrier images and shipment-stage images are separate: no shared files, imports or fallbacks", async () => {
+  const media = read("ui/carrier-media.js"); const cards = read("ui/carriers.js");
+  for (const src of [media, cards]) {
+    assert.ok(!/assets\/(stages|journey|freight)\//.test(src), "carrier cards never use stage, journey or freight pictures");
+    assert.ok(!/tracker\//.test(src), "carrier cards don't import tracking code");
+  }
+  for (const f of ["tracker/scene.js", "tracker/tracker.js"]) {
+    const t = read(f);
+    assert.ok(!/carrier-media|assets\/carriers\//.test(t), `${f} never uses carrier pictures`);
+  }
+  // the stage photo depends on the recorded status and transport mode only, never on the carrier
+  const { stagePhoto } = await import("../tracker/scene.js");
+  const view = (courier, code, mode) => ({ courier, courierName: courier, status: { code }, transportMode: mode, timeline: [] });
+  for (const code of ["CREATED", "PROCESSING", "AT_FACILITY", "CUSTOMS", "OUT_FOR_DELIVERY"]) {
+    const keys = ["dhl", "ups", "maersk", "emiratesskycargo", "giglogistics"].map((c) => stagePhoto(view(c, code))?.key);
+    assert.equal(new Set(keys).size, 1, `${code}: same stage picture for every carrier (${keys})`);
+  }
+  assert.equal(stagePhoto(view("dhl", "AT_FACILITY")).key, "aerial");
+  assert.equal(stagePhoto(view("ups", "AT_FACILITY")).file, "aerial", "UPS's own photo never replaces the stage picture");
 });
