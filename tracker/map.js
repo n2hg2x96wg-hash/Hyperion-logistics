@@ -88,10 +88,30 @@ function unwrap(fc) {
     return { ...f, geometry: { ...g, coordinates } };
   }) };
 }
+/**
+ * Route order unwrapping: shift each longitude by ±360 so consecutive points are never more than 180° apart. Markers,
+ * lines and bounds then follow the short way (Los Angeles → Seoul across the Pacific, routes over the date line stay
+ * continuous) instead of being framed the long way round the world. Input/output: [lat, lng] pairs (nulls kept).
+ */
+export function unwrapRoute(seq) {
+  let prev = null;
+  return seq.map((p) => {
+    if (!p) return p;
+    let lng = p[1];
+    if (prev != null) { while (lng - prev > 180) lng -= 360; while (lng - prev < -180) lng += 360; }
+    prev = lng; return [p[0], lng];
+  });
+}
+/** Shift a Polygon/MultiPolygon's longitudes by dx (for the extra world copies of the outline). */
+function shift(g, dx) {
+  const ring = (r) => (dx ? r.map(([x, y]) => [x + dx, y]) : r);
+  return g.type === "Polygon" ? g.coordinates.map(ring) : g.type === "MultiPolygon" ? g.coordinates.map((p) => p.map(ring)) : g.coordinates;
+}
 /** Bounds of every drawable point in the map data, or null. Used to open the map already framed on the shipment. */
 export function pointsOf(data) {
   if (!data) return [];
-  return [ll(data.origin), ll(data.destination), ll(data.current), ...(data.trail || []).map((t) => ll(t))].filter(Boolean);
+  // route order (origin → checkpoints → latest → destination), unwrapped, so the bounds are the short way round
+  return unwrapRoute([ll(data.origin), ...(data.trail || []).map((t) => ll(t)), ll(data.current), ll(data.destination)]).filter(Boolean);
 }
 // Defence in depth (the server already filters): never draw missing, non-numeric or 0,0 points.
 const ll = (p) => (p && typeof p.lat === "number" && typeof p.lng === "number" && Number.isFinite(p.lat) && Number.isFinite(p.lng) &&
@@ -102,18 +122,25 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   const [L, cfg] = await Promise.all([loadLeaflet(), loadConfig()]);
   const touch = !!L.Browser.mobile;
   // Page scrolling must win over the map: wheel zoom waits for a click, one-finger drag waits for a tap on touch screens.
-  const map = L.map(el, { zoomControl: true, preferCanvas: true, worldCopyJump: true, minZoom: 2, zoomSnap: 0.25, zoomDelta: 1, scrollWheelZoom: false, dragging: !touch, tap: false });
+  const map = L.map(el, { zoomControl: true, preferCanvas: true, worldCopyJump: true, minZoom: 1, zoomSnap: 0.25, zoomDelta: 1, scrollWheelZoom: false, dragging: !touch, tap: false });
   const small = () => (el.clientWidth || 600) < 520;
   // phones keep the controls in a row along the bottom, so the route gets the top of the map
-  const pad = () => (small() ? { paddingTopLeft: [34, 44], paddingBottomRight: [34, 76] } : { paddingTopLeft: [60, 48], paddingBottomRight: [150, 48] });
-  // open on the shipment: frame its recorded points before anything is drawn (a world view only when there are none)
+  // (room for the side labels too: "Destination · …" sits left of its marker, the others to the right)
+  const pad = () => (small() ? { paddingTopLeft: [70, 48], paddingBottomRight: [70, 80] } : { paddingTopLeft: [150, 56], paddingBottomRight: [160, 56] });
+  const hasSize = () => el.clientWidth > 0 && el.clientHeight > 0;
+  // open on the shipment: frame its points before anything is drawn (a world view only when there are none). A
+  // container without a size yet (hidden, still laying out) is framed by the resize observer as soon as it has one.
   const first = pointsOf(initial);
   if (first.length > 1) map.fitBounds(L.latLngBounds(first), { ...pad(), maxZoom: 9, animate: false });
   else if (first.length === 1) map.setView(first[0], 5, { animate: false });
   else map.setView([20, 0], 2);
-  const mark = () => { el.dataset.zoom = String(map.getZoom()); el.dataset.center = `${map.getCenter().lat.toFixed(2)},${map.getCenter().lng.toFixed(2)}`; };
+  const mark = () => { const c = map.getCenter().wrap(); el.dataset.zoom = String(map.getZoom()); el.dataset.center = `${c.lat.toFixed(2)},${c.lng.toFixed(2)}`; };
   map.on("zoomend moveend", mark); mark(); // read by the browser tests (the first view must be the shipment, not the world)
-  let destroyed = false; let userMoved = false; let programmatic = 0;
+  // the view follows the shipment until the visitor actually handles the map (pointer, wheel or keys on the map itself;
+  // the map's own buttons don't count). Leaflet's zoomstart/dragstart also fire for resizes and fits, so they aren't used.
+  let destroyed = false; let userMoved = false;
+  const handled = (e) => { if (!e.target.closest?.(".leaflet-control")) userMoved = true; };
+  for (const t of ["pointerdown", "wheel", "keydown"]) el.addEventListener(t, handled, { passive: true });
   let lastBounds = null; let lastSig = "";
   const layers = { origin: null, dest: null, current: null, travelled: null, remaining: null, trail: L.layerGroup().addTo(map) };
   const css = (name, d) => getComputedStyle(el).getPropertyValue(name).trim() || d;
@@ -122,12 +149,18 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   // base layer: themed outline (default) or street tiles
   let outline = null; let outlineFailed = false;
   function outlineStyle() { return { color: css("--hx-map-border", "#3a5e9e"), weight: 0.8, fillColor: css("--hx-map-land", "#17305e"), fillOpacity: 1, interactive: false }; }
+  // its own SVG renderer below the markers (a shared canvas could stay blank after a zero-size start), and three copies
+  // of the world so routes unwrapped across the date line always have land under them
+  const outlineRenderer = L.svg({ pane: "tilePane", padding: 0.5 });
   async function showOutline() {
     el.classList.add("hx-base-outline"); el.classList.remove("hx-base-street");
-    if (outline) { outline.addTo(map); outline.bringToBack(); return; }
+    if (outline) { outline.addTo(map); return; }
     try {
       const fc = unwrap(await loadCountries()); if (destroyed) return;
-      outline = L.geoJSON(fc, { style: outlineStyle, interactive: false, pane: "tilePane" }).addTo(map);
+      const shifted = (dx) => fc.features.map((f) => ({ ...f, geometry: { ...f.geometry, coordinates: shift(f.geometry, dx) } }));
+      outline = L.geoJSON({ type: "FeatureCollection", features: [...shifted(-360), ...shifted(0), ...shifted(360)] },
+        { style: outlineStyle, interactive: false, renderer: outlineRenderer }).addTo(map);
+      el.dataset.outline = "ready";
     } catch { outlineFailed = true; setStreet(true); }
   }
 
@@ -162,7 +195,7 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
       el.classList.remove("hx-map-notile"); showOutline();
     }
   }
-  const onTheme = () => { outline?.setStyle(outlineStyle()); restyle(); };
+  const onTheme = () => { outline?.setStyle(outlineStyle()); restyle(); map.invalidateSize(); };
   document.addEventListener("hx-theme", onTheme);
 
   // interaction gating (wheel zoom after click; drag after tap on touch devices)
@@ -199,32 +232,35 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   });
   map.addControl(new Ctl());
 
-  const settle = () => setTimeout(() => { programmatic = Math.max(0, programmatic - 1); }, 700);
   function fit() {
-    if (!lastBounds || !lastBounds.isValid()) return;
-    programmatic++;
+    if (!lastBounds || !lastBounds.isValid() || !hasSize()) return;
+    map.invalidateSize();
     if (lastBounds.getNorthEast().equals(lastBounds.getSouthWest())) map.setView(lastBounds.getCenter(), 5, { animate: false });
     else map.fitBounds(lastBounds, { ...pad(), maxZoom: 9, animate: false });
-    settle(); userMoved = false;
+    userMoved = false;
   }
   function locate() {
-    const target = layers.current?.getLatLng() || (lastBounds?.isValid() ? lastBounds.getCenter() : null);
-    if (!target) return;
-    programmatic++;
-    if (reducedMotion()) map.setView(target, Math.max(map.getZoom(), 7), { animate: false });
-    else map.flyTo(target, Math.max(map.getZoom(), 7), { duration: 0.6 });
-    settle();
-    layers.current?.openPopup();
+    // only a recorded location can be "located"; without one the route is framed and the note says so
+    if (!layers.current) { fit(); onStatus?.("no-current"); return; }
+    const target = layers.current.getLatLng();
+    if (reducedMotion()) map.setView(target, Math.max(map.getZoom(), 6), { animate: false });
+    else map.flyTo(target, Math.max(map.getZoom(), 6), { duration: 0.5 });
+    layers.current.openPopup();
   }
-  map.on("dragstart zoomstart", () => { if (!programmatic) userMoved = true; });
 
   function placeMarker(key, ll, cls, label, popup, z = 0, tag = "", mode = null) {
     if (!ll) { if (layers[key]) { map.removeLayer(layers[key]); layers[key] = null; } return; }
-    if (!layers[key]) layers[key] = L.marker(ll, { icon: markerIcon(cls, label, mode), keyboard: true, title: label, zIndexOffset: z }).addTo(map);
-    else { layers[key].setLatLng(ll); layers[key].setIcon(markerIcon(cls, label, mode)); }
+    // updates are idempotent: the icon is only replaced when it changes and a label is bound once, then only re-worded
+    const iconKey = `${cls}|${mode || ""}`;
+    if (!layers[key]) { layers[key] = L.marker(ll, { icon: markerIcon(cls, label, mode), keyboard: true, title: label, zIndexOffset: z }).addTo(map); layers[key]._hxIcon = iconKey; }
+    else { layers[key].setLatLng(ll); if (layers[key]._hxIcon !== iconKey) { layers[key].setIcon(markerIcon(cls, label, mode)); layers[key]._hxIcon = iconKey; } }
     layers[key].bindPopup(popup);
-    layers[key].unbindTooltip();
-    if (tag) layers[key].bindTooltip(tag, { permanent: true, direction: key === "dest" ? "left" : "right", offset: [key === "dest" ? -12 : 12, 0], className: `hx-map-label k-${key}` });
+    // phones: labels sit above their marker (side labels would run off a narrow map); wider screens: beside it
+    const side = small() ? { direction: "top", offset: [0, -14] } : { direction: key === "dest" ? "left" : "right", offset: [key === "dest" ? -12 : 12, 0] };
+    const tip = layers[key].getTooltip();
+    if (!tag) { if (tip) layers[key].unbindTooltip(); }
+    else if (tip) { if (tip.getContent() !== tag) layers[key].setTooltipContent(tag); }
+    else layers[key].bindTooltip(tag, { permanent: true, ...side, className: `hx-map-label k-${key}` });
   }
   const styles = {};
   function placeLine(key, pts, style) {
@@ -237,23 +273,27 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
 
   function update(data) {
     if (destroyed || !data) return;
-    const o = ll(data.origin);
-    const d = ll(data.destination);
-    const c = ll(data.current);
-    const trail = (data.trail || []).map((t) => ({ ...t, ll: ll(t) })).filter((t) => t.ll);
+    // route order, unwrapped across the date line, so markers and lines sit on one copy of the world
+    const raw = (data.trail || []).map((t) => ({ ...t, ll: ll(t) })).filter((t) => t.ll);
+    const seq = unwrapRoute([ll(data.origin), ...raw.map((t) => t.ll), ll(data.current), ll(data.destination)]);
+    const o = seq[0]; const d = seq[seq.length - 1]; const c = seq[seq.length - 2];
+    const trail = raw.map((t, i) => ({ ...t, ll: seq[1 + i] }));
     const pts = [];
 
     const short = (s) => String(s || "").split(",")[0].trim();
-    placeMarker("origin", o, "hx-m-origin", "Origin", popupNode("Origin", [data.originLabel]), 0, data.originLabel ? `Origin · ${short(data.originLabel)}` : "Origin");
-    placeMarker("dest", d, "hx-m-dest", "Destination", popupNode("Destination", [data.destinationLabel]), 0, data.destinationLabel ? `Destination · ${short(data.destinationLabel)}` : "Destination");
+    const city = (p) => (p?.approx ? "Shown at city level" : null);
+    const atOrigin = samePt(o, c); // still at the origin: one label for both markers, so neither hides the other
+    placeMarker("origin", o, "hx-m-origin", "Origin", popupNode("Origin", [data.originLabel, city(data.origin)]), 0, atOrigin ? "" : data.originLabel ? `Origin · ${short(data.originLabel)}` : "Origin");
+    placeMarker("dest", d, "hx-m-dest", "Destination", popupNode("Destination", [data.destinationLabel, city(data.destination)]), 0, data.destinationLabel ? `Destination · ${short(data.destinationLabel)}` : "Destination");
     const cur = data.current;
     const approx = cur && !cur.sourceLabel; // admin-recorded places are geocoded to city level
-    placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}`, "Latest recorded location",
+    placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}${cur?.approx ? " is-approx" : ""}`, "Latest recorded location",
       popupNode(cur?.state === "live" ? "Current location (live)" : "Latest recorded location", [
         cur?.name, approx ? "Approximate location (city level)" : null,
+        cur?.at ? `Recorded ${fmt(cur.at)}` : null,
         cur?.updatedAt ? `Reported ${fmt(cur.updatedAt)}` : null, // the tracker passes a time only for GPS / carrier positions
         cur?.sourceLabel ? `Source: ${cur.sourceLabel}` : null, cur?.state && cur.state !== "live" ? STATE_LABEL[cur.state] : null
-      ]), 1000, `${cur?.state === "live" ? "Now" : "Latest"}${cur?.name ? ` · ${short(cur.name)}` : ""}`, data.mode || null);
+      ]), 1000, atOrigin ? "Origin · latest" : `${cur?.state === "live" ? "Now" : "Latest"}${cur?.name ? ` · ${short(cur.name)}` : ""}`, data.mode || null);
 
     // travelled path: origin -> recorded points (in time order) -> current
     const travelled = [];
@@ -273,23 +313,22 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
     [o, d, c, ...trail.map((t) => t.ll)].forEach((ll) => ll && pts.push(ll));
     lastBounds = pts.length ? L.latLngBounds(pts) : null;
     const sig = JSON.stringify([o, d, c, trail.length]);
-    if (lastBounds && sig !== lastSig && (!userMoved || !lastSig)) fit(); // never yank the view while the user is exploring
-    lastSig = sig;
     map.invalidateSize();
+    // new or moved points re-frame the map, unless the visitor is exploring it (a new shipment always re-frames)
+    if (lastBounds && sig !== lastSig && (!userMoved || !lastSig)) fit();
+    lastSig = sig;
+    el.dataset.points = String(pts.length); el.dataset.latest = c ? `${c[0].toFixed(2)},${(((c[1] + 540) % 360) - 180).toFixed(2)}` : "";
   }
 
-  // iOS Safari / hidden-container sizing: chain + observer
-  map.invalidateSize();
-  setTimeout(() => !destroyed && map.invalidateSize(), 200);
-  setTimeout(() => !destroyed && map.invalidateSize(), 600);
-  let sized = el.clientWidth > 0 && el.clientHeight > 0;
-  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => {
-    if (destroyed) return;
-    map.invalidateSize();
-    // a map created inside a hidden container fitted against 0×0; frame the route again once it is visible
-    if (!sized && el.clientWidth > 0 && el.clientHeight > 0) { sized = true; if (!userMoved) fit(); }
-  }) : null;
+  // sizing: Safari/iOS settle late and hidden containers start at 0×0, so re-measure, and re-frame while the visitor
+  // hasn't handled the map (first layout, orientation change, window resize)
+  let raf = 0;
+  const refit = () => { raf = 0; if (destroyed) return; map.invalidateSize(); if (!userMoved) fit(); };
+  const later = () => { if (!raf) raf = requestAnimationFrame(refit); };
+  setTimeout(later, 200); setTimeout(later, 600);
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(later) : null;
   ro?.observe(el);
+  addEventListener("orientationchange", later);
 
   setStreet(!!street);
   if (initial) update(initial);
@@ -297,7 +336,8 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   return {
     update, fit, leaflet: map, setStreet,
     destroy() {
-      destroyed = true; clearTimeout(timer); ro?.disconnect(); document.removeEventListener("hx-theme", onTheme);
+      destroyed = true; clearTimeout(timer); ro?.disconnect(); document.removeEventListener("hx-theme", onTheme); removeEventListener("orientationchange", later);
+      if (raf) cancelAnimationFrame(raf);
       try { map.remove(); } catch { /* ignore */ }
     }
   };

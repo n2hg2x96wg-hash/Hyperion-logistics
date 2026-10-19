@@ -653,3 +653,60 @@ test("admin on iPhone: bottom tab bar, readable text, status breakdown from real
   assert.match(c, /api\("audit", \{ limit: 50, code \}\)/, "change history reuses the audit log");
   assert.match(h, /id="notifyEmail"/); assert.match(h, /id="shipmentNotifyEmailInput"/); assert.match(c, /cmp\("notifyEmail"/);
 });
+
+test("shipment map places: a verified city table, read-time only, never a guess", async () => {
+  const { PLACES, resolvePlace } = await import("../shared/places.js");
+  const { countryAt } = await import("../api/_lib/geo.js");
+  const fc = JSON.parse(read("assets/geo/countries-110m.json"));
+  // every city sits in its country (or within 0.7° of its outline: coastal cities on a 1:110m map); a few small states
+  // have no outline at this scale
+  const NO_OUTLINE = new Set(["BH", "MU", "HK", "MO", "SG"]);
+  const near = (p) => { let best = Infinity;
+    for (const f of fc.features) { if (f.properties.iso !== p.country) continue; const g = f.geometry; const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+      for (const poly of polys) for (const [x, y] of poly[0]) best = Math.min(best, Math.hypot(x - p.lng, y - p.lat)); }
+    return best; };
+  assert.ok(PLACES.length >= 200, String(PLACES.length));
+  assert.equal(new Set(PLACES.map((p) => `${p.name}|${p.country}`)).size, PLACES.length, "no duplicate cities");
+  for (const p of PLACES) {
+    assert.ok(Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180 && !(p.lat === 0 && p.lng === 0), p.name);
+    if (NO_OUTLINE.has(p.country)) continue;
+    assert.ok(countryAt(p.lat, p.lng) === p.country || near(p) <= 0.9, `${p.name} (${p.country}) is not in its country: ${countryAt(p.lat, p.lng)}, ${near(p).toFixed(2)}°`);
+  }
+  const at = (t) => { const r = resolvePlace(t); return r && [r.name, r.country, r.approx]; };
+  assert.deepEqual(at("Los Angeles, California"), ["Los Angeles", "US", true]);
+  assert.deepEqual(at("Seoul, Republic of Korea"), ["Seoul", "KR", true]);
+  assert.deepEqual(at("Atlanta, Georgia"), ["Atlanta", "US", true], "a US state name that is also a country");
+  assert.deepEqual(at("Port of Shanghai, China"), ["Shanghai", "CN", true]);
+  assert.deepEqual(at("Honolulu, Hawaii"), ["Honolulu", "US", true]);
+  for (const t of ["Somewhere", "Atlantic Ocean", "Lagos, Portugal", "Suez Canal, Egypt", "", null, 42]) assert.equal(resolvePlace(t), null, String(t));
+});
+
+test("shipment map data: recorded coordinates first, city-level fallbacks flagged, nothing invented, the short way round", async () => {
+  const { resolveMapData, hasPoints } = await import("../tracker/map-data.js");
+  const { unwrapRoute, pointsOf } = await import("../tracker/map.js");
+  // no stored coordinates at all (what the live LA → Seoul shipment has): endpoints come from the city table, flagged
+  let d = resolveMapData({ origin: "Los Angeles, California", destination: "Seoul, Republic of Korea", map: { origin: null, destination: null, current: null, trail: [] }, timeline: [] });
+  assert.equal(d.origin.approx, true); assert.equal(d.destination.approx, true); assert.equal(d.current, null, "no latest location invented");
+  assert.deepEqual(d.resolved, { origin: true, destination: true, current: false });
+  // recorded coordinates always win; invalid ones are dropped
+  d = resolveMapData({ origin: "Los Angeles, California", map: { origin: { lat: 34, lng: -118 }, destination: { lat: 0, lng: 0 }, destinationLabel: "Atlantis", current: { lat: 200, lng: 5 }, trail: [{ lat: 21.3, lng: -157.9, name: "Honolulu", timestamp: "2026-10-01T00:00:00Z" }, { lat: "x", lng: 1 }] }, timeline: [] });
+  assert.deepEqual([d.origin.lat, d.origin.approx], [34, undefined]); assert.equal(d.destination, null, "0,0 and unknown names are not drawn");
+  assert.equal(d.trail.length, 1); assert.equal(d.current.fromTrail, true, "the newest recorded checkpoint is the latest location");
+  assert.equal(d.current.name, "Honolulu"); assert.equal(d.current.at, "2026-10-01T00:00:00Z");
+  // no coordinates anywhere, but a recorded event names a known city: city level, with the event's own time
+  d = resolveMapData({ map: { trail: [] }, timeline: [{ title: "Arrived", location: "Incheon, South Korea", timestamp: "2026-10-05T00:00:00Z" }, { title: "Departed", location: "Los Angeles, CA" }] });
+  assert.deepEqual([d.current.name, d.current.approx, d.current.at], ["Incheon, South Korea", true, "2026-10-05T00:00:00Z"]);
+  assert.equal(hasPoints(resolveMapData({ origin: "Somewhere", destination: "Elsewhere", map: {}, timeline: [] })), false, "nothing to draw → the honest 'awaiting' panel");
+  // date line: Los Angeles → Honolulu → Seoul stays continuous and spans the Pacific, not the long way round
+  const seq = unwrapRoute([[34.05, -118.24], [21.31, -157.86], null, [37.57, 126.98]]);
+  assert.equal(seq[2], null); assert.ok(Math.abs(seq[3][1] - seq[1][1]) <= 180, JSON.stringify(seq));
+  const pts = pointsOf({ origin: { lat: 34.05, lng: -118.24 }, trail: [{ lat: 21.31, lng: -157.86 }], destination: { lat: 37.57, lng: 126.98 } });
+  const lngs = pts.map((p) => p[1]); assert.ok(Math.max(...lngs) - Math.min(...lngs) < 180, `bounds span ${Math.max(...lngs) - Math.min(...lngs)}°`);
+  const tokyoLa = unwrapRoute([[35.68, 139.69], [34.05, -118.24]]); assert.ok(Math.abs(tokyoLa[1][1] - tokyoLa[0][1]) < 180);
+  // the map never waits for a visitor to press anything: it frames on load and on resize, and user intent comes only from input
+  const src = read("tracker/map.js");
+  assert.match(src, /for \(const t of \["pointerdown", "wheel", "keydown"\]\) el\.addEventListener\(t, handled/);
+  assert.ok(!/map\.on\("dragstart zoomstart"/.test(src), "Leaflet's own move events no longer count as the visitor moving the map");
+  assert.match(src, /if \(!layers\.current\) \{ fit\(\); onStatus\?\.\("no-current"\); return; \}/, "Locate never pretends");
+  assert.match(src, /renderer: outlineRenderer/); assert.match(src, /shifted\(-360\), \.\.\.shifted\(0\), \.\.\.shifted\(360\)/);
+});
