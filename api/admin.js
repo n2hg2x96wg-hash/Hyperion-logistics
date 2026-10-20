@@ -95,7 +95,7 @@ export default async function handler(req, res) {
       case "listCouriers": return send(res, 200, { couriers: await couriers.listCouriers() });
       case "saveCourier": return send(res, 200, await couriers.saveCourier(identity, body));
       case "setCourierState": return send(res, 200, await couriers.setCourierState(identity, body));
-      case "listClients": return send(res, 200, { clients: await clients.listClients(), deletionPolicy: clients.deletionPolicy() });
+      case "listClients": return send(res, 200, { clients: await clients.listClients(), deletionPolicy: clients.deletionPolicy(), accountsWithoutProfile: await clients.accountsWithoutProfile() });
       case "getClient": return send(res, 200, { client: await clients.getClient(body.id) });
       case "saveClient": return send(res, 200, await clients.saveClient(identity, body));
       case "setClientStatus": return send(res, 200, await clients.setClientStatus(identity, body));

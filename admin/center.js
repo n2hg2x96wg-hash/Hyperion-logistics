@@ -266,17 +266,47 @@ export function initControlCenter(host) {
       state.settings = settings;
       const t = d.totals;
       const first = !$("kpiGrid").childElementCount;
-      const tile = (label, value, cls = "") => `<div class="kpi ${cls}" ${first ? "data-reveal" : ""}><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div></div>`;
+      const ico = (path) => `<span class="kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg></span>`;
+      const I = {
+        total: '<path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>', active: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+        transit: '<path d="M3 7h11v9H3Z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="17" cy="17.5" r="1.6"/>', delivered: '<path d="M20 6 9 17l-5-5"/>',
+        delayed: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', exceptions: '<path d="M12 3 2 20h20Z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+        cancelled: '<circle cx="12" cy="12" r="9"/><path d="m15 9-6 6M9 9l6 6"/>', archived: '<path d="M3 5h18v4H3Z"/><path d="M5 9v10h14V9"/><path d="M10 13h4"/>',
+        clients: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14.7c2 .7 3.2 2.6 3.5 5.3"/>',
+        unclassified: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/>'
+      };
+      const tile = (key, label, value, { tone = "", sub = "", id = "" } = {}) => `<div class="kpi kpi-${key} ${tone}" ${id ? `id="${id}"` : ""} ${first ? "data-reveal" : ""}>${ico(I[key])}<div class="kpi-label">${label}</div><div class="kpi-value">${value}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ""}</div>`;
       const attention = (t.delayed || 0) + (t.exceptions || 0);
-      $("kpiGrid").innerHTML = tile("Needs attention <small>delayed + exceptions</small>", attention, attention ? "bad attention" : "good attention") + tile("Total shipments", t.total) + tile("Active", t.active) + tile("In transit", t.inTransit) + tile("Delivered", t.delivered, "good") +
-        tile("Delayed", t.delayed, t.delayed ? "warn" : "") + tile("Exceptions", t.exceptions, t.exceptions ? "bad" : "") + tile("Cancelled", t.cancelled) + tile("Archived", t.archived) + (t.unclassified ? tile("Not yet classified", t.unclassified, "warn") : "");
+      // "needs attention" as a strip across the grid: calm when nothing is delayed or flagged, a direct link otherwise
+      const alert = attention
+        ? `<div class="kpi-alert bad attention" role="status"><strong>${attention} need${attention === 1 ? "s" : ""} attention</strong><span>${[t.delayed ? `${t.delayed} delayed` : "", t.exceptions ? `${t.exceptions} exception${t.exceptions === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · ")}</span><button type="button" class="kpi-alert-btn" data-status="${t.delayed ? "DELAYED" : "EXCEPTION"}">Review</button></div>`
+        : '<div class="kpi-alert good attention" role="status"><strong>Needs attention: 0</strong><span>No delayed shipments or exceptions</span></div>';
+      const clientsTile = can("clients") ? tile("clients", "Registered clients", '<span class="kpi-loading">…</span>', { id: "kpiClients" }) : "";
+      $("kpiGrid").innerHTML = alert +
+        tile("total", "Total shipments", t.total, { sub: t.archived ? `incl. ${t.archived} archived` : "none archived" }) +
+        tile("active", "Active", t.active, { sub: "not delivered or cancelled" }) + tile("transit", "In transit", t.inTransit, { tone: "info", sub: "picked up → out for delivery" }) +
+        tile("delivered", "Delivered", t.delivered, { tone: "good" }) + tile("delayed", "Delayed", t.delayed, { tone: t.delayed ? "warn" : "" }) +
+        tile("exceptions", "Exceptions", t.exceptions, { tone: t.exceptions ? "bad" : "" }) + tile("cancelled", "Cancelled", t.cancelled) + tile("archived", "Archived", t.archived) +
+        clientsTile + (t.unclassified ? tile("unclassified", "Not yet classified", t.unclassified, { tone: "warn" }) : "");
       $("lastUpdated").textContent = `refreshed ${fmt(d.generatedAt)}`;
       // shipments by status: straight from the counts the server already computed (archived shipments excluded)
       const by = d.byStatus || {}; const max = Math.max(1, ...Object.values(by));
-      $("dashStatus").innerHTML = STATUS_CODES.filter((c) => by[c]).map((c) => `<li><button type="button" class="status-bar" data-status="${c}">${pill(c)}<span class="sb-track"><i style="width:${Math.max(4, (by[c] / max) * 100).toFixed(1)}%"></i></span><strong>${by[c]}</strong></button></li>`).join("")
+      const sum = STATUS_CODES.reduce((a, c) => a + (by[c] || 0), 0);
+      $("dashStack").innerHTML = sum ? STATUS_CODES.filter((c) => by[c]).map((c) => `<i class="tone-${statusTone(c)}" style="flex:${by[c]}" title="${esc(STATUS_META[c].label)}: ${by[c]}"></i>`).join("") : "";
+      $("dashStack").setAttribute("aria-label", sum ? STATUS_CODES.filter((c) => by[c]).map((c) => `${STATUS_META[c].label} ${by[c]}`).join(", ") : "No shipments");
+      $("dashStatusTotal").textContent = sum ? `${sum} not archived` : "";
+      $("dashStatus").innerHTML = STATUS_CODES.filter((c) => by[c]).map((c) => `<li><button type="button" class="status-bar" data-status="${c}">${pill(c)}<span class="sb-track"><i class="tone-${statusTone(c)}" style="width:${Math.max(4, (by[c] / max) * 100).toFixed(1)}%"></i></span><strong>${by[c]}</strong></button></li>`).join("")
         || "<li><small>No shipments yet.</small></li>";
-      // registered clients: only for admins allowed to see the client directory; never estimated
-      if (can("clients")) api("listClients").then((r) => { const n = Array.isArray(r?.clients) ? r.clients.length : Array.isArray(r?.items) ? r.items.length : null; if (n != null && !$("kpiClients")) $("kpiGrid").insertAdjacentHTML("beforeend", `<div class="kpi" id="kpiClients"><div class="kpi-label">Registered clients</div><div class="kpi-value">${n}</div></div>`); }).catch(() => {});
+      // registered clients: client profiles in the database; never estimated. Sign-in accounts without a profile
+      // (they can't sign in and aren't clients yet) are reported separately.
+      if (can("clients")) api("listClients").then((r) => {
+        const el = $("kpiClients"); if (!el) return;
+        const n = Array.isArray(r?.clients) ? r.clients.length : Array.isArray(r?.items) ? r.items.length : null;
+        el.querySelector(".kpi-value").textContent = n == null ? "—" : String(n);
+        const orphans = Number(r?.accountsWithoutProfile) || 0;
+        if (orphans) { el.classList.add("warn"); el.insertAdjacentHTML("beforeend", `<button type="button" class="kpi-sub kpi-link" data-view="clients">${orphans} sign-in account${orphans === 1 ? "" : "s"} without a client profile · Review</button>`); }
+        else if (n == null) el.insertAdjacentHTML("beforeend", '<div class="kpi-sub">Count unavailable</div>');
+      }).catch(() => { const el = $("kpiClients"); if (el) { el.querySelector(".kpi-value").textContent = "—"; el.insertAdjacentHTML("beforeend", '<div class="kpi-sub">Could not load clients</div>'); } });
       loadLocationCheck();
       const banner = $("migrationBanner");
       banner.classList.toggle("hidden", !d.needsMigration);
@@ -295,6 +325,10 @@ export function initControlCenter(host) {
     });
   }
   document.addEventListener("click", (e) => { const c = e.target.closest("[data-open]")?.dataset.open; if (c) openShipment(c, "tracking"); });
+  $("kpiGrid").addEventListener("click", (e) => {
+    const st = e.target.closest("[data-status]")?.dataset.status; if (st) { $("fStatus").value = st; switchView("shipments"); runSearch(true); return; }
+    if (e.target.closest('[data-view="clients"]')) switchView("clients");
+  });
   $("dashStatus").addEventListener("click", (e) => {
     const b = e.target.closest("[data-status]"); if (!b) return;
     $("fStatus").value = b.dataset.status; switchView("shipments"); runSearch(true);

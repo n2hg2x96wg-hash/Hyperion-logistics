@@ -766,6 +766,7 @@
   <link rel="stylesheet" href="ui/command-center.css">
   <link rel="stylesheet" href="ui/theme-light.css">
   <link rel="stylesheet" href="admin/console.css">
+  <link rel="stylesheet" href="admin/dashboard.css">
 </head>
 <body class="console">
   <div class="login-overlay" id="loginOverlay">
@@ -839,7 +840,8 @@
         <div class="banner warn hidden" id="migrationBanner"><span id="migrationText"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn-action" id="bannerBackupBtn" type="button">1. Download full backup</button><button class="btn-action" id="migrateBtn" type="button" disabled title="Download a full backup first">2. Run data migration</button></span></div>
         <div class="kpi-grid" id="kpiGrid" data-reveal-stagger></div>
         <section class="dash-status" aria-labelledby="dashStatusTitle">
-          <h4 id="dashStatusTitle">Shipments by status</h4>
+          <div class="dash-status-head"><h4 id="dashStatusTitle">Shipments by status</h4><span id="dashStatusTotal"></span></div>
+          <div class="status-stack" id="dashStack" role="img" aria-label="No shipments"></div>
           <ul class="status-bars" id="dashStatus"></ul>
         </section>
         <section class="loc-check" id="locCheck" aria-labelledby="locCheckTitle">

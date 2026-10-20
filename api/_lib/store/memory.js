@@ -161,6 +161,9 @@ export function createMemoryStore(seed = {}) {
     async listClientRecords() {
       return [...clients.entries()].map(([id, c]) => { const u = authUsers.get(id); return { ...clone(c), id, auth: u ? { disabled: !!u.disabled, createdAt: u.createdAt || null, lastSignInAt: u.lastSignInAt || null, lastActiveAt: null } : null }; });
     },
+    async countAccountsWithoutProfile() {
+      return [...authUsers.entries()].filter(([id, u]) => u.admin !== true && !clients.has(id)).length;
+    },
     async getClientRecord(uid) {
       if (!clients.has(uid)) return null;
       const u = authUsers.get(uid);

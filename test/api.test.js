@@ -452,6 +452,7 @@ test("clients: admin-only list, deactivate/restore, permanent delete scoped to o
   assert.equal(ada.shipments.linked, false);
   assert.ok(!JSON.stringify(r.json).includes("legacy-hash"), "password hashes are never returned");
   assert.ok(r.json.deletionPolicy.keeps.some((k) => /shipments/i.test(k)));
+  assert.equal(r.json.accountsWithoutProfile, 0, "every sign-in account in the seed has a client profile");
 
   // Deactivate blocks sign-in; restore re-enables it.
   r = await admin({ action: "setClientStatus", id: "uidClientAaaa", status: "inactive" }); assert.equal(r.status, 200);

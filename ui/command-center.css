@@ -117,10 +117,24 @@
 .cr-media::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(7, 23, 53, 0) 45%, rgba(7, 23, 53, 0.78) 100%), linear-gradient(135deg, color-mix(in srgb, var(--brand, #2588ff) 22%, transparent), transparent 60%); }
 .cr-media::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; z-index: 2; background: var(--brand, #2588ff); }
-.cr-media picture, .cr-art { display: block; width: 100%; height: 100%; }
-.cr-media :is(img:not(.cr-logo), .cr-art) { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(var(--zoom, 1)); transition: transform .9s cubic-bezier(.2, .7, .2, 1); }
-.cr-ico { position: absolute; left: 50%; top: 50%; width: 38px; height: 38px; transform: translate(-50%, -55%); color: rgba(255, 255, 255, 0.85); display: none; }
-.cr-tile.no-img .cr-media picture { display: none; } .cr-tile.no-img .cr-ico { display: block; }
+.cr-media picture, .cr-name { display: block; width: 100%; height: 100%; }
+.cr-media :is(img:not(.cr-logo), .cr-name) { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(var(--zoom, 1)); transition: transform .9s cubic-bezier(.2, .7, .2, 1); }
+/* name-led card: the carrier's name over its brand colour, for carriers without their own photo */
+.cr-media span.cr-name { display: flex; align-items: center; justify-content: center; padding: 14px; box-sizing: border-box;
+  background: radial-gradient(120% 95% at 88% 0%, color-mix(in srgb, var(--brand, #2588ff) 60%, transparent), transparent 62%),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 14px), linear-gradient(140deg, #0c2052, #071735 70%); }
+.cr-name-mark { font-weight: 900; font-size: clamp(26px, 3vw, 38px); line-height: 1; letter-spacing: -0.03em; color: #fff; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.4);
+  white-space: nowrap; position: relative; z-index: 1; padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand, #2588ff) 25%, transparent); }
+.cr-name-mark.is-long { font-size: clamp(19px, 2.1vw, 26px); }
+/* category icon: a small chip on name-led cards; centred when a photo fails to load */
+.cr-cat-ico { position: absolute; left: 10px; top: 10px; z-index: 2; display: none; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(5, 11, 25, 0.5); border: 1px solid rgba(255, 255, 255, 0.16); color: #cfe3ff; }
+.cr-ico { width: 16px; height: 16px; display: block; }
+.cr-media[data-media="name"] .cr-cat-ico { display: grid; }
+.cr-tile.no-img .cr-media picture { display: none; }
+.cr-tile.no-img .cr-cat-ico { display: grid; left: 50%; top: 50%; transform: translate(-50%, -55%); width: 52px; height: 52px; border-radius: 14px; }
+.cr-tile.no-img .cr-ico { width: 26px; height: 26px; }
 .cr-logo { position: absolute; left: 10px; top: 10px; z-index: 2; max-height: 22px; max-width: 45%; padding: 4px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.92); object-fit: contain; }
 .cr-body { display: grid; gap: 4px; padding: 11px 13px 13px; transform: translateZ(0); transition: transform .45s cubic-bezier(.2, .7, .2, 1); }
 .cr-tile .wm { font-weight: 800; font-size: 15.5px; letter-spacing: -0.01em; color: #fff; line-height: 1.2; overflow-wrap: anywhere; }
@@ -128,20 +142,20 @@
 .cr-tile:hover, .cr-tile:focus-visible, .cr-tile[aria-expanded="true"] { border-color: rgba(37, 136, 255, 0.65);
   box-shadow: 0 0 0 1px rgba(37, 136, 255, 0.35), 0 22px 40px -18px rgba(2, 6, 23, 0.95), 0 10px 30px -12px rgba(37, 136, 255, 0.35); }
 .cr-tile:focus-visible { outline: 2px solid #2588ff; outline-offset: 2px; }
-.cr-tile:hover .cr-media :is(img:not(.cr-logo), .cr-art), .cr-tile:focus-visible .cr-media :is(img:not(.cr-logo), .cr-art) { transform: scale(calc(var(--zoom, 1) * 1.06)); }
+.cr-tile:hover .cr-media :is(img:not(.cr-logo), .cr-name), .cr-tile:focus-visible .cr-media :is(img:not(.cr-logo), .cr-name) { transform: scale(calc(var(--zoom, 1) * 1.06)); }
 .cr-tile.is-tilt { transition-duration: .18s, .35s, .35s, .6s; }
 .cr-tile.is-tilt .cr-body { transform: translateZ(18px); }
-.cr-tile.is-tilt .cr-media :is(img:not(.cr-logo), .cr-art) { transform: scale(calc(var(--zoom, 1) * 1.08)) translate(calc(var(--ry) * -0.6), calc(var(--rx) * 0.6)); }
+.cr-tile.is-tilt .cr-media :is(img:not(.cr-logo), .cr-name) { transform: scale(calc(var(--zoom, 1) * 1.08)) translate(calc(var(--ry) * -0.6), calc(var(--rx) * 0.6)); }
 .cr-tile:active { transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(.98); }
 /* entrance: cards start tipped back and below, then settle flat as they come into view */
 .cr-tile:not(.is-in) { opacity: 0; transform: perspective(900px) translate3d(0, 28px, 0) rotateX(10deg) scale(.96); transform-origin: 50% 100%; }
-.cr-tile:not(.is-in) .cr-media :is(img:not(.cr-logo), .cr-art) { transform: scale(calc(var(--zoom, 1) * 1.12)); }
+.cr-tile:not(.is-in) .cr-media :is(img:not(.cr-logo), .cr-name) { transform: scale(calc(var(--zoom, 1) * 1.12)); }
 .cr-tile.is-in { transition-delay: calc(var(--i, 0) * 70ms); }
-.cr-tile.is-in .cr-media :is(img:not(.cr-logo), .cr-art) { transition-delay: calc(var(--i, 0) * 70ms); }
-.cr-still .cr-tile, .cr-still .cr-tile .cr-media :is(img, .cr-art), .cr-still .cr-tile .cr-body { transition: border-color .2s ease, box-shadow .2s ease !important; transform: none !important; }
-@media (prefers-reduced-motion: reduce) { .cr-tile, .cr-tile .cr-media :is(img, .cr-art), .cr-tile .cr-body { transition: none !important; transform: none !important; } .cr-tile { opacity: 1 !important; } }
-.cr-still .cr-tile .cr-media :is(img:not(.cr-logo), .cr-art) { transform: scale(var(--zoom, 1)) !important; }
-@media (prefers-reduced-motion: reduce) { .cr-tile .cr-media :is(img:not(.cr-logo), .cr-art) { transform: scale(var(--zoom, 1)) !important; } }
+.cr-tile.is-in .cr-media :is(img:not(.cr-logo), .cr-name) { transition-delay: calc(var(--i, 0) * 70ms); }
+.cr-still .cr-tile, .cr-still .cr-tile .cr-media :is(img, .cr-name), .cr-still .cr-tile .cr-body { transition: border-color .2s ease, box-shadow .2s ease !important; transform: none !important; }
+@media (prefers-reduced-motion: reduce) { .cr-tile, .cr-tile .cr-media :is(img, .cr-name), .cr-tile .cr-body { transition: none !important; transform: none !important; } .cr-tile { opacity: 1 !important; } }
+.cr-still .cr-tile .cr-media :is(img:not(.cr-logo), .cr-name) { transform: scale(var(--zoom, 1)) !important; }
+@media (prefers-reduced-motion: reduce) { .cr-tile .cr-media :is(img:not(.cr-logo), .cr-name) { transform: scale(var(--zoom, 1)) !important; } }
 /* small phones: one column of horizontal cards (picture left, name right) */
 @media (max-width: 374px) {
   .cr-tile { flex-direction: row; align-items: stretch; }
@@ -170,3 +184,16 @@
 .cr-chip.link { background: rgba(96, 165, 250, 0.14); color: #bfdbfe; border-color: rgba(96, 165, 250, 0.3); }
 .cr-chip.live { background: rgba(52, 211, 153, 0.14); color: #a7f3d0; border-color: rgba(52, 211, 153, 0.35); }
 .cr-chip.partner { background: rgba(251, 191, 36, 0.13); color: #fde68a; border-color: rgba(251, 191, 36, 0.35); }
+
+/* Carrier Network page (carriers.html): same section styles, with the page heading as h1 */
+.carriers-page main { padding-top: 24px; min-height: 60vh; }
+.carriers-page .section-head h1 { font-size: clamp(30px, 4.5vw, 46px); line-height: 1.08; letter-spacing: -0.03em; margin: 0; color: #fff; max-width: 760px; }
+.carriers-page .cr-cta { margin-top: 22px; }
+html[data-theme="light"] .carriers-page .section-head h1 { color: #0b1a3d; }
+
+/* photo credit (required by the photo licences): a short line on the card, the full linked credit in the details */
+.cr-credit { position: absolute; right: 6px; bottom: 7px; z-index: 2; max-width: calc(100% - 12px); padding: 2px 6px; border-radius: 4px; font-size: 9.5px; line-height: 1.3;
+  color: rgba(255, 255, 255, 0.85); background: rgba(5, 11, 25, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.cr-tile.no-img .cr-credit { display: none; }
+.cr-detail .cr-photo-credit { font-size: 12.5px; color: #8fa3c7; }
+html[data-theme="light"] .cr-detail .cr-photo-credit { color: #4a5f84; }

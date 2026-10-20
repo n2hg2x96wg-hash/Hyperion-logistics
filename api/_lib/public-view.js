@@ -44,7 +44,7 @@ export function cityLabel(text) {
 const isActive = (code) => code && code !== STATUS.DELIVERED && code !== STATUS.CANCELLED;
 
 export function computeStats(summaries) {
-  let active = 0; let inTransit = 0; let delivered = 0; let total = 0; let lastUpdated = null;
+  let active = 0; let inTransit = 0; let delivered = 0; let total = 0;
   const activeCountries = new Set(); const allCountries = new Set();
   for (const s of summaries) {
     if (s.archived === true) continue;
@@ -58,15 +58,12 @@ export function computeStats(summaries) {
     if (isActive(code)) { active += 1; countries.forEach((c) => activeCountries.add(c)); }
     if (IN_TRANSIT_GROUP.includes(code)) inTransit += 1;
     if (code === STATUS.DELIVERED) delivered += 1;
-    const u = isoOk(s.updatedAt) || isoOk(s.createdAt);
-    if (u && (!lastUpdated || u > lastUpdated)) lastUpdated = u;
   }
   const sortCountries = (set) => [...set].sort().map((iso) => ({ iso, name: countryName(iso) || iso }));
   return {
     total, active, inTransit, delivered,
     countriesActive: activeCountries.size, countriesAll: allCountries.size,
     activeCountries: sortCountries(activeCountries),
-    lastUpdated,
     rules: {
       total: "Shipment records that are not archived.",
       active: "Not archived and not delivered or cancelled.",
@@ -77,6 +74,10 @@ export function computeStats(summaries) {
     }
   };
 }
+
+// Only verified feeds (carrier API, GPS) publish a time; staff-entered milestones and positions are shown without one.
+const VERIFIED_SOURCES = new Set(["carrier_api", "gps"]);
+const clientTime = (t, source) => (VERIFIED_SOURCES.has(source) ? isoOk(t) : null);
 
 function routeFor(s, now) {
   const code = resolveShipmentStatus(s);
@@ -89,7 +90,7 @@ function routeFor(s, now) {
   let current = null;
   if (vis.map && vis.location && isoOk(s.locationUpdatedAt)) {
     const p = point(s.latitude, s.longitude);
-    if (p) current = { ...p, place: cityLabel(s.location), recordedAt: s.locationUpdatedAt,
+    if (p) current = { ...p, place: cityLabel(s.location), recordedAt: clientTime(s.locationUpdatedAt, s.locationSource),
       sourceLabel: EVENT_SOURCES[s.locationSource] || EVENT_SOURCES.admin };
   }
   if (!origin && !destination && !current) return null;
@@ -104,7 +105,7 @@ function routeFor(s, now) {
     // derived at read time with the tracking page's rule; null unless the recorded service type or a single-mode
     // carrier says it, and only when the shipment shows its carrier to clients
     mode: vis.carrier ? transportMode({ serviceType: s.serviceType, carrierId: s.courier }) : null,
-    updatedAt: isoOk(s.updatedAt)
+    sortKey: isoOk(s.updatedAt) || "" // ordering only; removed before the response is sent
   };
 }
 
@@ -119,7 +120,8 @@ function activityFor(s, route, events) {
       tone: e.statusCode ? statusTone(e.statusCode) : "info",
       place: vis.location ? cityLabel(e.location) : null,
       from: route.originLabel, to: route.destinationLabel,
-      at: e.timestamp,
+      at: clientTime(e.timestamp, e.source || "admin"),
+      sortKey: e.timestamp, // ordering only; removed before the response is sent
       sourceLabel: EVENT_SOURCES[e.source] || EVENT_SOURCES.admin
     }));
 }
@@ -133,9 +135,10 @@ export function buildPublicOverview({ summaries, publicShipments, eventsByCode, 
     routes.push(r);
     activity = activity.concat(activityFor(s, r, eventsByCode.get(s.id) || []));
   }
-  routes.sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
-  activity.sort((a, b) => b.at.localeCompare(a.at));
-  const body = { stats, routes: routes.slice(0, 50), activity: activity.slice(0, 20) };
+  routes.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+  activity.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+  const strip = ({ sortKey, ...rest }) => rest; // edit and entry times never leave the server
+  const body = { stats, routes: routes.slice(0, 50).map(strip), activity: activity.slice(0, 20).map(strip) };
   const version = crypto.createHash("sha1").update(JSON.stringify(body)).digest("hex").slice(0, 16);
   return { ...body, version, generatedAt: now.toISOString() };
 }

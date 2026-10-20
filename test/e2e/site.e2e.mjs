@@ -100,7 +100,7 @@ for (const w of WIDTHS) {
     const ctx = await newContext({ width: w, height: w < 800 ? 844 : 900 });
     const page = await ctx.newPage(); const errors = watchErrors(page);
     let header = null;
-    for (const p of ["index.html", "track.html", "tracking-enhanced.html"]) {
+    for (const p of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html"]) {
       await page.goto(`${base}/${p}`);
       assert.ok(await noOverflow(page), `${p} overflows at ${w}px`);
       const h = await page.$eval("[data-site-header]", (el) => el.outerHTML.replace(/ aria-current="page"/g, "").replace(/\s+/g, " ")); // the current-page marker is added at runtime
@@ -128,8 +128,16 @@ for (const w of WIDTHS) {
       await page.mouse.click(10, page.viewportSize().height - 20); // the scrim below the open sheet
       assert.equal(await menu.isVisible(), false, "tapping outside closes the menu");
       await page.click(".nav-toggle");
-      await page.click('#navMenu a[href="/#carriers"]');
+      await page.click('#navMenu a[href="/#services"]');
       assert.equal(await menu.isVisible(), false, "choosing a link closes the menu");
+      // "Carrier network" opens the customer carrier page: every carrier, no "Show all" step
+      await page.click(".nav-toggle");
+      await Promise.all([page.waitForURL(/\/carriers\.html$/), page.click('#navMenu a[href="/carriers.html"]')]);
+      await page.locator("#carriers .cr-tile").first().waitFor();
+      assert.equal(await page.locator("#carriers .cr-tile").count(), 23);
+      assert.equal(await page.locator("[data-more]").count(), 0);
+      assert.ok(await noOverflow(page), `carriers.html overflows at ${w}px`);
+      await page.goto(`${base}/index.html`);
     }
     await page.locator("#carriers .cr-tile").first().waitFor();
     const carH = await page.$eval("#carriers", (el) => el.getBoundingClientRect().height);
@@ -147,11 +155,11 @@ for (const w of WIDTHS) {
   });
 }
 
-test("carrier gallery: own photo or category illustration per carrier (never a stage photo), rises into view, tilts, falls back, still with reduced motion", async () => {
-  // desktop: each card shows its carrier's own photo or its category illustration; reveal on scroll; tilt; details and tabs
+test("carrier gallery: own photo or name-led card per carrier (never a stage photo), rises into view, tilts, falls back, still with reduced motion", async () => {
+  // desktop: each card shows its carrier's own photo or a name-led panel; reveal on scroll; tilt; details and tabs
   let ctx = await newContext({ width: 1280, height: 900 });
   let page = await ctx.newPage(); let errors = watchErrors(page);
-  await ctx.route(/assets\/carriers\/emirates-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
+  await ctx.route(/assets\/carriers\/emiratesskycargo-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
   await page.goto(base + "/index.html");
   await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
   const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
@@ -161,17 +169,20 @@ test("carrier gallery: own photo or category illustration per carrier (never a s
   await page.waitForFunction(() => [...document.querySelectorAll("#carriers .cr-tile")].every((t) => t.classList.contains("is-in")));
   const cards = await page.$$eval("#carriers .cr-tile", (ts) => ts.map((t) => ({ id: t.dataset.id, cat: t.dataset.cat, name: t.querySelector(".wm")?.textContent, meta: t.querySelector(".meta")?.textContent,
     media: t.querySelector(".cr-media").dataset.media, src: t.querySelector(".cr-media img:not(.cr-logo)")?.getAttribute("src") || null,
-    art: !!t.querySelector(".cr-media svg.cr-art"), noImg: t.classList.contains("no-img"), html: t.innerHTML })));
+    mark: t.querySelector(".cr-media .cr-name-mark")?.textContent || null, noImg: t.classList.contains("no-img"), html: t.innerHTML })));
   assert.equal(cards.length, 23, "all carriers are still listed");
   const by = Object.fromEntries(cards.map((c) => [c.id, c]));
   for (const c of cards) {
     assert.ok(c.name && c.meta, `${c.id}: name and category shown`);
     assert.ok(!/assets\/(stages|journey|freight)\//.test(c.html), `${c.id}: no shipment-stage or homepage picture on a carrier card`);
-    assert.ok(c.media === "photo" ? c.src && !c.art : c.art && !c.src, `${c.id}: exactly one kind of picture`);
+    assert.ok(c.media === "photo" ? c.src && !c.mark : c.mark && !c.src, `${c.id}: exactly one kind of picture`);
   }
   assert.equal(by.ups.src, "assets/carriers/ups-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-480.jpg");
-  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
-  for (const id of ["dhl", "qatarcargo", "msc", "giglogistics", "tesla-transport"]) assert.equal(by[id].media, "art", `${id}: category illustration`);
+  assert.equal(by.emiratesskycargo.src, "assets/carriers/emiratesskycargo-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
+  for (const id of ["dhl", "fedex", "qatarcargo", "msc", "giglogistics", "correios"]) assert.equal(by[id].src, `assets/carriers/${id}-480.jpg`, `${id}: its own photo`);
+  for (const id of ["ems", "redstarexpress", "tesla-transport"]) assert.equal(by[id].media, "name", `${id}: name-led card`);
+  assert.deepEqual([by.ems.mark, by.redstarexpress.mark, by["tesla-transport"].mark], ["EMS", "RSE", "TT"]);
+  assert.match(await page.textContent('#carriers .cr-tile[data-id="dhl"] .cr-credit'), /Photo: .+ · CC BY/);
   assert.equal(cards.filter((c) => c.noImg).length, 1);
   assert.ok(await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img:not(.cr-logo)", (is) => is.every((i) => i.complete && i.naturalWidth > 0)), "the other photos load");
   const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
@@ -184,6 +195,7 @@ test("carrier gallery: own photo or category illustration per carrier (never a s
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-tilt")), false, "the card settles when the pointer leaves");
   await tile.click();
   assert.match(await page.textContent("#cr-detail"), /Maersk/);
+  assert.match(await page.getAttribute("#cr-detail .cr-photo-credit a", "href"), /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, "the details link the photo's source");
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-in")), true, "re-rendering does not replay the entrance");
   await page.click('#carrierTabs [data-filter="air"]');
   assert.equal(await page.locator("#carriers .cr-tile").count(), 4);
@@ -505,7 +517,11 @@ for (const w of [390, 768, 1280]) {
     const rootText = await page.textContent(".hx-tracker");
     assert.ok(!/Operations update|Recorded time|Last recorded update/.test(rootText), "no back-office labels or entry times for clients");
     assert.ok(!/Live tracking map/.test(rootText) && await page.locator(".hx-loc-badge").count() === 0, "a manually recorded location never reads as live");
-    assert.ok(await page.locator(".hx-timeline time[datetime]").count() >= 1, "milestone times stay in the timeline");
+    // staff-entered milestones carry no client-visible time: the milestone, place, order and history stay
+    const latest = await page.textContent(".hx-fact-updated");
+    assert.ok(!/just now|ago\b|\d{1,2}:\d{2}/i.test(latest), `no staff edit time in the latest milestone: ${latest}`);
+    assert.equal(await page.locator(".hx-fact-updated time, .hx-timeline time, .hx-rs time").count(), 0, "no staff entry times anywhere in the result");
+    assert.ok(await page.locator(".hx-timeline .hx-tl").count() >= 1, "the milestone history stays");
     await page.click(".hx-copy");
     await page.waitForFunction(() => document.querySelector("[data-copy-label]")?.textContent === "Copied");
     assert.equal(await page.evaluate(() => navigator.clipboard.readText()), codes.good);
@@ -536,15 +552,16 @@ test("tracking edge cases: invalid code, network failure with retry, missing opt
   await page.click('[data-act="retry"]');
   await page.waitForSelector(".hx-header .hx-code");
   // timeline: oldest first by default, "Latest" marks the newest record, order can be flipped
-  const order = () => page.$$eval(".hx-timeline > .hx-tl", (li) => li.map((x) => ({ latest: x.classList.contains("latest"), t: x.querySelector("time").dateTime })));
+  // (staff-entered milestones carry no client-visible time, so order is checked by milestone and the Latest marker)
+  const order = () => page.$$eval(".hx-timeline > .hx-tl", (li) => li.map((x) => ({ latest: x.classList.contains("latest"), title: x.querySelector(".hx-tl-title").textContent, time: !!x.querySelector("time") })));
   let tl = await order();
+  assert.ok(tl.every((x) => !x.time), "no staff entry times in the timeline");
   if (tl.length > 1) {
-    assert.ok(Date.parse(tl[0].t) <= Date.parse(tl.at(-1).t), "oldest first");
+    assert.match(tl[0].title, /Shipment Registered/, "oldest first");
     assert.ok(tl.at(-1).latest, "newest record marked Latest");
     await page.click('.hx-seg[data-order="latest"]');
     tl = await order();
-    assert.ok(Date.parse(tl[0].t) >= Date.parse(tl.at(-1).t), "latest first after switching");
-    assert.ok(tl[0].latest);
+    assert.ok(tl[0].latest, "latest first after switching"); assert.match(tl.at(-1).title, /Shipment Registered/);
     assert.equal(await page.getAttribute('.hx-seg[data-order="latest"]', "aria-pressed"), "true");
   }
   // manual check: two quick taps send one request, and the outcome is reported
@@ -592,7 +609,7 @@ for (const theme of ["dark", "light"]) {
     await page.fill("#loginPassword", process.env.ADMIN_PASSWORD); await page.click("#loginBtn");
     await page.waitForFunction(() => typeof window.switchView === "function" && !document.getElementById("appRoot").classList.contains("hidden"));
     assert.ok(await page.isVisible(".header [data-theme-toggle]"), "theme switch in the top bar");
-    await page.waitForSelector("#kpiGrid .kpi.attention", { timeout: 10000 }); // dashboard figures load after sign-in
+    await page.waitForSelector("#kpiGrid .kpi-alert.attention", { timeout: 10000 }); // dashboard figures load after sign-in
     await page.evaluate(() => window.switchView("shipments"));
     await page.waitForSelector(".shipments-table .td-code");
     const card = await page.$eval(".shipments-table tbody tr", (tr) => {
@@ -1087,6 +1104,9 @@ test("admin on iPhone: bottom tab bar, readable text, status breakdown, e-mail f
     await page.waitForSelector("#trkSummary .trk-actions");
     await page.click('#tabBar [data-tab="more"]'); await page.click("#btn-events");
     await page.waitForFunction(() => /shipment\.created/.test(document.getElementById("evHistory").textContent), null, { timeout: 15000 });
+    // admins keep the times customers no longer see: event times and the "saved" time of each change
+    assert.match(await page.textContent("#evList"), /\d{1,2}:\d{2}/, "event times in the admin event list");
+    assert.match(await page.textContent("#evHistory"), /saved/i, "change history keeps when each change was saved");
     assert.ok(await noOverflow(page), `overflow ${theme}`);
     await shot(page, `admin-events-${theme}-390`);
     await api(page, { action: "delete", code: made.id, confirm: made.id });

@@ -326,7 +326,7 @@ export function createTracker(root, opts = {}) {
         <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${latest ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
         ${t.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(t.location)}</div>` : ""}
         ${t.description ? `<div class="hx-tl-desc">${esc(t.description)}</div>` : ""}
-        <div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${SOURCE_TEXT[t.source] ? ` · ${SOURCE_TEXT[t.source]}` : ""}</div></div></li>`; }).join("")}</ol></section>`;
+        ${t.timestamp ? `<div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${SOURCE_TEXT[t.source] ? ` · ${SOURCE_TEXT[t.source]}` : ""}</div>` : ""}</div></li>`; }).join("")}</ol></section>`;
   }
 
   function render(v, isUpdate) {
@@ -339,8 +339,8 @@ export function createTracker(root, opts = {}) {
     const carrierBits = carrier ? [esc(carrier.name), carrier.serviceType ? esc(carrier.serviceType) : null].filter(Boolean).join(" · ") : "";
     const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `Carrier ref: ${esc(carrier.trackingNumber)}` : "", carrier.phone ? esc(carrier.phone) : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : "", carrier.trackingUrl ? `<a href="${esc(carrier.trackingUrl)}" target="_blank" rel="noopener noreferrer">Track on carrier site</a>` : "", carrier.custom ? "Custom carrier arrangement" : ""].filter(Boolean).join(" · ")}</div>` : "";
     const loc = v.currentLocation; const ls = locState(v);
-    // Latest milestone = the newest recorded event (its own time). view.lastUpdated is not shown: it also moves when a
-    // record is merely edited, so it is not a shipment event time.
+    // Latest milestone = the newest recorded event. The server sends an event time only for verified carrier / GPS
+    // events: the time a member of staff entered or edited a milestone is never shown to clients.
     const latest = v.timeline?.[0] || null;
     const ago = latest?.timestamp ? timeAgo(latest.timestamp, Date.now() + serverOffset) : null;
 
@@ -362,7 +362,7 @@ export function createTracker(root, opts = {}) {
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
           ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div>${verifiedFeed(v) ? `<div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time"><time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time> · ${SOURCE_TEXT[v.currentLocation.source]}</span>` : ""}</div>` : ""}</div>` : ""}
           ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
-          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest recorded milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : ""}</div>` : ""}
+          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest recorded milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : latest.location ? `<div class="hx-fact-sub">${esc(latest.location)}</div>` : ""}</div>` : ""}
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
         </div>
         <div class="hx-meta" data-slot="meta"></div>
