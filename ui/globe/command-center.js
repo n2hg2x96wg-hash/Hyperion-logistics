@@ -98,9 +98,11 @@ export function mountCommandCenter(o) {
     renderCard();
     o.onData?.(d);
     o.mapEl.classList.toggle("cc-empty", !routes.length);
-    // Public visitors see the newest recorded EVENT time; stats.lastUpdated is when a record was last edited (admin only).
+    // Public visitors only get times from verified carrier / GPS feeds (the server withholds staff edit and entry times);
+    // stats.lastUpdated is when a record was last edited (admin only).
     const updated = o.mode === "admin" ? d.stats?.lastUpdated : (d.activity || []).map((a) => a.at).filter(Boolean).sort().at(-1);
-    status(updated ? `Last ${o.mode === "admin" ? "update" : "recorded milestone"} ${timeAgo(updated)}` : "No shipment updates recorded yet", "ok");
+    status(updated ? `Last ${o.mode === "admin" ? "update" : "recorded milestone"} ${timeAgo(updated)}`
+      : o.mode !== "admin" && (d.activity || []).length ? "Showing the latest recorded milestones" : "No shipment updates recorded yet", "ok");
     if (o.statusEl) o.statusEl.title = updated ? `${o.mode === "admin" ? "Last recorded shipment update" : "Newest recorded milestone"}: ${fmt(updated)}` : "";
   }
 
@@ -138,7 +140,7 @@ export function mountCommandCenter(o) {
       <li><button type="button" class="cc-feed-item ${a.routeKey === state.selected ? "is-selected" : ""}" data-route="${esc(a.routeKey)}">
         <span class="cc-dot tone-${esc(a.tone)}"></span>
         <span class="cc-feed-main">
-          <span class="cc-feed-top"><strong>${esc(a.title)}</strong><time datetime="${esc(a.at)}">${esc(a.at ? timeAgo(a.at) : "time not recorded")}</time></span>
+          <span class="cc-feed-top"><strong>${esc(a.title)}</strong>${a.at ? `<time datetime="${esc(a.at)}">${esc(timeAgo(a.at))}</time>` : o.mode === "admin" ? "<time>time not recorded</time>" : ""}</span>
           <span class="cc-feed-route">${esc(a.from || "Origin not set")} → ${esc(a.to || "Destination not set")}</span>
           <span class="cc-feed-meta">${esc(a.ref)}${a.place ? ` · ${esc(a.place)}` : ""}${o.mode === "admin" || VERIFIED_LABELS.has(a.sourceLabel) ? ` · ${esc(a.sourceLabel)}` : ""}</span>
         </span></button></li>`).join("");
@@ -158,7 +160,7 @@ export function mountCommandCenter(o) {
         <td data-label="Shipment"><span class="cc-ref">${esc(r.ref)}</span></td>
         <td data-label="Route"><span class="cc-route">${esc(r.originLabel || "Origin not set")}<i aria-hidden="true">→</i>${esc(r.destinationLabel || "Destination not set")}</span></td>
         <td data-label="Status"><span class="cc-pill tone-${esc(r.status.tone)}">${esc(r.status.label)}</span></td>
-        <td data-label="Last update">${at ? `<time datetime="${esc(at)}" title="${esc(fmt(at))}">${esc(timeAgo(at))}</time>` : "Not recorded"}</td></tr>`;
+        <td data-label="Last update">${at ? `<time datetime="${esc(at)}" title="${esc(fmt(at))}">${esc(timeAgo(at))}</time>` : o.mode === "admin" ? "Not recorded" : "—"}</td></tr>`;
     }).join("");
   }
 

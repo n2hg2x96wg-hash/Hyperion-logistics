@@ -256,6 +256,17 @@ export function createFirestoreStore() {
       }
       return rows.map((r) => ({ ...r, auth: meta.get(r.id) || null }));
     },
+    /** Sign-in accounts (Firebase Auth, not admins) that have no clients/{uid} profile, e.g. left by the old browser-side signup. Count only. */
+    async countAccountsWithoutProfile() {
+      const ids = new Set((await db.collection("clients").select().get()).docs.map((d) => d.id));
+      const auth = getAuth(app); let n = 0; let token;
+      do {
+        const page = await auth.listUsers(1000, token);
+        for (const u of page.users) if (u.customClaims?.admin !== true && !ids.has(u.uid)) n += 1;
+        token = page.pageToken;
+      } while (token);
+      return n;
+    },
     async getClientRecord(uid) {
       const snap = await db.collection("clients").doc(uid).get();
       if (!snap.exists) return null;

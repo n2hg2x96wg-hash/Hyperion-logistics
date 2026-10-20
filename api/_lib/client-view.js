@@ -7,9 +7,16 @@ import {
   resolveShipmentStatus, resolveVisibility, computeProgress, progressSteps, statusLabel, statusTone,
   locationFreshness, LOCATION_WINDOWS, LOCATION_STATE_LABELS
 } from "../../shared/status.js";
+import { createHash } from "node:crypto";
 import { validPoint } from "./geo.js";
 
 const isoOrNull = (v) => (typeof v === "string" && Number.isFinite(Date.parse(v)) ? v : null);
+
+// Times reach clients only when a verified feed (carrier API, GPS) reported them. Everything else is entered by
+// Hyperion staff, and its time is when someone edited the record, not a carrier scan, so clients never see it. The
+// times stay in the database and in the admin views (events, history, activity log).
+const VERIFIED_SOURCES = new Set(["carrier_api", "gps"]);
+const clientTime = (t, source) => (VERIFIED_SOURCES.has(source) ? isoOrNull(t) : null);
 
 // (0,0) and non-numeric values are never drawn: they come from empty form fields, not real positions.
 const point = (lat, lng) => validPoint(lat, lng);
@@ -23,8 +30,11 @@ export function locationWindows(env = process.env) {
   };
 }
 
+/** Opaque change marker for clients: the revision number, or a hash of the edit time for old records (never the time itself). */
 export function shipmentVersion(s) {
-  return String(s?.rev ?? s?.updatedAt ?? s?.createdAt ?? "0");
+  if (s?.rev != null) return String(s.rev);
+  const t = s?.updatedAt ?? s?.createdAt;
+  return t ? `h${createHash("sha256").update(String(t)).digest("hex").slice(0, 12)}` : "0";
 }
 
 /** Legacy `updates: [{title, description, location, timestamp}]` -> event objects (read-only). */
@@ -57,10 +67,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
       ? { code: statusCode, label: statusLabel(statusCode), tone: statusTone(statusCode) }
       : { code: null, label: shipment.status ? String(shipment.status).slice(0, 60) : "Status unavailable", tone: "neutral" },
     origin: shipment.origin ? String(shipment.origin) : null,
-    destination: shipment.destination ? String(shipment.destination) : null,
-    lastUpdated: [shipment.locationUpdatedAt, shipment.statusUpdatedAt, shipment.updatedAt, shipment.createdAt]
-      .map(isoOrNull).filter(Boolean).sort().pop() || null,
-    createdAt: isoOrNull(shipment.createdAt)
+    destination: shipment.destination ? String(shipment.destination) : null
   };
 
   // Exception: only if actually recorded on the shipment.
@@ -69,8 +76,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
     view.exception = {
       type: ex.type,
       label: EXCEPTION_TYPES[ex.type] || "Shipment exception",
-      note: ex.note ? String(ex.note).slice(0, 500) : "",
-      recordedAt: isoOrNull(ex.recordedAt)
+      note: ex.note ? String(ex.note).slice(0, 500) : ""
     };
   }
 
@@ -90,13 +96,13 @@ export function buildClientView({ shipment, events = [], locations = [], courier
     const updatedAt = isoOrNull(shipment.locationUpdatedAt);
     const state = locationFreshness({ updatedAt, hasCoordinates, hasName: !!shipment.location, statusCode, now: now.getTime(), ...win });
     // Clients re-evaluate this as time passes (same rule, same windows) so "Live" decays without new data.
-    view.locationState = { state, label: LOCATION_STATE_LABELS[state], updatedAt, hasCoordinates, liveMs: win.liveMs, recentMs: win.recentMs };
+    view.locationState = { state, label: LOCATION_STATE_LABELS[state], updatedAt: clientTime(updatedAt, shipment.locationSource), hasCoordinates, liveMs: win.liveMs, recentMs: win.recentMs };
   }
 
   if (vis.location && shipment.location) {
     view.currentLocation = {
       name: String(shipment.location),
-      updatedAt: isoOrNull(shipment.locationUpdatedAt),
+      updatedAt: clientTime(shipment.locationUpdatedAt, shipment.locationSource),
       source: shipment.locationSource || "admin",
       sourceLabel: EVENT_SOURCES[shipment.locationSource] || EVENT_SOURCES.admin
     };
@@ -106,7 +112,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
     if (statusCode === STATUS.DELIVERED) {
       const delivered = events.filter((e) => e.statusCode === STATUS.DELIVERED && e.clientVisible !== false)
         .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))[0];
-      view.eta = { state: "delivered", deliveredAt: isoOrNull(delivered?.timestamp) || isoOrNull(shipment.statusUpdatedAt) };
+      view.eta = { state: "delivered", deliveredAt: delivered ? clientTime(delivered.timestamp, delivered.source) : null };
     } else if (statusCode === STATUS.CANCELLED) {
       view.eta = { state: "unavailable", text: "Delivery estimate unavailable." };
     } else if (isoOrNull(shipment.etaWindowStart) && isoOrNull(shipment.etaWindowEnd)) {
@@ -158,7 +164,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
     if (vis.location) {
       map.current = point(shipment.latitude, shipment.longitude);
       if (map.current) {
-        map.current.updatedAt = isoOrNull(shipment.locationUpdatedAt);
+        map.current.updatedAt = clientTime(shipment.locationUpdatedAt, shipment.locationSource);
         map.current.name = shipment.location ? String(shipment.location) : null;
         map.current.source = shipment.locationSource || "admin";
         map.current.sourceLabel = EVENT_SOURCES[map.current.source] || EVENT_SOURCES.admin;
@@ -168,7 +174,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
         .filter((l) => l.clientVisible !== false && point(l.lat, l.lng))
         .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""))
         .slice(-25)
-        .map((l) => ({ ...point(l.lat, l.lng), timestamp: l.timestamp, name: l.name || null, source: l.source }));
+        .map((l) => ({ ...point(l.lat, l.lng), timestamp: clientTime(l.timestamp, l.source), name: l.name || null, source: l.source }));
     }
     map.originLabel = view.origin; map.destinationLabel = view.destination;
     view.map = map;
@@ -188,7 +194,7 @@ export function buildClientView({ shipment, events = [], locations = [], courier
         title: String(e.title || (e.statusCode ? STATUS_META[e.statusCode]?.event : "Update") || "Update").slice(0, 120),
         description: e.description ? String(e.description).slice(0, 600) : "",
         location: vis.location && e.location ? String(e.location).slice(0, 120) : "",
-        timestamp: e.timestamp,
+        timestamp: clientTime(e.timestamp, e.source || "admin"),
         tone: e.statusCode ? statusTone(e.statusCode) : "neutral",
         source: e.source || "admin",
         sourceLabel: EVENT_SOURCES[e.source] || EVENT_SOURCES.admin

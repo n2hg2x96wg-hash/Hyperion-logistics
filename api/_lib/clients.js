@@ -76,6 +76,12 @@ export async function listClients() {
   return (await store.listClientRecords()).map(view);
 }
 
+/** How many sign-in accounts exist without a client profile (they can't sign in and aren't counted). Null if unknown. */
+export async function accountsWithoutProfile() {
+  const store = await getStore();
+  return typeof store.countAccountsWithoutProfile === "function" ? store.countAccountsWithoutProfile().catch(() => null) : null;
+}
+
 export async function getClient(idInput) {
   const store = await getStore();
   const rec = await store.getClientRecord(parseUid(idInput));

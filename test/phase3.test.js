@@ -724,9 +724,9 @@ test("tawk.to: one chat loader on each public page, guarded against double loads
   for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/tawk\.to|hs-scripts/i.test(read(page)), `${page}: staff pages have no customer chat`);
 });
 
-test("carrier cards: own photo by carrier id or a drawn category illustration; never a shipment-stage photo; credits recorded", async () => {
+test("carrier cards: own photo by carrier id or a name-led card; never a stage photo or drawing; credits recorded", async () => {
   const { CARRIERS, carrierCategory } = await import("../shared/carriers.js");
-  const { carrierMedia, CARRIER_PHOTOS, categoryArtSvg } = await import("../ui/carrier-media.js");
+  const { carrierMedia, CARRIER_PHOTOS } = await import("../ui/carrier-media.js");
   const exists = (f) => fs.existsSync(new URL(`../${f}`, import.meta.url));
   for (const c of CARRIERS) {
     const m = carrierMedia({ id: c.id, category: carrierCategory(c) });
@@ -734,30 +734,86 @@ test("carrier cards: own photo by carrier id or a drawn category illustration; n
       assert.ok(m.base.startsWith("assets/carriers/"), `${c.id}: carrier photos live in assets/carriers`);
       for (const w of m.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(exists(`${m.base}-${w}.${ext}`), `${c.id}: ${m.base}-${w}.${ext}`);
       assert.ok(m.alt && m.alt.length > 10);
-    } else {
-      assert.equal(m.type, "art"); assert.equal(m.category, carrierCategory(c), `${c.id}: illustration of its own category`);
-      assert.match(categoryArtSvg(m.category, c.id), /^<svg class="cr-art"[^>]*aria-hidden="true"/);
-    }
+    } else assert.deepEqual(m, { type: "name", category: carrierCategory(c) }, `${c.id}: name-led card`);
   }
-  // explicit mapping by id: exactly the carriers whose own photos we have
   assert.deepEqual(Object.keys(CARRIER_PHOTOS).sort(), ["emiratesskycargo", "maersk", "ups"]);
-  assert.equal(carrierMedia({ id: "dhl", category: "express" }).type, "art");
-  assert.deepEqual(carrierMedia({ id: "qatarcargo", category: "air" }), { type: "art", category: "air" });
-  assert.deepEqual(carrierMedia({ id: "msc", category: "ocean" }), { type: "art", category: "ocean" });
-  assert.deepEqual(carrierMedia({ id: "giglogistics", category: "regional" }), { type: "art", category: "regional" });
-  assert.deepEqual(carrierMedia({ id: "tesla-transport", category: "custom" }), { type: "art", category: "custom" });
+  for (const [id, cat] of [["dhl", "express"], ["qatarcargo", "air"], ["msc", "ocean"], ["giglogistics", "regional"], ["tesla-transport", "custom"]]) assert.equal(carrierMedia({ id, category: cat }).type, "name", id);
   assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups");
-  assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "art", "no prototype lookups");
+  assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "name", "no prototype lookups");
   assert.equal(carrierMedia({ id: "new-carrier", category: "nonsense" }).category, "custom");
-  // the order of the list can't move a picture: same id, same picture
   const shuffled = CARRIERS.slice().reverse().map((c) => [c.id, JSON.stringify(carrierMedia({ id: c.id, category: carrierCategory(c) }))]);
   for (const [id, m] of shuffled) assert.equal(m, JSON.stringify(carrierMedia({ id, category: carrierCategory(CARRIERS.find((c) => c.id === id)) })));
   const credits = read("assets/carriers/CREDITS.md");
   for (const m of Object.values(CARRIER_PHOTOS)) assert.ok(credits.includes(`\`${m.base.split("/").pop()}-*\``), `credits for ${m.base}`);
   const src = read("ui/carriers.js");
-  assert.match(src, /alt=""/, "pictures are decorative: the card text names the carrier");
-  assert.match(src, /loading="lazy"/);
-  assert.match(src, /prefers-reduced-motion: reduce/);
+  assert.ok(!/<svg class="cr-art"|categoryArtSvg/.test(src + read("ui/carrier-media.js")), "no drawn stand-in pictures");
+  assert.match(src, /alt=""/); assert.match(src, /loading="lazy"/); assert.match(src, /prefers-reduced-motion: reduce/);
+  // monograms are taken from the carrier's own name
+  const mono = new Function(`${src.match(/export function carrierMonogram[\s\S]*?\n}/)[0].replace("export ", "")}; return carrierMonogram;`)();
+  assert.deepEqual(["DHL", "Australia Post", "EMS (Express Mail Service)", "SF Express", "Qatar Airways Cargo", "Correios"].map(mono), ["DHL", "AP", "EMS", "SF", "QAC", "Correios"]);
+});
+
+test("clients never see staff entry/edit times: only verified carrier/GPS times reach the tracking and public views", async () => {
+  const { buildClientView, shipmentVersion } = await import("../api/_lib/client-view.js");
+  const { buildPublicOverview } = await import("../api/_lib/public-view.js");
+  const t1 = "2026-10-18T08:00:00.000Z"; const t2 = "2026-10-19T09:30:00.000Z"; const t3 = "2026-10-20T02:05:00.000Z";
+  const shipment = { id: "HX-TIME-1", rev: 7, statusCode: "AT_FACILITY", origin: "Lagos, Nigeria", destination: "London, United Kingdom", location: "Lagos, Nigeria",
+    latitude: 6.52, longitude: 3.38, locationSource: "admin", locationUpdatedAt: t3, statusUpdatedAt: t3, updatedAt: t3, createdAt: t1, publicMap: true,
+    originLat: 6.52, originLng: 3.38, destinationLat: 51.5, destinationLng: -0.12, exception: null };
+  const events = [
+    { id: "e1", statusCode: "CREATED", title: "Shipment Registered", timestamp: t1, createdAt: t1, source: "admin", clientVisible: true, seq: 1 },
+    { id: "e2", statusCode: "IN_TRANSIT", title: "In Transit", location: "Accra, Ghana", timestamp: t2, createdAt: t2, source: "carrier_api", clientVisible: true, seq: 2 },
+    { id: "e3", statusCode: "AT_FACILITY", title: "Facility Arrival", location: "Lagos, Nigeria", timestamp: t3, createdAt: t3, source: "admin", clientVisible: true, seq: 3 }
+  ];
+  const locations = [{ lat: 6.52, lng: 3.38, name: "Lagos", timestamp: t3, source: "admin" }, { lat: 5.6, lng: -0.19, name: "Accra", timestamp: t2, source: "gps" }];
+  const v = buildClientView({ shipment, events, locations });
+  const json = JSON.stringify(v);
+  for (const t of [t1, t3]) assert.ok(!json.includes(t) && !json.includes(t.slice(0, 16)), `staff time ${t} never reaches the client`);
+  assert.ok(!("lastUpdated" in v) && !("createdAt" in v), "no record edit / creation time");
+  assert.deepEqual(v.timeline.map((e) => [e.id, e.timestamp]), [["e3", null], ["e2", t2], ["e1", null]], "order kept; only the carrier event keeps its time");
+  assert.equal(v.timeline[0].title, "Facility Arrival");
+  assert.equal(v.currentLocation.updatedAt, null); assert.equal(v.locationState.updatedAt, null);
+  assert.deepEqual(v.map.trail.map((p) => p.timestamp), [t2, null]);
+  assert.equal(v.version, "7");
+  assert.match(shipmentVersion({ updatedAt: t3 }), /^h[0-9a-f]{12}$/, "old records get an opaque version, not their edit time");
+  const delivered = buildClientView({ shipment: { ...shipment, statusCode: "DELIVERED" }, events: [{ ...events[2], id: "e4", statusCode: "DELIVERED" }] });
+  assert.equal(delivered.eta.state, "delivered"); assert.equal(delivered.eta.deliveredAt, null, "a staff-recorded delivery has no client-visible time");
+  const overview = buildPublicOverview({ summaries: [shipment], publicShipments: [shipment], eventsByCode: new Map([[shipment.id, events.slice().reverse()]]) });
+  const oj = JSON.stringify(overview);
+  assert.ok(!oj.includes(t3) && !oj.includes(t1), "the homepage overview carries no staff times");
+  assert.ok(!("lastUpdated" in overview.stats));
+  assert.deepEqual(overview.activity.map((a) => a.at), [null, t2, null]);
+  assert.ok(overview.routes.every((r) => !("updatedAt" in r) && !("sortKey" in r)));
+  // the tracker shows a milestone time only when the server sent one
+  const tr = read("tracker/tracker.js");
+  assert.match(tr, /\$\{t\.timestamp \? `<div class="hx-tl-time">/);
+  assert.match(tr, /\$\{latest\.timestamp \? `<div class="hx-fact-sub"><time/);
+});
+
+test("admin dashboard: compact KPI tiles from real totals, total shows archived, registered clients and orphan sign-in accounts reported", async () => {
+  const { createMemoryStore } = await import("../api/_lib/store/memory.js");
+  const store = createMemoryStore({ clients: { a: { name: "A", email: "a@x.test", status: "active" } },
+    authUsers: { a: { email: "a@x.test" }, b: { email: "b@x.test" }, adm: { email: "o@x.test", admin: true } } });
+  assert.equal(await store.countAccountsWithoutProfile(), 1, "b has no profile; admins are not clients");
+  const c = read("admin/center.js");
+  assert.match(c, /incl\. \$\{t\.archived\} archived/);
+  assert.match(c, /accountsWithoutProfile/);
+  assert.match(c, /kpi-alert/);
+  assert.ok(!/Math\.random|demo|sample/i.test(c.match(/async function loadDashboard[\s\S]*?\n {2}}\n/)[0]), "no invented figures");
+  assert.match(read("admin.html"), /admin\/dashboard\.css/);
+  assert.match(read("admin.html"), /id="dashStack"/);
+});
+
+test("Carrier Network page: public carrier directory with the shared header, no admin tools, linked from every public menu", () => {
+  const page = read("carriers.html");
+  assert.match(page, /mountCarrierDirectory\(document\.getElementById\("carrierDirectory"\), document\.getElementById\("carrierTabs"\), \{ collapse: false \}\)/);
+  assert.ok(!/api\/admin|admin\.js|center\.js/.test(page), "no admin code");
+  assert.equal(page.split("embed.tawk.to/6ad58a3eb5a48e34d3f1d2de/default").length - 1, 1, "one guarded tawk.to loader");
+  const header = (f) => read(f).match(/<!-- site-header -->[\s\S]*?<!-- \/site-header -->/)[0];
+  for (const f of ["index.html", "track.html", "tracking-enhanced.html"]) {
+    assert.equal(header(f), header("carriers.html"), `${f}: same header`);
+    assert.match(read(f), /<a href="\/carriers\.html">Carrier network<\/a>/);
+  }
 });
 
 test("carrier images and shipment-stage images are separate: no shared files, imports or fallbacks", async () => {

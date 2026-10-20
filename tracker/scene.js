@@ -94,7 +94,10 @@ export function sceneSvg({ stage, mode }) {
  */
 export function routeStops(view) {
   const v = view || {};
-  const events = (v.timeline || []).filter((t) => t && t.location).slice().sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+  // the server sends the timeline newest first; times are only sent for verified feeds, so order by time only when every
+  // event has one and otherwise keep the server's order (reversed to oldest first)
+  const events = (v.timeline || []).filter((t) => t && t.location).slice().reverse();
+  if (events.every((e) => Number.isFinite(Date.parse(e.timestamp)))) events.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
   const mid = [];
   for (const e of events) if (!mid.length || !same(mid[mid.length - 1].place, e.location)) mid.push({ place: e.location, title: e.title, at: e.timestamp });
