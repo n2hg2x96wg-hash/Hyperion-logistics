@@ -738,7 +738,7 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
   }
   // openly licensed Wikimedia Commons photos, each of the carrier it is mapped to, with the credit its licence requires
   const ids = CARRIERS.map((c) => c.id);
-  assert.equal(Object.keys(CARRIER_PHOTOS).length, 20);
+  assert.equal(Object.keys(CARRIER_PHOTOS).length, 23, "every carrier has a photo");
   for (const [id, p] of Object.entries(CARRIER_PHOTOS)) {
     assert.ok(ids.includes(id), `${id} is a real carrier`);
     assert.match(p.base, /^assets\/carriers\/[a-z0-9-]+$/, `${id}: a descriptive file name in assets/carriers`);
@@ -746,7 +746,11 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
     assert.match(p.credit.license, /^(CC BY(-SA)? [0-9.]+|CC0|Public domain)$/, `${id}: open licence`);
     assert.ok(p.credit.author && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(p.credit.source), `${id}: author and source`);
   }
-  for (const [id, cat] of [["ems", "express"], ["redstarexpress", "regional"], ["tesla-transport", "custom"]]) assert.equal(carrierMedia({ id, category: cat }).type, "name", `${id}: still needs a verified photo`);
+  // only Red Star Express uses an unbranded stand-in, and it is marked so the card can say it is illustrative
+  assert.deepEqual(Object.entries(CARRIER_PHOTOS).filter(([, p]) => p.illustrative).map(([id]) => id), ["redstarexpress"]);
+  assert.match(CARRIER_PHOTOS.redstarexpress.alt, /illustrative/i);
+  assert.match(read("ui/carriers.js"), /Illustrative photo: not a \$\{esc\(c\.name\)\} vehicle\./);
+  assert.equal(carrierMedia({ id: "tesla-transport", category: "custom" }).base, "assets/carriers/tesla-semi");
   assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups-truck");
   // credits live on the Image Credits page (linked from every footer), not on the cards or in their details
   assert.ok(!/cr-credit|photoCredit|Wikimedia Commons/.test(read("ui/carriers.js")), "no photo credits on the cards");
@@ -758,7 +762,7 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
   for (const [id, m] of shuffled) assert.equal(m, JSON.stringify(carrierMedia({ id, category: carrierCategory(CARRIERS.find((c) => c.id === id)) })));
   const credits = read("assets/carriers/ATTRIBUTION.md");
   for (const [id, m] of Object.entries(CARRIER_PHOTOS)) { assert.ok(credits.includes(`| ${id} |`) && credits.includes(m.credit.source) && credits.includes(m.base.split("/").pop()), `attribution for ${id}`); }
-  for (const n of ["EMS (Express Mail Service)", "Red Star Express", "Tesla Transport"]) assert.ok(credits.includes(n), `${n} listed as still needing a photo`);
+  for (const n of ["EMS (Express Mail Service)", "Red Star Express", "Tesla Transport"]) assert.ok(credits.includes(n), `${n} explained in the notes`);
   assert.ok(!fs.existsSync(new URL("../assets/carriers/CREDITS.md", import.meta.url)), "owner screenshots with unverified rights are gone");
   const src = read("ui/carriers.js");
   assert.ok(!/<svg class="cr-art"|categoryArtSvg/.test(src + read("ui/carrier-media.js")), "no drawn stand-in pictures");

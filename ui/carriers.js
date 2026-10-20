@@ -71,6 +71,7 @@ function detail(c) {
     <h4>${esc(c.name)}</h4>
     ${c.description ? `<p>${esc(c.description)}</p>` : ""}
     ${c.coverage ? `<p>Coverage: ${esc(c.coverage)}</p>` : ""}
+    ${carrierMedia(c).illustrative ? `<p class="cr-illus">Illustrative photo: not a ${esc(c.name)} vehicle.</p>` : ""}
     ${c.custom && c.note ? `<p>${esc(c.note)}</p>` : ""}
     ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? PARTNER_BADGE : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a>` : ""}</div>` : ""}</div>`;
 }

@@ -159,7 +159,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   // desktop: each card shows its carrier's own photo or a name-led panel; reveal on scroll; tilt; details and tabs
   let ctx = await newContext({ width: 1280, height: 900 });
   let page = await ctx.newPage(); let errors = watchErrors(page);
-  await ctx.route(/assets\/carriers\/emiratesskycargo-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
+  await ctx.route(/assets\/carriers\/emirates-skycargo-777f-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
   await page.goto(base + "/index.html");
   await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
   const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
@@ -177,12 +177,16 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
     assert.ok(!/assets\/(stages|journey|freight)\//.test(c.html), `${c.id}: no shipment-stage or homepage picture on a carrier card`);
     assert.ok(c.media === "photo" ? c.src && !c.mark : c.mark && !c.src, `${c.id}: exactly one kind of picture`);
   }
-  assert.equal(by.ups.src, "assets/carriers/ups-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-480.jpg");
-  assert.equal(by.emiratesskycargo.src, "assets/carriers/emiratesskycargo-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
-  for (const id of ["dhl", "fedex", "qatarcargo", "msc", "giglogistics", "correios"]) assert.equal(by[id].src, `assets/carriers/${id}-480.jpg`, `${id}: its own photo`);
-  for (const id of ["ems", "redstarexpress", "tesla-transport"]) assert.equal(by[id].media, "name", `${id}: name-led card`);
-  assert.deepEqual([by.ems.mark, by.redstarexpress.mark, by["tesla-transport"].mark], ["EMS", "RSE", "TT"]);
-  assert.match(await page.textContent('#carriers .cr-tile[data-id="dhl"] .cr-credit'), /Photo: .+ · CC BY/);
+  assert.equal(by.ups.src, "assets/carriers/ups-truck-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-container-ship-480.jpg");
+  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-skycargo-777f-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
+  for (const [id, f] of [["dhl", "dhl-van"], ["fedex", "fedex-truck"], ["qatarcargo", "qatar-airways-cargo-777f"], ["msc", "msc-container-ship"], ["giglogistics", "gig-logistics-hub"], ["correios", "correios-sedex-van"], ["ems", "ems-korea-post-incheon"]])
+    assert.equal(by[id].src, `assets/carriers/${f}-480.jpg`, `${id}: its own photo`);
+  for (const id of ["ems", "redstarexpress", "tesla-transport"]) assert.equal(by[id].media, "photo", `${id}: has a photo`);
+  assert.equal(by["tesla-transport"].src, "assets/carriers/tesla-semi-480.jpg");
+  assert.equal(cards.filter((c) => c.media === "photo").length, 23, "all 23 carriers show a photo");
+  // credits are on the Image Credits page, never on the cards or in their details
+  assert.equal(await page.locator("#carriers .cr-credit, #carriers .cr-photo-credit").count(), 0);
+  assert.ok(!/Wikimedia|CC BY|Photo:/.test(await page.textContent("#carriers")), "no credit text on the cards");
   assert.equal(cards.filter((c) => c.noImg).length, 1);
   assert.ok(await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img:not(.cr-logo)", (is) => is.every((i) => i.complete && i.naturalWidth > 0)), "the other photos load");
   const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
@@ -195,7 +199,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-tilt")), false, "the card settles when the pointer leaves");
   await tile.click();
   assert.match(await page.textContent("#cr-detail"), /Maersk/);
-  assert.match(await page.getAttribute("#cr-detail .cr-photo-credit a", "href"), /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, "the details link the photo's source");
+  assert.ok(!/Wikimedia|CC BY|Photo:/.test(await page.textContent("#cr-detail")), "no photo credit in the details");
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-in")), true, "re-rendering does not replay the entrance");
   await page.click('#carrierTabs [data-filter="air"]');
   assert.equal(await page.locator("#carriers .cr-tile").count(), 4);
@@ -204,6 +208,20 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   for (const [id, m] of air) assert.equal(m, by[id].media, `${id}: same picture after filtering`);
   await page.click('#carrierTabs [data-filter="all"]');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  // Red Star Express: the unbranded stand-in photo says so in the details
+  await page.click('#carrierTabs [data-filter="all"]');
+  await page.locator('#carriers .cr-tile[data-id="redstarexpress"]').scrollIntoViewIfNeeded();
+  await page.click('#carriers .cr-tile[data-id="redstarexpress"]');
+  assert.match(await page.textContent("#cr-detail"), /Illustrative photo: not a Red Star Express vehicle\./);
+  // the credits the licences require: the Image Credits page, linked from the footer
+  await Promise.all([page.waitForURL(/\/credits\.html$/), page.click('.site-footer a[href="/credits.html"]')]);
+  await page.waitForSelector(".credit-row");
+  assert.equal(await page.locator(".credit-row").count(), 23);
+  const creditsText = await page.textContent("#creditsList");
+  for (const t of ["Joost J. Bakker", "Steve Jurvetson", "CC BY-SA 4.0", "via Wikimedia Commons"]) assert.ok(creditsText.includes(t), `credits include ${t}`);
+  for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 500); await page.waitForTimeout(120); }
+  await page.waitForFunction(() => [...document.querySelectorAll(".credit-row img")].filter((i) => !i.src.includes("emirates")).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 });
+  assert.ok(await noOverflow(page));
   // the tracking result picks its stage picture from the shipment's status, independently of the carrier pictures
   await page.goto(`${base}/track.html?code=${codes.hub}`); // DHL, At facility
   await page.waitForSelector(".hx-scene .hx-scene-photo img");

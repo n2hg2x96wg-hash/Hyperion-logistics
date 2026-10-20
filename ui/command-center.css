@@ -200,3 +200,4 @@ html[data-theme="light"] .carriers-page .section-head h1 { color: #0b1a3d; }
 html[data-theme="light"] .credit-row { background: #fff; border-color: #dce5f1; }
 html[data-theme="light"] .credit-row strong { color: #0b1a3d; }
 html[data-theme="light"] .credit-row div { color: #44557a; }
+.cr-detail .cr-illus { font-size: 12.5px; color: #8fa3c7; font-style: italic; }

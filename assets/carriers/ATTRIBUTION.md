@@ -1,7 +1,7 @@
 # Carrier photo attributions
 
-Photos on the carrier cards (homepage `#carriers` and `carriers.html`). Every photo comes from Wikimedia Commons under the licence shown,
-was checked to show the named carrier's own vehicle, aircraft, ship or premises, and is used only on that carrier's card.
+Photos on the carrier cards (homepage `#carriers` and `carriers.html`). Every photo comes from Wikimedia Commons under the licence shown and was
+checked by eye; each shows the named carrier's own vehicle, aircraft, ship or premises (exceptions explained under Notes).
 Files here are resized copies (480 and 960 px wide, AVIF/WebP/JPEG); no other changes were made. Carrier names, logos and liveries
 are trademarks of their owners; showing them identifies the carrier and does not imply a partnership.
 
@@ -27,14 +27,20 @@ are trademarks of their owners; showing them identifies the carrier and does not
 | maersk | `maersk-container-ship-480/960.(avif,webp,jpg)` | [MAERSK HANOI Container Ship (Port Koper SIKOP, 2023).jpg](https://commons.wikimedia.org/wiki/File:MAERSK_HANOI_Container_Ship_(Port_Koper_SIKOP,_2023).jpg) | https://upload.wikimedia.org/wikipedia/commons/c/c8/MAERSK_HANOI_Container_Ship_%28Port_Koper_SIKOP%2C_2023%29.jpg | Petar Milošević | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | Photo: Petar Milošević, CC BY-SA 4.0, via Wikimedia Commons |
 | cmacgm | `cma-cgm-container-ship-480/960.(avif,webp,jpg)` | [CMA CGM Kerguelen, Container Terminal Burchardkai, Hamburg (P1080471).jpg](https://commons.wikimedia.org/wiki/File:CMA_CGM_Kerguelen,_Container_Terminal_Burchardkai,_Hamburg_(P1080471).jpg) | https://upload.wikimedia.org/wikipedia/commons/d/d2/CMA_CGM_Kerguelen%2C_Container_Terminal_Burchardkai%2C_Hamburg_%28P1080471%29.jpg | Matti Blume | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | Photo: Matti Blume, CC BY-SA 4.0, via Wikimedia Commons |
 | correios | `correios-sedex-van-480/960.(avif,webp,jpg)` | [Correios SEDEX Peugeot Expert.jpg](https://commons.wikimedia.org/wiki/File:Correios_SEDEX_Peugeot_Expert.jpg) | https://upload.wikimedia.org/wikipedia/commons/6/67/Correios_SEDEX_Peugeot_Expert.jpg | Mateusmatsuda | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) | Photo: Mateusmatsuda, CC BY 4.0, via Wikimedia Commons |
+| tesla-transport | `tesla-semi-480/960.(avif,webp,jpg)` | [The Tesla Semi Truck (40705940423).jpg](https://commons.wikimedia.org/wiki/File:The_Tesla_Semi_Truck_(40705940423).jpg) | https://upload.wikimedia.org/wikipedia/commons/e/e2/The_Tesla_Semi_Truck_%2840705940423%29.jpg | Steve Jurvetson from Menlo Park, USA | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) | Photo: Steve Jurvetson from Menlo Park, USA, CC BY 2.0, via Wikimedia Commons |
+| ems | `ems-korea-post-incheon-480/960.(avif,webp,jpg)` | [인천공항T1 우체국 우편취급국(EMS).jpg](https://commons.wikimedia.org/wiki/File:%EC%9D%B8%EC%B2%9C%EA%B3%B5%ED%95%ADT1_%EC%9A%B0%EC%B2%B4%EA%B5%AD_%EC%9A%B0%ED%8E%B8%EC%B7%A8%EA%B8%89%EA%B5%AD(EMS).jpg) | https://upload.wikimedia.org/wikipedia/commons/b/b7/%EC%9D%B8%EC%B2%9C%EA%B3%B5%ED%95%ADT1_%EC%9A%B0%EC%B2%B4%EA%B5%AD_%EC%9A%B0%ED%8E%B8%EC%B7%A8%EA%B8%89%EA%B5%AD%28EMS%29.jpg | Narubaru7 | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) | Photo: Narubaru7, CC BY 4.0, via Wikimedia Commons |
+| redstarexpress | `courier-van-illustrative-480/960.(avif,webp,jpg)` | [Ford Transit 250 cargo van HTS Systems.jpg](https://commons.wikimedia.org/wiki/File:Ford_Transit_250_cargo_van_HTS_Systems.jpg) | https://upload.wikimedia.org/wikipedia/commons/6/65/Ford_Transit_250_cargo_van_HTS_Systems.jpg | MobiusDaXter | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | Photo: MobiusDaXter, CC BY-SA 4.0, via Wikimedia Commons |
 
-## Carriers without a photo
+## Notes
 
-- **EMS (Express Mail Service)** — no openly licensed photo of an EMS-branded vehicle or facility was found on Wikimedia Commons.
-- **Red Star Express** — no openly licensed photo of Red Star Express found on Wikimedia Commons.
-- **Tesla Transport** — a custom transport arrangement, not an official Tesla service, so no Tesla photo is used.
+- **Tesla Transport** shows a Tesla Semi electric truck. Tesla Transport is a custom transport arrangement listed in the directory; the photo shows the
+  vehicle type and does not mean the service is operated by Tesla, Inc.
+- **EMS (Express Mail Service)** shows a Korea Post office at Incheon Airport with EMS signage. EMS is run by national postal operators;
+  the photo illustrates one of them (Korea Post) and does not represent every EMS operator.
+- **Red Star Express**: no openly licensed photo of a Red Star Express vehicle exists on Wikimedia Commons, so the card uses an unbranded courier
+  van and says on the card that the photo is illustrative and not a Red Star Express vehicle.
 
-These cards show the carrier's initials until a verified photo is added.
+The credits are also shown on the public Image Credits page (`/credits.html`, linked in the footer of every page), as the licences require.
 
 ## Adding or replacing a photo
 

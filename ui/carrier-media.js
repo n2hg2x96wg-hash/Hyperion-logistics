@@ -2,9 +2,9 @@
 //   - carrier cards read ONLY from assets/carriers/ (this file), keyed by the carrier's stable id;
 //   - the tracking result reads ONLY its own stage pictures via stagePhoto() in the tracker, keyed by the shipment's
 //     recorded status and transport mode.
-// Neither module imports the other. A photo is used only on the carrier it shows. A carrier without its own photo gets a
-// name-led card (its name as the visual, in its brand colour): never a stock or stage photo, never another carrier's
-// photo, never a drawing standing in for a picture. Every photo is openly licensed on Wikimedia Commons; authors, licences and
+// Neither module imports the other. A photo is used only on the carrier it shows. Where no photo of the carrier itself
+// exists (Red Star Express), an unbranded photo is used and marked `illustrative`, and the card says so; a carrier with no
+// photo at all gets a name-led card. Never a stage photo, never another carrier's photo, never a drawing. Every photo is openly licensed on Wikimedia Commons; authors, licences and
 // sources are listed on the Image Credits page (credits.html, linked in the footer) and in assets/carriers/ATTRIBUTION.md.
 
 /** Photos that belong to one carrier, by carrier id, with the credit their licence requires (assets/carriers/ATTRIBUTION.md). */
@@ -49,6 +49,12 @@ export const CARRIER_PHOTOS = Object.freeze({
     credit: { author: "Matti Blume", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", source: "https://commons.wikimedia.org/wiki/File:CMA_CGM_Kerguelen,_Container_Terminal_Burchardkai,_Hamburg_(P1080471).jpg" } },
   correios: { base: "assets/carriers/correios-sedex-van", widths: [480, 960], position: "50% 60%", alt: "Correios SEDEX Peugeot Expert delivery van",
     credit: { author: "Mateusmatsuda", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0", source: "https://commons.wikimedia.org/wiki/File:Correios_SEDEX_Peugeot_Expert.jpg" } },
+  "tesla-transport": { base: "assets/carriers/tesla-semi", widths: [480, 960], position: "50% 60%", alt: "Tesla Semi electric truck",
+    credit: { author: "Steve Jurvetson from Menlo Park, USA", license: "CC BY 2.0", licenseUrl: "https://creativecommons.org/licenses/by/2.0", source: "https://commons.wikimedia.org/wiki/File:The_Tesla_Semi_Truck_(40705940423).jpg" } },
+  ems: { base: "assets/carriers/ems-korea-post-incheon", widths: [480, 960], position: "40% 55%", alt: "Korea Post office at Incheon Airport with EMS signage",
+    credit: { author: "Narubaru7", license: "CC BY 4.0", licenseUrl: "https://creativecommons.org/licenses/by/4.0", source: "https://commons.wikimedia.org/wiki/File:%EC%9D%B8%EC%B2%9C%EA%B3%B5%ED%95%ADT1_%EC%9A%B0%EC%B2%B4%EA%B5%AD_%EC%9A%B0%ED%8E%B8%EC%B7%A8%EA%B8%89%EA%B5%AD(EMS).jpg" } },
+  redstarexpress: { base: "assets/carriers/courier-van-illustrative", widths: [480, 960], position: "50% 60%", alt: "Unbranded courier van with a parcel trolley (illustrative photo)", illustrative: true,
+    credit: { author: "MobiusDaXter", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0", source: "https://commons.wikimedia.org/wiki/File:Ford_Transit_250_cargo_van_HTS_Systems.jpg" } },
 });
 
 export const CARD_CATEGORIES = Object.freeze(["express", "air", "ocean", "regional", "custom"]);
