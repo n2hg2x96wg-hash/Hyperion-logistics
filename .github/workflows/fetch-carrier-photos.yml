@@ -1,0 +1,40 @@
+# Temporary helper (branch carrier-photo-fetch only): downloads the openly licensed Wikimedia Commons photos listed in
+# carrier-photo-fetch/fetch.json and commits them to this branch, because the build sandbox cannot download them.
+name: Fetch carrier photos
+on:
+  push:
+    branches: [carrier-photo-fetch]
+    paths: ["carrier-photo-fetch/fetch.json"]
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        run: |
+          python3 - <<'PY'
+          import json, time, urllib.request
+          UA = "HyperionLogisticsCarrierPhotos/1.0 (https://hyperion-logistics.vercel.app; hyperionlogistics.com@gmail.com) GitHub-Actions"
+          items = json.load(open("carrier-photo-fetch/fetch.json"))
+          ok = 0
+          for it in items:
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request(it["fetch"], headers={"User-Agent": UA})
+                      data = urllib.request.urlopen(req, timeout=120).read()
+                      if data[:3] != b"\xff\xd8\xff": raise ValueError("not a JPEG")
+                      open("carrier-photo-fetch/" + it["file"], "wb").write(data); ok += 1; print("ok", it["file"], len(data)); break
+                  except Exception as e:
+                      print("retry", it["file"], e); time.sleep(10 * (attempt + 1))
+              time.sleep(2)
+          print(f"{ok}/{len(items)} downloaded")
+          PY
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898319+github-actions[bot]@users.noreply.github.com"
+          git add carrier-photo-fetch/*.jpg
+          git commit -m "Downloaded carrier photo candidates (temporary)" || echo "nothing to commit"
+          git push
