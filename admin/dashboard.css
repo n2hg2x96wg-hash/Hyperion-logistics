@@ -106,6 +106,6 @@ html[data-theme="light"] body.console .header { background: #fff; }
 
 /* phones: overview text stays at 13px or larger */
 @media (max-width: 900px) {
-  body.console .card-header p, body.console .dash-status-head h4, body.console #dashStatusTotal, body.console .kpi-alert span { font-size: 13px; }
+  body.console .card-header p, body.console .dash-status-head h4, body.console #dashStatusTotal, body.console .kpi-alert span, body.console .kpi-alert-btn { font-size: 13px; }
   body.console .kpi-grid .kpi .kpi-label { font-size: 13px; letter-spacing: .04em; }
 }
