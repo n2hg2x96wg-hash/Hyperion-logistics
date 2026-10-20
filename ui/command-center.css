@@ -191,9 +191,13 @@
 .carriers-page .cr-cta { margin-top: 22px; }
 html[data-theme="light"] .carriers-page .section-head h1 { color: #0b1a3d; }
 
-/* photo credit (required by the photo licences): a short line on the card, the full linked credit in the details */
-.cr-credit { position: absolute; right: 6px; bottom: 7px; z-index: 2; max-width: calc(100% - 12px); padding: 2px 6px; border-radius: 4px; font-size: 9.5px; line-height: 1.3;
-  color: rgba(255, 255, 255, 0.85); background: rgba(5, 11, 25, 0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-.cr-tile.no-img .cr-credit { display: none; }
-.cr-detail .cr-photo-credit { font-size: 12.5px; color: #8fa3c7; }
-html[data-theme="light"] .cr-detail .cr-photo-credit { color: #4a5f84; }
+/* Image Credits page (credits.html) */
+.credits { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
+.credit-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px 12px; border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 12px; background: #0a142e; }
+.credit-row img { width: 96px; height: 60px; object-fit: cover; border-radius: 8px; display: block; }
+.credit-row div { display: grid; gap: 2px; min-width: 0; font-size: 13.5px; color: #94a3b8; overflow-wrap: anywhere; }
+.credit-row strong { color: #fff; font-size: 15px; }
+html[data-theme="light"] .credit-row { background: #fff; border-color: #dce5f1; }
+html[data-theme="light"] .credit-row strong { color: #0b1a3d; }
+html[data-theme="light"] .credit-row div { color: #44557a; }
+.cr-detail .cr-illus { font-size: 12.5px; color: #8fa3c7; font-style: italic; }
