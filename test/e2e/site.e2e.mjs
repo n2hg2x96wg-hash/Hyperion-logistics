@@ -159,7 +159,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   // desktop: each card shows its carrier's own photo or a name-led panel; reveal on scroll; tilt; details and tabs
   let ctx = await newContext({ width: 1280, height: 900 });
   let page = await ctx.newPage(); let errors = watchErrors(page);
-  await ctx.route(/assets\/carriers\/emirates-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
+  await ctx.route(/assets\/carriers\/emiratesskycargo-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
   await page.goto(base + "/index.html");
   await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
   const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
@@ -178,9 +178,11 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
     assert.ok(c.media === "photo" ? c.src && !c.mark : c.mark && !c.src, `${c.id}: exactly one kind of picture`);
   }
   assert.equal(by.ups.src, "assets/carriers/ups-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-480.jpg");
-  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
-  for (const id of ["dhl", "qatarcargo", "msc", "giglogistics", "tesla-transport"]) assert.equal(by[id].media, "name", `${id}: name-led card`);
-  assert.deepEqual([by.dhl.mark, by.qatarcargo.mark, by.msc.mark, by.giglogistics.mark], ["DHL", "QAC", "MSC", "GIG"]);
+  assert.equal(by.emiratesskycargo.src, "assets/carriers/emiratesskycargo-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
+  for (const id of ["dhl", "fedex", "qatarcargo", "msc", "giglogistics", "correios"]) assert.equal(by[id].src, `assets/carriers/${id}-480.jpg`, `${id}: its own photo`);
+  for (const id of ["ems", "redstarexpress", "tesla-transport"]) assert.equal(by[id].media, "name", `${id}: name-led card`);
+  assert.deepEqual([by.ems.mark, by.redstarexpress.mark, by["tesla-transport"].mark], ["EMS", "RSE", "TT"]);
+  assert.match(await page.textContent('#carriers .cr-tile[data-id="dhl"] .cr-credit'), /Photo: .+ · CC BY/);
   assert.equal(cards.filter((c) => c.noImg).length, 1);
   assert.ok(await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img:not(.cr-logo)", (is) => is.every((i) => i.complete && i.naturalWidth > 0)), "the other photos load");
   const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
@@ -193,6 +195,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-tilt")), false, "the card settles when the pointer leaves");
   await tile.click();
   assert.match(await page.textContent("#cr-detail"), /Maersk/);
+  assert.match(await page.getAttribute("#cr-detail .cr-photo-credit a", "href"), /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, "the details link the photo's source");
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-in")), true, "re-rendering does not replay the entrance");
   await page.click('#carrierTabs [data-filter="air"]');
   assert.equal(await page.locator("#carriers .cr-tile").count(), 4);

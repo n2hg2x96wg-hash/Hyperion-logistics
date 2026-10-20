@@ -736,15 +736,26 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
       assert.ok(m.alt && m.alt.length > 10);
     } else assert.deepEqual(m, { type: "name", category: carrierCategory(c) }, `${c.id}: name-led card`);
   }
-  assert.deepEqual(Object.keys(CARRIER_PHOTOS).sort(), ["emiratesskycargo", "maersk", "ups"]);
-  for (const [id, cat] of [["dhl", "express"], ["qatarcargo", "air"], ["msc", "ocean"], ["giglogistics", "regional"], ["tesla-transport", "custom"]]) assert.equal(carrierMedia({ id, category: cat }).type, "name", id);
+  // openly licensed Wikimedia Commons photos, each of the carrier it is mapped to, with the credit its licence requires
+  const ids = CARRIERS.map((c) => c.id);
+  assert.equal(Object.keys(CARRIER_PHOTOS).length, 20);
+  for (const [id, p] of Object.entries(CARRIER_PHOTOS)) {
+    assert.ok(ids.includes(id), `${id} is a real carrier`);
+    assert.equal(p.base, `assets/carriers/${id}`, `${id}: its own file`);
+    assert.match(p.credit.license, /^(CC BY(-SA)? [0-9.]+|CC0|Public domain)$/, `${id}: open licence`);
+    assert.ok(p.credit.author && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(p.credit.source), `${id}: author and source`);
+  }
+  for (const [id, cat] of [["ems", "express"], ["redstarexpress", "regional"], ["tesla-transport", "custom"]]) assert.equal(carrierMedia({ id, category: cat }).type, "name", `${id}: still needs a verified photo`);
   assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups");
+  assert.match(read("ui/carriers.js"), /class="cr-credit"/); assert.match(read("ui/carriers.js"), /via Wikimedia Commons/);
   assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "name", "no prototype lookups");
   assert.equal(carrierMedia({ id: "new-carrier", category: "nonsense" }).category, "custom");
   const shuffled = CARRIERS.slice().reverse().map((c) => [c.id, JSON.stringify(carrierMedia({ id: c.id, category: carrierCategory(c) }))]);
   for (const [id, m] of shuffled) assert.equal(m, JSON.stringify(carrierMedia({ id, category: carrierCategory(CARRIERS.find((c) => c.id === id)) })));
-  const credits = read("assets/carriers/CREDITS.md");
-  for (const m of Object.values(CARRIER_PHOTOS)) assert.ok(credits.includes(`\`${m.base.split("/").pop()}-*\``), `credits for ${m.base}`);
+  const credits = read("assets/carriers/ATTRIBUTION.md");
+  for (const [id, m] of Object.entries(CARRIER_PHOTOS)) { assert.ok(credits.includes(`| ${id} |`) && credits.includes(m.credit.source), `attribution for ${id}`); }
+  for (const n of ["EMS (Express Mail Service)", "Red Star Express", "Tesla Transport"]) assert.ok(credits.includes(n), `${n} listed as still needing a photo`);
+  assert.ok(!fs.existsSync(new URL("../assets/carriers/CREDITS.md", import.meta.url)), "owner screenshots with unverified rights are gone");
   const src = read("ui/carriers.js");
   assert.ok(!/<svg class="cr-art"|categoryArtSvg/.test(src + read("ui/carrier-media.js")), "no drawn stand-in pictures");
   assert.match(src, /alt=""/); assert.match(src, /loading="lazy"/); assert.match(src, /prefers-reduced-motion: reduce/);
