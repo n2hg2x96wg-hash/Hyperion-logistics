@@ -42,11 +42,11 @@ export function carrierMonogram(name) {
   if (/^[A-Z0-9]{2,4}$/.test(words[0])) return words[0];
   return words.length > 1 ? words.slice(0, 3).map((w) => w[0]).join("").toUpperCase() : n; // one long word: shown whole, smaller
 }
-// the credit each photo's licence requires: a short line on the card, the full linked credit in the details
-const creditText = (cr) => `Photo: ${cr.author} · ${cr.license}`;
+// photo credits (author, licence, source) are listed on the Image Credits page (credits.html, linked in the footer), not on
+// the cards, so the directory stays clean
 function media(c) {
   const m = carrierMedia(c);
-  if (m.type === "photo") return picture(m) + (m.credit ? `<span class="cr-credit">${esc(creditText(m.credit))}</span>` : "");
+  if (m.type === "photo") return picture(m);
   return `<span class="cr-name" aria-hidden="true"><span class="cr-name-mark${carrierMonogram(c.name).length > 5 ? " is-long" : ""}">${esc(carrierMonogram(c.name))}</span></span>`;
 }
 
@@ -66,19 +66,11 @@ function tile(c, open, seen) {
     ${c.partner === true ? `<span class="chips">${PARTNER_BADGE}</span>` : ""}</span></button>`;
 }
 
-function photoCredit(c) {
-  const m = carrierMedia(c); const cr = m.type === "photo" ? m.credit : null;
-  if (!cr) return "";
-  const lic = cr.licenseUrl ? `<a href="${esc(cr.licenseUrl)}" target="_blank" rel="noopener noreferrer license">${esc(cr.license)}</a>` : esc(cr.license);
-  return `<p class="cr-photo-credit">Photo: <a href="${esc(cr.source)}" target="_blank" rel="noopener noreferrer">${esc(cr.author)}</a>, ${lic}, via Wikimedia Commons. Illustrates the carrier; not a Hyperion shipment.</p>`;
-}
-
 function detail(c) {
   return `<div class="cr-detail" id="cr-detail" role="region" aria-label="${esc(c.name)} details">
     <h4>${esc(c.name)}</h4>
     ${c.description ? `<p>${esc(c.description)}</p>` : ""}
     ${c.coverage ? `<p>Coverage: ${esc(c.coverage)}</p>` : ""}
-    ${photoCredit(c)}
     ${c.custom && c.note ? `<p>${esc(c.note)}</p>` : ""}
     ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? PARTNER_BADGE : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a>` : ""}</div>` : ""}</div>`;
 }
