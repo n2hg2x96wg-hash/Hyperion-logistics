@@ -578,6 +578,7 @@ test("tracking edge cases: invalid code, network failure with retry, missing opt
     assert.match(tl[0].title, /Shipment Registered/, "oldest first");
     assert.ok(tl.at(-1).latest, "newest record marked Latest");
     await page.click('.hx-seg[data-order="latest"]');
+    await page.waitForFunction(() => document.querySelector(".hx-timeline > .hx-tl")?.classList.contains("latest"), null, { timeout: 5000 }); // the list is redrawn after the click
     tl = await order();
     assert.ok(tl[0].latest, "latest first after switching"); assert.match(tl.at(-1).title, /Shipment Registered/);
     assert.equal(await page.getAttribute('.hx-seg[data-order="latest"]', "aria-pressed"), "true");
