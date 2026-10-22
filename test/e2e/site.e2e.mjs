@@ -159,7 +159,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   // desktop: each card shows its carrier's own photo or a name-led panel; reveal on scroll; tilt; details and tabs
   let ctx = await newContext({ width: 1280, height: 900 });
   let page = await ctx.newPage(); let errors = watchErrors(page);
-  await ctx.route(/assets\/carriers\/emirates-skycargo-777f-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
+  await ctx.route(/assets\/carriers\/emirates-777f-heathrow-/, (r) => r.abort()); // one photo fails: its card keeps a clean fallback
   await page.goto(base + "/index.html");
   await page.locator("#carriers .cr-tile").first().waitFor({ state: "attached" });
   const before = await page.$$eval("#carriers .cr-tile", (ts) => ts.filter((t) => t.classList.contains("is-in")).length);
@@ -177,16 +177,16 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
     assert.ok(!/assets\/(stages|journey|freight)\//.test(c.html), `${c.id}: no shipment-stage or homepage picture on a carrier card`);
     assert.ok(c.media === "photo" ? c.src && !c.mark : c.mark && !c.src, `${c.id}: exactly one kind of picture`);
   }
-  assert.equal(by.ups.src, "assets/carriers/ups-truck-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/maersk-container-ship-480.jpg");
-  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-skycargo-777f-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
-  for (const [id, f] of [["dhl", "dhl-van"], ["fedex", "fedex-truck"], ["qatarcargo", "qatar-airways-cargo-777f"], ["msc", "msc-container-ship"], ["giglogistics", "gig-logistics-hub"], ["correios", "correios-sedex-van"], ["ems", "ems-korea-post-incheon"]])
+  assert.equal(by.ups.src, "assets/carriers/ups-tractor-trailer-480.jpg"); assert.equal(by.maersk.src, "assets/carriers/laust-maersk-container-ship-480.jpg");
+  assert.equal(by.emiratesskycargo.src, "assets/carriers/emirates-777f-heathrow-480.jpg"); assert.ok(by.emiratesskycargo.noImg, "a failed photo leaves the fallback panel");
+  for (const [id, f] of [["dhl", "dhl-express-van"], ["fedex", "fedex-express-van"], ["qatarcargo", "qatar-cargo-777f-schiphol"], ["msc", "msc-astrid-container-ship"], ["correios", "sedex-truck"], ["ems", "ems-china-post-counter"], ["tesla-transport", "tesla-semi-silver"]])
     assert.equal(by[id].src, `assets/carriers/${f}-480.jpg`, `${id}: its own photo`);
-  for (const id of ["ems", "redstarexpress", "tesla-transport"]) assert.equal(by[id].media, "photo", `${id}: has a photo`);
-  assert.equal(by["tesla-transport"].src, "assets/carriers/tesla-semi-480.jpg");
-  assert.equal(cards.filter((c) => c.media === "photo").length, 23, "all 23 carriers show a photo");
-  // credits are on the Image Credits page, never on the cards or in their details
-  assert.equal(await page.locator("#carriers .cr-credit, #carriers .cr-photo-credit").count(), 0);
-  assert.ok(!/Wikimedia|CC BY|Photo:/.test(await page.textContent("#carriers")), "no credit text on the cards");
+  // public domain / CC0 photos only; carriers without one keep the name-led card
+  for (const id of ["2goexpress", "aramex", "giglogistics", "redstarexpress"]) assert.equal(by[id].media, "name", `${id}: name-led card`);
+  assert.equal(cards.filter((c) => c.media === "photo").length, 19);
+  // no photographer credits, licence labels or Wikimedia references on the cards or in their details
+  assert.equal(await page.locator("#carriers .cr-credit, #carriers .cr-photo-credit, #carriers .cr-illus").count(), 0);
+  assert.ok(!/Wikimedia|Creative Commons|CC BY|CC0|Photo:|Illustrative photo/i.test(await page.textContent("#carriers")), "no credit text on the cards");
   assert.equal(cards.filter((c) => c.noImg).length, 1);
   assert.ok(await page.$$eval("#carriers .cr-tile:not(.no-img) .cr-media img:not(.cr-logo)", (is) => is.every((i) => i.complete && i.naturalWidth > 0)), "the other photos load");
   const tile = page.locator('#carriers .cr-tile[data-id="maersk"]');
@@ -199,7 +199,7 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-tilt")), false, "the card settles when the pointer leaves");
   await tile.click();
   assert.match(await page.textContent("#cr-detail"), /Maersk/);
-  assert.ok(!/Wikimedia|CC BY|Photo:/.test(await page.textContent("#cr-detail")), "no photo credit in the details");
+  assert.ok(!/Wikimedia|Creative Commons|CC BY|CC0|Photo:/i.test(await page.textContent("#cr-detail")), "no photo credit in the details");
   assert.equal(await tile.evaluate((t) => t.classList.contains("is-in")), true, "re-rendering does not replay the entrance");
   await page.click('#carrierTabs [data-filter="air"]');
   assert.equal(await page.locator("#carriers .cr-tile").count(), 4);
@@ -208,20 +208,11 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   for (const [id, m] of air) assert.equal(m, by[id].media, `${id}: same picture after filtering`);
   await page.click('#carrierTabs [data-filter="all"]');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
-  // Red Star Express: the unbranded stand-in photo says so in the details
-  await page.click('#carrierTabs [data-filter="all"]');
-  await page.locator('#carriers .cr-tile[data-id="redstarexpress"]').scrollIntoViewIfNeeded();
-  await page.click('#carriers .cr-tile[data-id="redstarexpress"]');
-  assert.match(await page.textContent("#cr-detail"), /Illustrative photo: not a Red Star Express vehicle\./);
-  // the credits the licences require: the Image Credits page, linked from the footer
-  await Promise.all([page.waitForURL(/\/credits\.html$/), page.click('.site-footer a[href="/credits.html"]')]);
-  await page.waitForSelector(".credit-row");
-  assert.equal(await page.locator(".credit-row").count(), 23);
-  const creditsText = await page.textContent("#creditsList");
-  for (const t of ["Joost J. Bakker", "Steve Jurvetson", "CC BY-SA 4.0", "via Wikimedia Commons"]) assert.ok(creditsText.includes(t), `credits include ${t}`);
-  for (let i = 0; i < 12; i++) { await page.mouse.wheel(0, 500); await page.waitForTimeout(120); }
-  await page.waitForFunction(() => [...document.querySelectorAll(".credit-row img")].filter((i) => !i.src.includes("emirates")).every((i) => i.complete && i.naturalWidth > 0), null, { timeout: 15000 });
-  assert.ok(await noOverflow(page));
+  // the footer keeps the trademark disclaimer, with no Image credits link; the old credits page is gone
+  const foot = await page.textContent(".site-footer .foot-base");
+  assert.match(foot, /Carrier names are trademarks of their owners\./); assert.ok(!/Image credits/i.test(foot));
+  assert.equal(await page.locator('a[href*="credits"]').count(), 0);
+  assert.equal((await page.request.get(base + "/credits.html")).status(), 404);
   // the tracking result picks its stage picture from the shipment's status, independently of the carrier pictures
   await page.goto(`${base}/track.html?code=${codes.hub}`); // DHL, At facility
   await page.waitForSelector(".hx-scene .hx-scene-photo img");

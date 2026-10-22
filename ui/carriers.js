@@ -42,8 +42,7 @@ export function carrierMonogram(name) {
   if (/^[A-Z0-9]{2,4}$/.test(words[0])) return words[0];
   return words.length > 1 ? words.slice(0, 3).map((w) => w[0]).join("").toUpperCase() : n; // one long word: shown whole, smaller
 }
-// photo credits (author, licence, source) are listed on the Image Credits page (credits.html, linked in the footer), not on
-// the cards, so the directory stays clean
+// card photos are public domain or CC0, so the cards carry no credit line (sources: assets/carriers/SOURCES.md)
 function media(c) {
   const m = carrierMedia(c);
   if (m.type === "photo") return picture(m);
@@ -71,7 +70,6 @@ function detail(c) {
     <h4>${esc(c.name)}</h4>
     ${c.description ? `<p>${esc(c.description)}</p>` : ""}
     ${c.coverage ? `<p>Coverage: ${esc(c.coverage)}</p>` : ""}
-    ${carrierMedia(c).illustrative ? `<p class="cr-illus">Illustrative photo: not a ${esc(c.name)} vehicle.</p>` : ""}
     ${c.custom && c.note ? `<p>${esc(c.note)}</p>` : ""}
     ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? PARTNER_BADGE : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a>` : ""}</div>` : ""}</div>`;
 }
