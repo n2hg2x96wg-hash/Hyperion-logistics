@@ -9,7 +9,7 @@
 .cc-map[data-state="loading"]::before, .cc-map:not([data-state])::before { content: ""; position: absolute; left: 50%; top: 50%; width: min(70%, 420px); aspect-ratio: 1;
   transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #1b3a7a, #0b1a3d 55%, #071330 75%);
   box-shadow: 0 0 80px rgba(59, 130, 246, 0.25), inset -20px -30px 60px rgba(2, 6, 23, 0.7); }
-.cc-map[data-state="loading"]::after { content: "Loading map…"; position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: var(--hy-muted); font-size: 13px; }
+.cc-map[data-state="loading"]::after { content: var(--cc-loading, "Loading map…"); position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: var(--hy-muted); font-size: 13px; }
 .cc-map .maplibregl-canvas { outline: none; }
 .cc-map.cc-flat, .cc-map .leaflet-container { background: #071330; }
 .cc-map .leaflet-control-attribution, .cc-map .maplibregl-ctrl-attrib { background: rgba(5, 10, 24, 0.7) !important; color: #8394b4 !important; }

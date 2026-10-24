@@ -4,6 +4,7 @@
 // The picture is an illustration of the CURRENT STAGE, never a position: nothing moves along a route, and the caption
 // says so. Unknown statuses or modes fall back to a neutral parcel.
 import { transportMode } from "../shared/mode.js";
+import { t, tn, tMaybe } from "../ui/i18n.js";
 
 const STAGE_BY_STATUS = {
   CREATED: "registered", PROCESSING: "processing", PICKED_UP: "transit", IN_TRANSIT: "transit",
@@ -29,8 +30,9 @@ export function presentation(view) {
   const stage = STAGE_BY_STATUS[view?.status?.code] || "neutral";
   const mode = shipmentMode(view);
   const code = view?.status?.code;
-  const label = code === "PICKED_UP" ? "Picked up" : code === "CUSTOMS" ? "In customs"
-    : stage === "transit" && mode ? `${STAGE_TEXT.transit} · ${MODE_TEXT[mode]}` : STAGE_TEXT[stage];
+  const stageText = (k) => t(`stage.${k}`, null, STAGE_TEXT[k]);
+  const label = code === "PICKED_UP" ? t("stage.pickedUp") : code === "CUSTOMS" ? t("stage.inCustoms")
+    : stage === "transit" && mode ? `${stageText("transit")} · ${t(`mode.${mode}`, null, MODE_TEXT[mode])}` : stageText(stage);
   return { stage, mode, label };
 }
 
@@ -100,14 +102,14 @@ export function routeStops(view) {
   if (events.every((e) => Number.isFinite(Date.parse(e.timestamp)))) events.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   const same = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
   const mid = [];
-  for (const e of events) if (!mid.length || !same(mid[mid.length - 1].place, e.location)) mid.push({ place: e.location, title: e.title, at: e.timestamp });
+  for (const e of events) if (!mid.length || !same(mid[mid.length - 1].place, e.location)) mid.push({ place: e.location, title: e.title, statusCode: e.statusCode || null, at: e.timestamp });
   const delivered = v.status?.code === "DELIVERED";
   if (mid.length && same(mid[0].place, v.origin)) mid.shift();
   if (mid.length && same(mid[mid.length - 1].place, v.destination) && delivered) mid.pop();
   const stops = [];
-  if (v.origin) stops.push({ kind: "origin", place: v.origin, title: "Origin" });
+  if (v.origin) stops.push({ kind: "origin", place: v.origin, title: t("route.origin") });
   mid.forEach((m) => stops.push({ kind: "event", ...m }));
-  if (v.destination) stops.push({ kind: "destination", place: v.destination, title: delivered ? "Delivered" : "Destination" });
+  if (v.destination) stops.push({ kind: "destination", place: v.destination, title: t(delivered ? "status.DELIVERED" : "route.destination") });
   let current = stops.length - 1;
   if (!delivered) while (current > 0 && stops[current].kind === "destination") current--;
   return stops.map((x, i) => ({ ...x, state: i < current ? "done" : i === current ? "current" : "upcoming" }));
@@ -133,7 +135,7 @@ export function stagePhoto(view) {
   let key = PHOTO_BY_STATUS[code] || null;
   if (stage === "transit" && mode === "ship") key = "ship";
   if (stage === "transit" && mode === "plane") key = "air";
-  return key ? { key, ...PHOTOS[key] } : null;
+  return key ? { key, ...PHOTOS[key], alt: t(`stagePhoto.${key}`, null, PHOTOS[key].alt) } : null;
 }
 
 // ---------- plain-language meaning of each recorded status (general; never a claim about a specific shipment) ----------
@@ -180,8 +182,9 @@ export function stageScene(view) {
   return { scene: "neutral", animate: false, state: "unknown" };
 }
 export function modelCaption(scene, state = "normal") {
-  const base = `3D illustration of a typical ${SCENE_TEXT[scene] || SCENE_TEXT.neutral} for this stage — not the actual facility, vehicle or parcel.`;
-  return state === "held" ? `${base} Shown without movement while the shipment is on hold.` : state === "cancelled" ? `${base} Shown without movement: the shipment is cancelled.` : base;
+  const what = tMaybe(`scene3d.${scene}`) ?? tMaybe("scene3d.neutral") ?? SCENE_TEXT.neutral;
+  const base = t("scene3d.caption", { what });
+  return state === "held" ? `${base} ${t("scene3d.note.held")}` : state === "cancelled" ? `${base} ${t("scene3d.note.cancelled")}` : base;
 }
 
 /** <picture> markup for a stage photo; fixed width/height so nothing shifts while it loads. */
@@ -190,7 +193,7 @@ export function stagePhotoHtml(p) {
   const largest = p.widths[p.widths.length - 1];
   return `<picture class="hx-scene-photo is-${p.key}"><source type="image/avif" srcset="${set("avif")}" sizes="(max-width: 720px) 100vw, 600px">`
     + `<source type="image/webp" srcset="${set("webp")}" sizes="(max-width: 720px) 100vw, 600px">`
-    + `<img src="/assets/stages/${p.file}-${largest}.jpg" srcset="${set("jpg")}" sizes="(max-width: 720px) 100vw, 600px" width="${p.w}" height="${p.h}" alt="${p.alt}" decoding="async" onerror="this.closest('picture').classList.add('is-missing')"></picture>`;
+    + `<img src="/assets/stages/${p.file}-${largest}.jpg" srcset="${set("jpg")}" sizes="(max-width: 720px) 100vw, 600px" width="${p.w}" height="${p.h}" alt="${String(p.alt).replace(/"/g, "&quot;")}" decoding="async" onerror="this.closest('picture').classList.add('is-missing')"></picture>`;
 }
 
 /**
@@ -212,7 +215,7 @@ export function routeOverlaySvg(view) {
   }
   const dots = shown.map((s, i) => `<g class="ro-stop is-${s.state}"><circle cx="${x(i).toFixed(1)}" cy="${y(i).toFixed(1)}" r="${s.state === "current" ? 9 : 6}"/>`
     + `<text x="${x(i).toFixed(1)}" y="${(y(i) + 26).toFixed(1)}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${esc(short(s.place))}</text></g>`).join("");
-  return `<svg class="hx-route-overlay" viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Recorded checkpoints: ${esc(shown.map((s) => s.place).join(", then "))}">
+  return `<svg class="hx-route-overlay" viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${esc(t("tr.route.overlayLabel", { places: shown.map((s) => s.place).join(" → ") }))}">
     <path class="ro-done" d="${path}"/><path class="ro-next" d="${dashed}"/>${dots}
-    ${hidden ? `<text class="ro-more" x="300" y="226" text-anchor="middle">+${hidden} earlier checkpoint${hidden === 1 ? "" : "s"}</text>` : ""}</svg>`;
+    ${hidden ? `<text class="ro-more" x="300" y="226" text-anchor="middle">${esc(tn("tr.route.earlierCheckpoints", hidden))}</text>` : ""}</svg>`;
 }

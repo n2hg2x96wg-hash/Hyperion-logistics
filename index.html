@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <script>try{if(localStorage.getItem("hx-theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
+  <!-- saved language (set only by the visitor): applied before first paint; English when none was chosen -->
+  <script>try{var l=localStorage.getItem("hx-lang");if(/^(pt-PT|pt-BR|ro|es|fr|de|it|nl|ar|zh-CN|pcm)$/.test(l)){var h=document.documentElement;h.lang=l;h.dir=l==="ar"?"rtl":"ltr";h.setAttribute("data-i18n-pending","")}}catch(e){}</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#030712">
-  <title>Hyperion Logistics | Global Shipping &amp; Shipment Tracking</title>
+  <title data-i18n="meta.title.home">Hyperion Logistics | Global Shipping &amp; Shipment Tracking</title>
   <meta name="description" content="Hyperion Logistics provides express shipping, air freight, ocean freight and road &amp; regional logistics. Track your shipment and follow every recorded milestone in one clear view.">
   <link rel="canonical" href="https://hyperion-logistics.vercel.app/">
   <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
@@ -76,6 +78,7 @@
   <link rel="stylesheet" href="ui/motion.css">
   <link rel="stylesheet" href="ui/site.css">
   <link rel="stylesheet" href="ui/theme-light.css">
+  <link rel="stylesheet" href="ui/i18n.css">
   <!--Start of Tawk.to Script-->
   <script type="text/javascript">
   var Tawk_API = Tawk_API || {};
@@ -99,7 +102,7 @@
   <!-- site-header -->
   <header class="site-nav" data-site-header data-scroll-nav>
     <div class="wrap">
-      <a class="brand" href="/" aria-label="Hyperion Logistics home">
+      <a class="brand" href="/" aria-label="Hyperion Logistics home" data-i18n-attr="aria-label:nav.home">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
         <span>Hyperion<small>Logistics</small></span>
       </a>
@@ -107,19 +110,19 @@
         <svg class="i-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <svg class="i-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
       </button>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu">
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu" data-i18n-attr="aria-label:nav.openMenu">
         <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
-      <nav class="nav-panel" id="navMenu" aria-label="Main">
+      <nav class="nav-panel" id="navMenu" aria-label="Main" data-i18n-attr="aria-label:nav.main">
         <ul class="nav-menu">
-          <li><a href="/#services">Services</a></li>
-          <li><a href="/track.html">Tracking</a></li>
-          <li><a href="/#activity">Global activity</a></li>
-          <li><a href="/carriers.html">Carrier network</a></li>
-          <li><a href="/#support">Support</a></li>
+          <li><a href="/#services" data-i18n="nav.services">Services</a></li>
+          <li><a href="/track.html" data-i18n="nav.tracking">Tracking</a></li>
+          <li><a href="/#activity" data-i18n="nav.activity">Global activity</a></li>
+          <li><a href="/carriers.html" data-i18n="nav.carriers">Carrier network</a></li>
+          <li><a href="/#support" data-i18n="nav.support">Support</a></li>
         </ul>
-        <a class="nav-cta" href="/#track">Track a shipment</a>
+        <a class="nav-cta" href="/#track" data-i18n="cta.track">Track a shipment</a>
       </nav>
     </div>
   </header>
@@ -127,7 +130,7 @@
 
   <main>
     <section class="hero3" id="track" aria-labelledby="heroTitle">
-      <div class="hero3-media" role="img" aria-label="Illustration: a container ship leaving a lit port at dusk, with a cargo aircraft overhead"></div>
+      <div class="hero3-media" role="img" aria-label="Illustration: a container ship leaving a lit port at dusk, with a cargo aircraft overhead" data-i18n-attr="aria-label:home.hero.imgAlt"></div>
       <svg class="hero3-routes" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
         <path class="r1" id="heroR1" d="M860 600 C 1000 380, 1240 300, 1460 250" pathLength="1"/>
         <path class="r2" id="heroR2" d="M760 470 C 980 330, 1180 300, 1330 330" pathLength="1"/>
@@ -142,68 +145,68 @@
       </svg>
       <div class="wrap">
         <div class="hero3-copy">
-          <p class="eyebrow">Hyperion Logistics · Global shipping</p>
-          <h1 id="heroTitle">Every shipment. Every milestone. <span>One clear view.</span></h1>
-          <p class="lead">Track your shipment, follow recorded progress, and access the information you need throughout its journey.</p>
+          <p class="eyebrow" data-i18n="home.hero.eyebrow">Hyperion Logistics · Global shipping</p>
+          <h1 id="heroTitle" data-i18n-html="home.hero.title">Every shipment. Every milestone. <span>One clear view.</span></h1>
+          <p class="lead" data-i18n="home.hero.lead">Track your shipment, follow recorded progress, and access the information you need throughout its journey.</p>
           <div class="hero3-ctas">
-            <a class="btn btn-primary" href="#trackForm" data-focus-track>Track a shipment
+            <a class="btn btn-primary" href="#trackForm" data-focus-track><span data-i18n="cta.track">Track a shipment</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-            <a class="btn btn-ghost" href="#services">Explore our services</a>
+            <a class="btn btn-ghost" href="#services" data-i18n="home.hero.explore">Explore our services</a>
           </div>
           <div class="track-card" id="trackForm">
-            <h2 class="track-title">Track your shipment</h2>
-            <label for="trackingInput">Tracking number</label>
+            <h2 class="track-title" data-i18n="track.title">Track your shipment</h2>
+            <label for="trackingInput" data-i18n="track.label">Tracking number</label>
             <div class="track-form2 track-form">
               <div class="track-field">
                 <svg class="track-field-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
-                <input id="trackingInput" type="text" placeholder="Enter your tracking number" inputmode="text" aria-describedby="trackHint error">
+                <input id="trackingInput" type="text" placeholder="Enter your tracking number" inputmode="text" aria-describedby="trackHint error" dir="ltr" data-i18n-attr="placeholder:track.placeholder">
               </div>
               <button class="btn-primary2 btn-track hx-press" type="button" onclick="track()"><span class="btn-spin" aria-hidden="true"></span><span id="btn-text">Track shipment</span></button>
             </div>
             <div id="error" class="error-message" role="alert"></div>
-            <p class="track-hint" id="trackHint">Find it on your booking confirmation. <span>We don't store it in your browser.</span></p>
+            <p class="track-hint" id="trackHint" data-i18n-html="track.hint">Find it on your booking confirmation. <span>We don't store it in your browser.</span></p>
           </div>
           <ul class="hero3-facts">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Every milestone time-stamped</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Updates appear without refreshing</li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Real support from our team</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="home.fact.milestones">Every milestone time-stamped</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="home.fact.updates">Updates appear without refreshing</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span data-i18n="home.fact.support">Real support from our team</span></li>
           </ul>
         </div>
       </div>
     </section>
 
-    <section class="tracker-results tracker-results2" id="results-section" aria-label="Tracking results"><div class="wrap"><div id="trackerRoot"></div></div></section>
+    <section class="tracker-results tracker-results2" id="results-section" aria-label="Tracking results" data-i18n-attr="aria-label:track.results"><div class="wrap"><div id="trackerRoot"></div></div></section>
 
     <!-- Optional: shown only when operations has published at least one shipment for the homepage (see the script below).
          Hidden while loading, when nothing is published, and when the data cannot be loaded. -->
     <section class="section" id="activity" aria-labelledby="activityTitle" hidden data-state="loading">
       <div class="wrap">
         <div class="section-head" data-reveal>
-          <div><div class="kicker">Global activity</div><h2 id="activityTitle">Shipments moving through Hyperion</h2>
-            <p>A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
+          <div><div class="kicker" data-i18n="nav.activity">Global activity</div><h2 id="activityTitle" data-i18n="home.activity.title">Shipments moving through Hyperion</h2>
+            <p data-i18n="home.activity.lead">A route appears on the map only when that shipment is shared publicly, with its tracking number masked and places shown at city level.</p></div>
         </div>
         <div class="cc">
           <div class="cc-stage">
-            <div class="cc-map" id="ccMap" role="region" aria-label="World map of publicly shared shipment routes"></div>
-            <div class="cc-empty-note">No shipments are shared publicly right now. Shared routes appear here as operations publishes them.</div>
-            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="ccStatus">Loading shipment data…</span></span></div>
-            <div class="cc-overlay cc-legend" aria-label="Map legend">
-              <span><i class="cc-key cc-key-origin"></i>Origin</span><span><i class="cc-key cc-key-dest"></i>Destination</span>
-              <span><i class="cc-key cc-key-current"></i>Recorded position</span><span class="cc-opt"><i class="cc-line"></i>Travelled</span><span class="cc-opt"><i class="cc-line dash"></i>Planned route</span>
+            <div class="cc-map" id="ccMap" role="region" aria-label="World map of publicly shared shipment routes" data-i18n-attr="aria-label:home.activity.mapLabel"></div>
+            <div class="cc-empty-note" data-i18n="home.activity.empty">No shipments are shared publicly right now. Shared routes appear here as operations publishes them.</div>
+            <div class="cc-overlay cc-top"><span class="cc-badge"><span class="live" aria-hidden="true"></span><span id="ccStatus" data-i18n="home.activity.loading">Loading shipment data…</span></span></div>
+            <div class="cc-overlay cc-legend" aria-label="Map legend" data-i18n-attr="aria-label:map.legend">
+              <span><i class="cc-key cc-key-origin"></i><span data-i18n="route.origin">Origin</span></span><span><i class="cc-key cc-key-dest"></i><span data-i18n="route.destination">Destination</span></span>
+              <span><i class="cc-key cc-key-current"></i><span data-i18n="map.recordedPosition">Recorded position</span></span><span class="cc-opt"><i class="cc-line"></i><span data-i18n="map.travelled">Travelled</span></span><span class="cc-opt"><i class="cc-line dash"></i><span data-i18n="map.planned">Planned route</span></span>
             </div>
             <div class="cc-card" id="ccCard" hidden aria-live="polite"></div>
           </div>
           <aside class="cc-side">
             <div class="cc-feed-wrap">
-              <div class="cc-feed-head"><h3>Recent updates</h3></div>
-              <ul class="cc-feed" id="ccFeed" aria-live="polite"><li class="cc-feed-empty">Loading…</li></ul>
+              <div class="cc-feed-head"><h3 data-i18n="home.activity.recent">Recent updates</h3></div>
+              <ul class="cc-feed" id="ccFeed" aria-live="polite"><li class="cc-feed-empty" data-i18n="common.loading">Loading…</li></ul>
             </div>
           </aside>
         </div>
         <div class="cc-table-wrap">
-          <div class="cc-table-head"><h3>Shared shipments</h3><span>Tracking numbers masked · city level</span></div>
-          <table class="cc-table"><thead><tr><th scope="col">Shipment</th><th scope="col">Route</th><th scope="col">Status</th><th scope="col">Last update</th></tr></thead>
-            <tbody id="ccTable"><tr class="cc-row-empty"><td colspan="4">Loading…</td></tr></tbody></table>
+          <div class="cc-table-head"><h3 data-i18n="home.activity.shared">Shared shipments</h3><span data-i18n="home.activity.masked">Tracking numbers masked · city level</span></div>
+          <table class="cc-table"><thead><tr><th scope="col" data-i18n="cc.col.shipment">Shipment</th><th scope="col" data-i18n="cc.col.route">Route</th><th scope="col" data-i18n="cc.col.status">Status</th><th scope="col" data-i18n="cc.col.updated">Last update</th></tr></thead>
+            <tbody id="ccTable"><tr class="cc-row-empty"><td colspan="4" data-i18n="common.loading">Loading…</td></tr></tbody></table>
         </div>
       </div>
     </section>
@@ -220,38 +223,38 @@
           <source type="image/webp" srcset="assets/freight/ship-960.webp 960w, assets/freight/ship-1179.webp 1179w" sizes="100vw">
           <img src="assets/freight/ship-1179.jpg" srcset="assets/freight/ship-960.jpg 960w, assets/freight/ship-1179.jpg 1179w" sizes="100vw"
             width="1179" height="880" loading="lazy" decoding="async"
-            alt="Container ship stacked with colourful containers sailing across the open sea at sunset"
+            alt="Container ship stacked with colourful containers sailing across the open sea at sunset" data-i18n-attr="alt:home.freight.imgAlt"
             onerror="if(!this.dataset.fallback){this.dataset.fallback=1;this.closest('picture').querySelectorAll('source').forEach(function(s){s.remove()});this.removeAttribute('srcset');this.src='assets/hero/freight-ship.svg'}">
         </picture>
         <div class="wrap freight-inner">
           <div class="freight-copy" data-reveal>
-            <p class="eyebrow">Hyperion Logistics · Global freight</p>
-            <h2 id="freightTitle">Global freight. <span>One clear view.</span></h2>
-            <p class="freight-lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
+            <p class="eyebrow" data-i18n="home.freight.eyebrow">Hyperion Logistics · Global freight</p>
+            <h2 id="freightTitle" data-i18n-html="home.freight.title">Global freight. <span>One clear view.</span></h2>
+            <p class="freight-lead" data-i18n="home.freight.lead">Explore international freight services and follow your shipment&rsquo;s recorded progress through one streamlined tracking experience.</p>
             <div class="freight-ctas">
-              <a class="btn btn-primary" href="#services">Explore freight services <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-              <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
+              <a class="btn btn-primary" href="#services"><span data-i18n="home.freight.explore">Explore freight services</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+              <a class="btn btn-ghost" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a>
             </div>
           </div>
         </div>
       </div>
       <div class="wrap">
-        <ul class="freight-services" data-reveal-stagger aria-label="Freight services">
+        <ul class="freight-services" data-reveal-stagger aria-label="Freight services" data-i18n-attr="aria-label:home.freight.services">
           <li data-reveal><a href="#svc-ocean" class="freight-card">
             <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c1.5 1 3 1 4.5 0s3-1 4.5 0 3 1 4.5 0 3-1 4.5 0"/><path d="M5 14 4 10h16l-1 4"/><path d="M8 10V6h4v4M12 7h4v3"/></svg></span>
-            <span class="fc-text"><strong>Ocean Freight</strong><span>Container and consolidated sea freight, tracked port to port.</span></span>
+            <span class="fc-text"><strong data-i18n="svc.ocean">Ocean Freight</strong><span data-i18n="home.fc.ocean">Container and consolidated sea freight, tracked port to port.</span></span>
             <span class="fc-arrow" aria-hidden="true">→</span></a></li>
           <li data-reveal><a href="#svc-air" class="freight-card">
             <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5Z"/></svg></span>
-            <span class="fc-text"><strong>Air Freight</strong><span>Air cargo for urgent and high-value consignments.</span></span>
+            <span class="fc-text"><strong data-i18n="svc.air">Air Freight</strong><span data-i18n="home.fc.air">Air cargo for urgent and high-value consignments.</span></span>
             <span class="fc-arrow" aria-hidden="true">→</span></a></li>
           <li data-reveal><a href="#svc-express" class="freight-card">
             <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M1 10h4M1 13h3"/></svg></span>
-            <span class="fc-text"><strong>Express Shipping</strong><span>Time-critical parcels and documents, each handover recorded.</span></span>
+            <span class="fc-text"><strong data-i18n="svc.express">Express Shipping</strong><span data-i18n="home.fc.express">Time-critical parcels and documents, each handover recorded.</span></span>
             <span class="fc-arrow" aria-hidden="true">→</span></a></li>
           <li data-reveal><a href="#svc-road" class="freight-card">
             <span class="fc-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M9 21v-6h6v6M9 11h6"/></svg></span>
-            <span class="fc-text"><strong>Regional Logistics</strong><span>Trucking and regional delivery through to the final address.</span></span>
+            <span class="fc-text"><strong data-i18n="svc.regional">Regional Logistics</strong><span data-i18n="home.fc.road">Trucking and regional delivery through to the final address.</span></span>
             <span class="fc-arrow" aria-hidden="true">→</span></a></li>
         </ul>
       </div>
@@ -260,13 +263,13 @@
       <div class="wrap">
         <figure class="freight-network" id="freightNetwork" data-state="loading" data-reveal aria-labelledby="freightNetworkTitle">
           <figcaption class="ng-head">
-            <p class="eyebrow">Global network</p>
-            <h3 id="freightNetworkTitle">Worldwide freight connections</h3>
+            <p class="eyebrow" data-i18n="home.network.eyebrow">Global network</p>
+            <h3 id="freightNetworkTitle" data-i18n="home.network.title">Worldwide freight connections</h3>
           </figcaption>
           <div class="ng-body">
             <div class="ng-globe" aria-hidden="true"><canvas></canvas></div>
             <ul class="ng-cards" data-slot="ngcards" aria-hidden="true"></ul>
-            <ul class="sr-only" data-slot="nglist" aria-label="Freight connections currently shown"></ul>
+            <ul class="sr-only" data-slot="nglist" aria-label="Freight connections currently shown" data-i18n-attr="aria-label:home.network.listLabel"></ul>
           </div>
         </figure>
       </div>
@@ -287,22 +290,22 @@
               <source type="image/webp" srcset="assets/journey/handover-720.webp 720w, assets/journey/handover-1179.webp 1179w" sizes="(max-width: 900px) 100vw, 720px">
               <img src="assets/journey/handover-1179.jpg" srcset="assets/journey/handover-720.jpg 720w, assets/journey/handover-1179.jpg 1179w" sizes="(max-width: 900px) 100vw, 720px"
                 width="1179" height="638" loading="lazy" decoding="async"
-                alt="Illustration: a parcel handed over at a delivery van outside a warehouse"
+                alt="Illustration: a parcel handed over at a delivery van outside a warehouse" data-i18n-attr="alt:home.journey.imgAlt"
                 onerror="this.closest('figure').classList.add('is-missing');this.closest('picture').remove()">
             </picture>
           </div>
         </figure>
         <div class="journey-copy" data-reveal-stagger>
-          <p class="eyebrow" data-reveal>The logistics journey</p>
-          <h2 id="journeyTitle" data-reveal>From the warehouse to the doorstep.</h2>
-          <p class="journey-lead" data-reveal>Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
+          <p class="eyebrow" data-reveal data-i18n="home.journey.eyebrow">The logistics journey</p>
+          <h2 id="journeyTitle" data-reveal data-i18n="home.journey.title">From the warehouse to the doorstep.</h2>
+          <p class="journey-lead" data-reveal data-i18n="home.journey.lead">Explore the journey behind logistics, from handling shipments to their final delivery milestone.</p>
           <!-- How a shipment moves in general; not the status of any particular shipment. -->
-          <ol class="journey-steps" data-reveal="line" aria-label="Shipment journey">
-            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-warehouse-96.avif 1x, assets/journey/step-warehouse-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-warehouse-96.webp 1x, assets/journey/step-warehouse-192.webp 2x"><img src="assets/journey/step-warehouse-96.jpg" srcset="assets/journey/step-warehouse-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Warehouse processing</strong><span>Shipments are received and prepared for dispatch, and each handover is recorded by our operations team.</span></li>
-            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-transit-96.avif 1x, assets/journey/step-transit-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-transit-96.webp 1x, assets/journey/step-transit-192.webp 2x"><img src="assets/journey/step-transit-96.jpg" srcset="assets/journey/step-transit-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Transit and handling</strong><span>As the shipment moves by road, air or ocean, recorded milestones and positions appear on its tracking page.</span></li>
-            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-delivery-96.avif 1x, assets/journey/step-delivery-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-delivery-96.webp 1x, assets/journey/step-delivery-192.webp 2x"><img src="assets/journey/step-delivery-96.jpg" srcset="assets/journey/step-delivery-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong>Final delivery</strong><span>The delivery is recorded with its time, completing the shipment&rsquo;s timeline.</span></li>
+          <ol class="journey-steps" data-reveal="line" aria-label="Shipment journey" data-i18n-attr="aria-label:home.journey.stepsLabel">
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-warehouse-96.avif 1x, assets/journey/step-warehouse-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-warehouse-96.webp 1x, assets/journey/step-warehouse-192.webp 2x"><img src="assets/journey/step-warehouse-96.jpg" srcset="assets/journey/step-warehouse-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong data-i18n="home.journey.s1">Warehouse processing</strong><span data-i18n="home.journey.s1d">Shipments are received and prepared for dispatch, and each handover is recorded by our operations team.</span></li>
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-transit-96.avif 1x, assets/journey/step-transit-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-transit-96.webp 1x, assets/journey/step-transit-192.webp 2x"><img src="assets/journey/step-transit-96.jpg" srcset="assets/journey/step-transit-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong data-i18n="home.journey.s2">Transit and handling</strong><span data-i18n="home.journey.s2d">As the shipment moves by road, air or ocean, recorded milestones and positions appear on its tracking page.</span></li>
+            <li data-reveal><picture class="js-thumb"><source type="image/avif" srcset="assets/journey/step-delivery-96.avif 1x, assets/journey/step-delivery-192.avif 2x"><source type="image/webp" srcset="assets/journey/step-delivery-96.webp 1x, assets/journey/step-delivery-192.webp 2x"><img src="assets/journey/step-delivery-96.jpg" srcset="assets/journey/step-delivery-192.jpg 2x" width="96" height="96" alt="" loading="lazy" decoding="async" onerror="this.closest('picture').remove()"></picture><strong data-i18n="home.journey.s3">Final delivery</strong><span data-i18n="home.journey.s3d">The delivery is recorded with its time, completing the shipment&rsquo;s timeline.</span></li>
           </ol>
-          <a class="link-arrow" href="#trackForm" data-focus-track data-reveal>Track a shipment</a>
+          <a class="link-arrow" href="#trackForm" data-focus-track data-reveal data-i18n="cta.track">Track a shipment</a>
         </div>
       </div>
     </section>
@@ -310,8 +313,8 @@
     <section class="section" id="services" aria-labelledby="servicesTitle">
       <div class="wrap">
         <div class="section-head" data-reveal>
-          <div><div class="kicker">Services</div><h2 id="servicesTitle">Shipping for every distance and deadline</h2>
-            <p>From a single urgent parcel to full containers, every Hyperion shipment gets the same tracking: recorded milestones, a route map and a single place to check progress.</p></div>
+          <div><div class="kicker" data-i18n="nav.services">Services</div><h2 id="servicesTitle" data-i18n="home.services.title">Shipping for every distance and deadline</h2>
+            <p data-i18n="home.services.lead">From a single urgent parcel to full containers, every Hyperion shipment gets the same tracking: recorded milestones, a route map and a single place to check progress.</p></div>
         </div>
         <div class="services" data-reveal-stagger>
           <article class="service" id="svc-express" data-reveal>
@@ -324,8 +327,8 @@
                 <path d="M10 30h26M10 40h18" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"/></g>
               <g transform="translate(232 40)"><path d="M0 10 20 0l20 10v24L20 44 0 34z" fill="#1e40af" stroke="#93c5fd" stroke-width="2"/><path d="M0 10l20 10 20-10M20 20v24" stroke="#93c5fd" stroke-width="2"/></g>
             </svg></div>
-            <div class="service-body"><h3>Express Shipping</h3><p>Time-critical parcels and documents through express and postal networks, with each handover recorded.</p>
-              <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
+            <div class="service-body"><h3 data-i18n="svc.express">Express Shipping</h3><p data-i18n="home.svc.express">Time-critical parcels and documents through express and postal networks, with each handover recorded.</p>
+              <a class="link-arrow" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a></div>
           </article>
           <article class="service" id="svc-air" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
@@ -337,8 +340,8 @@
                 <path d="M-58-1-70-22h8l14 21z" fill="#12306e" stroke="#93c5fd" stroke-width="2"/></g>
               <circle cx="60" cy="40" r="1.5" fill="#e2e8f0"/><circle cx="130" cy="26" r="1.2" fill="#e2e8f0"/><circle cx="190" cy="104" r="1.2" fill="#e2e8f0"/>
             </svg></div>
-            <div class="service-body"><h3>Air Freight</h3><p>Air cargo for urgent and high-value consignments, with departure, transit and arrival milestones recorded.</p>
-              <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
+            <div class="service-body"><h3 data-i18n="svc.air">Air Freight</h3><p data-i18n="home.svc.air">Air cargo for urgent and high-value consignments, with departure, transit and arrival milestones recorded.</p>
+              <a class="link-arrow" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a></div>
           </article>
           <article class="service" id="svc-ocean" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
@@ -350,8 +353,8 @@
                 <rect x="96" y="30" width="34" height="20" fill="#155e75" stroke="#93c5fd" stroke-width="1.5"/><rect x="42" y="10" width="34" height="20" fill="#92400e" stroke="#93c5fd" stroke-width="1.5"/>
                 <rect x="78" y="10" width="34" height="20" fill="#334155" stroke="#93c5fd" stroke-width="1.5"/><path d="M150 50V18h26v32" fill="#12306e" stroke="#93c5fd" stroke-width="2"/><path d="M156 26h14" stroke="#93c5fd" stroke-width="2"/></g>
             </svg></div>
-            <div class="service-body"><h3>Ocean Freight</h3><p>Container and consolidated sea freight for larger volumes, tracked port to port as each milestone is confirmed.</p>
-              <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
+            <div class="service-body"><h3 data-i18n="svc.ocean">Ocean Freight</h3><p data-i18n="home.svc.ocean">Container and consolidated sea freight for larger volumes, tracked port to port as each milestone is confirmed.</p>
+              <a class="link-arrow" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a></div>
           </article>
           <article class="service" id="svc-road" data-reveal>
             <div class="service-art" aria-hidden="true"><svg viewBox="0 0 320 150" fill="none" preserveAspectRatio="xMidYMid slice">
@@ -362,8 +365,8 @@
                 <path d="M128 32h22l13 13h-35z" fill="#93c5fd" fill-opacity=".35"/><circle cx="26" cy="68" r="10" fill="#020617" stroke="#93c5fd" stroke-width="2"/><circle cx="54" cy="68" r="10" fill="#020617" stroke="#93c5fd" stroke-width="2"/>
                 <circle cx="150" cy="68" r="10" fill="#020617" stroke="#93c5fd" stroke-width="2"/><path d="M14 22h60M14 34h40" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"/></g>
             </svg></div>
-            <div class="service-body"><h3>Road &amp; Regional Logistics</h3><p>Trucking and regional courier delivery for domestic and cross-border lanes, through to the final address.</p>
-              <a class="link-arrow" href="#trackForm" data-focus-track>Track a shipment</a></div>
+            <div class="service-body"><h3 data-i18n="svc.road">Road &amp; Regional Logistics</h3><p data-i18n="home.svc.road">Trucking and regional courier delivery for domestic and cross-border lanes, through to the final address.</p>
+              <a class="link-arrow" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a></div>
           </article>
         </div>
       </div>
@@ -372,40 +375,40 @@
     <section class="section alt" id="about" aria-labelledby="aboutTitle">
       <div class="wrap intro">
         <div data-reveal>
-          <div class="kicker">About Hyperion</div>
-          <h2 id="aboutTitle">Logistics you can follow, step by step</h2>
-          <p>Hyperion Logistics moves shipments by express, air, ocean and road through established carriers. Our operations team records every milestone, so the status you see is the status we have.</p>
-          <p>When something changes, your tracking page shows it without a refresh. When a delay or exception happens, we say so plainly.</p>
-          <a class="link-arrow" href="#support">Talk to our team</a>
+          <div class="kicker" data-i18n="home.about.kicker">About Hyperion</div>
+          <h2 id="aboutTitle" data-i18n="home.about.title">Logistics you can follow, step by step</h2>
+          <p data-i18n="home.about.p1">Hyperion Logistics moves shipments by express, air, ocean and road through established carriers. Our operations team records every milestone, so the status you see is the status we have.</p>
+          <p data-i18n="home.about.p2">When something changes, your tracking page shows it without a refresh. When a delay or exception happens, we say so plainly.</p>
+          <a class="link-arrow" href="#support" data-i18n="home.about.talk">Talk to our team</a>
         </div>
         <ul class="caps" data-reveal-stagger>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 1 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
-            <div><strong>Recorded positions, clearly labelled</strong><span>Recorded positions are never shown as live. Only verified carrier or GPS data is marked live. Nothing is estimated or simulated.</span></div></li>
+            <div><strong data-i18n="home.cap1">Recorded positions, clearly labelled</strong><span data-i18n="home.cap1d">Recorded positions are never shown as live. Only verified carrier or GPS data is marked live. Nothing is estimated or simulated.</span></div></li>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
-            <div><strong>Private by default</strong><span>Shipment details are checked on our servers; only what you are allowed to see reaches your browser.</span></div></li>
+            <div><strong data-i18n="home.cap2">Private by default</strong><span data-i18n="home.cap2d">Shipment details are checked on our servers; only what you are allowed to see reaches your browser.</span></div></li>
           <li data-reveal><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></svg></span>
-            <div><strong>Honest delivery estimates</strong><span>An estimated date is shown only when one is known; otherwise we tell you it is not available yet.</span></div></li>
+            <div><strong data-i18n="home.cap3">Honest delivery estimates</strong><span data-i18n="home.cap3d">An estimated date is shown only when one is known; otherwise we tell you it is not available yet.</span></div></li>
         </ul>
       </div>
     </section>
 
     <section class="section" id="carriers" aria-labelledby="carriersTitle">
       <div class="wrap">
-        <div class="section-head" data-reveal><div><div class="kicker">Carriers</div><h2 id="carriersTitle">Global carrier network</h2>
-          <p>Express parcel, air, ocean and regional carriers your shipment can move with. Tap a carrier for its service and coverage.</p></div></div>
-        <div class="cr-tabs" id="carrierTabs" role="group" aria-label="Filter carriers by category"></div>
-        <div id="carrierDirectory"><p class="cr-note">Loading carriers…</p></div>
-        <p class="cr-note">Carrier names are trademarks of their respective owners and identify the services used. Being listed here does not mean a partnership.</p>
+        <div class="section-head" data-reveal><div><div class="kicker" data-i18n="carriers.kicker">Carriers</div><h2 id="carriersTitle" data-i18n="carriers.title">Global carrier network</h2>
+          <p data-i18n="carriers.lead">Express parcel, air, ocean and regional carriers your shipment can move with. Tap a carrier for its service and coverage.</p></div></div>
+        <div class="cr-tabs" id="carrierTabs" role="group" aria-label="Filter carriers by category" data-i18n-attr="aria-label:carriers.filterLabel"></div>
+        <div id="carrierDirectory"><p class="cr-note" data-i18n="carriers.loading">Loading carriers…</p></div>
+        <p class="cr-note" data-i18n="carriers.trademark">Carrier names are trademarks of their respective owners and identify the services used. Being listed here does not mean a partnership.</p>
       </div>
     </section>
 
     <section class="section alt" id="how" aria-labelledby="howTitle">
       <div class="wrap">
-        <div class="section-head" data-reveal><div><div class="kicker">How it works</div><h2 id="howTitle">From booking to doorstep in three steps</h2></div></div>
+        <div class="section-head" data-reveal><div><div class="kicker" data-i18n="home.how.kicker">How it works</div><h2 id="howTitle" data-i18n="home.how.title">From booking to doorstep in three steps</h2></div></div>
         <ol class="steps" data-reveal-stagger>
-          <li data-reveal><h3>Enter your tracking number</h3><p>Use the number from your booking confirmation.</p></li>
-          <li data-reveal><h3>See where it stands</h3><p>Status, last recorded location, route map, timeline and delivery estimate in one view.</p></li>
-          <li data-reveal><h3>Keep the page open</h3><p>New updates appear on their own. Close the page and nothing about your shipment stays on your device.</p></li>
+          <li data-reveal><h3 data-i18n="home.how.s1">Enter your tracking number</h3><p data-i18n="home.how.s1d">Use the number from your booking confirmation.</p></li>
+          <li data-reveal><h3 data-i18n="home.how.s2">See where it stands</h3><p data-i18n="home.how.s2d">Status, last recorded location, route map, timeline and delivery estimate in one view.</p></li>
+          <li data-reveal><h3 data-i18n="home.how.s3">Keep the page open</h3><p data-i18n="home.how.s3d">New updates appear on their own. Close the page and nothing about your shipment stays on your device.</p></li>
         </ol>
       </div>
     </section>
@@ -413,11 +416,11 @@
     <section class="section tight" id="support" aria-labelledby="supportTitle">
       <div class="wrap">
         <div class="support-band" data-reveal>
-          <div><h2 id="supportTitle">Questions about a shipment?</h2>
-            <p>Email our support team with your tracking number and we will look into it. Customer Support is also one tap away on your tracking page.</p></div>
+          <div><h2 id="supportTitle" data-i18n="home.support.title">Questions about a shipment?</h2>
+            <p data-i18n="home.support.lead">Email our support team with your tracking number and we will look into it. Customer Support is also one tap away on your tracking page.</p></div>
           <div class="actions">
-            <a class="btn btn-primary" href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">Contact support</a>
-            <a class="btn btn-ghost" href="#trackForm" data-focus-track>Track a shipment</a>
+            <a class="btn btn-primary" href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry" data-i18n="home.support.contact">Contact support</a>
+            <a class="btn btn-ghost" href="#trackForm" data-focus-track data-i18n="cta.track">Track a shipment</a>
           </div>
         </div>
       </div>
@@ -429,23 +432,23 @@
     <div class="wrap">
       <div class="foot-grid">
         <div class="foot-brand">
-          <a class="brand" href="/" aria-label="Hyperion Logistics home">
+          <a class="brand" href="/" aria-label="Hyperion Logistics home" data-i18n-attr="aria-label:nav.home">
             <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
             <span>Hyperion<small>Logistics</small></span>
           </a>
-          <p>Global shipping with precision tracking: every recorded milestone, in one clear view.</p>
+          <p data-i18n="foot.tagline">Global shipping with precision tracking: every recorded milestone, in one clear view.</p>
         </div>
-        <div><h3>Services</h3><ul>
-          <li><a href="/#services">Express shipping</a></li><li><a href="/#services">Air freight</a></li>
-          <li><a href="/#services">Ocean freight</a></li><li><a href="/#services">Road &amp; regional</a></li></ul></div>
-        <div><h3>Tracking</h3><ul>
-          <li><a href="/#track">Track a shipment</a></li><li><a href="/track.html">Tracking page</a></li>
-          <li><a href="/#activity">Global activity</a></li><li><a href="/carriers.html">Carrier network</a></li></ul></div>
-        <div><h3>Support</h3><ul>
+        <div><h3 data-i18n="foot.services">Services</h3><ul>
+          <li><a href="/#services" data-i18n="foot.express">Express shipping</a></li><li><a href="/#services" data-i18n="foot.air">Air freight</a></li>
+          <li><a href="/#services" data-i18n="foot.ocean">Ocean freight</a></li><li><a href="/#services" data-i18n="foot.road">Road &amp; regional</a></li></ul></div>
+        <div><h3 data-i18n="foot.tracking">Tracking</h3><ul>
+          <li><a href="/#track" data-i18n="cta.track">Track a shipment</a></li><li><a href="/track.html" data-i18n="foot.trackingPage">Tracking page</a></li>
+          <li><a href="/#activity" data-i18n="nav.activity">Global activity</a></li><li><a href="/carriers.html" data-i18n="nav.carriers">Carrier network</a></li></ul></div>
+        <div><h3 data-i18n="foot.support">Support</h3><ul>
           <li><a href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">hyperionlogistics.com@gmail.com</a></li>
-          <li><a href="/#support">Customer support</a></li></ul></div>
+          <li><a href="/#support" data-i18n="foot.customerSupport">Customer support</a></li></ul></div>
       </div>
-      <div class="foot-base"><span>&copy; 2026 Hyperion Logistics. All rights reserved.</span><span>Carrier names are trademarks of their owners.</span></div>
+      <div class="foot-base"><span data-i18n="foot.rights">&copy; 2026 Hyperion Logistics. All rights reserved.</span><span data-i18n="foot.trademarks">Carrier names are trademarks of their owners.</span></div>
     </div>
   </footer>
   <!-- /site-footer -->
@@ -453,26 +456,36 @@
   <script type="module">
     import { createTracker } from "./tracker/tracker.js";
     import { bindTrackingSession, consumeCodeFromUrl } from "./tracker/session.js";
+    import { t, onLang } from "./ui/i18n.js";
 
     // Tracking comes first: it never waits for the map or the activity data.
     const input = document.getElementById("trackingInput");
     const button = document.querySelector(".btn-track");
+    let last = { phase: "idle" }; let found = false;
+    // Button label and the short message next to the field; redrawn in place when the language changes.
+    function paint(s) {
+      const busy = s.phase === "loading";
+      const label = document.getElementById("btn-text");
+      if (label) label.textContent = busy ? t("track.btn.busy") : found ? t("track.btn.found") : t("track.btn.idle");
+      const err = document.getElementById("error");
+      const msg = { invalid: t("track.err.invalid"), notfound: t("track.err.notfound"), error: t("track.err.error") }[s.phase] || "";
+      if (err) { err.classList.toggle("show", !!msg); err.textContent = msg; }
+      document.getElementById("trackForm")?.classList.toggle("has-error", !!msg);
+    }
     const tracker = createTracker(document.getElementById("trackerRoot"), {
       onState: (s) => {
+        last = s;
         const busy = s.phase === "loading";
         if (button) { button.disabled = busy; button.classList.toggle("is-busy", busy); button.toggleAttribute("aria-busy", busy); }
-        const label = document.getElementById("btn-text");
-        if (label) label.textContent = busy ? "Tracking…" : s.phase === "ready" && !s.update ? "Shipment found" : "Track shipment";
-        if (s.phase === "ready" && label) { clearTimeout(window.__hxFound); window.__hxFound = setTimeout(() => { label.textContent = "Track shipment"; }, 1800); }
-        // A short message next to the field; the full explanation is in the results below it.
-        const err = document.getElementById("error");
-        const msg = { invalid: "Please enter a valid tracking number.", notfound: "Tracking number not found.", error: "We couldn't load tracking right now. Please try again." }[s.phase] || "";
-        if (err) { err.classList.toggle("show", !!msg); err.textContent = msg; }
+        found = s.phase === "ready" && !s.update;
+        if (s.phase === "ready") { clearTimeout(window.__hxFound); window.__hxFound = setTimeout(() => { found = false; paint(last); }, 1800); }
+        paint(s);
         input.toggleAttribute("aria-invalid", s.phase === "invalid" || s.phase === "notfound");
-        document.getElementById("trackForm")?.classList.toggle("has-error", !!msg);
         if (s.phase === "ready" && !window.__hxScrolled) { window.__hxScrolled = true; document.getElementById("results-section")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
       }
     });
+    onLang(() => paint(last));
+    paint(last); // the saved language may already be applied
 
     // Public entry point kept for existing inline handlers (onclick="track()")
     window.track = (id) => tracker.track(id !== undefined ? id : input.value);
@@ -518,9 +531,9 @@
           throw err;
         }
       }
-    })).catch(() => { setActivity("error"); document.getElementById("ccStatus").textContent = "Shipment activity is temporarily unavailable"; });
+    })).catch(() => { setActivity("error"); document.getElementById("ccStatus").textContent = t("cc.unavailable"); });
     import("./ui/carriers.js").then(({ mountCarrierDirectory }) => mountCarrierDirectory(document.getElementById("carrierDirectory"), document.getElementById("carrierTabs")))
-      .catch(() => { document.getElementById("carrierDirectory").innerHTML = '<p class="cr-note">The carrier directory could not load. Please refresh the page.</p>'; });
+      .catch(() => { const p = document.createElement("p"); p.className = "cr-note"; p.textContent = t("carriers.loadFailed"); document.getElementById("carrierDirectory").replaceChildren(p); });
   </script>
 </body>
 </html>

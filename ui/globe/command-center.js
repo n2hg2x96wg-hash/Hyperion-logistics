@@ -3,13 +3,16 @@
 // tracking form) work before any of this runs, and a failure here never affects shipment tracking.
 import { globeSupported } from "./globe.js";
 import { prefersReducedMotion } from "./geo.js";
-import { timeAgo, EVENT_SOURCES } from "../../shared/status.js";
+import { EVENT_SOURCES } from "../../shared/status.js";
+import { t, fmtAgo, fmtDateTime, fmtNumber, onLang } from "../i18n.js"; // English in the admin console (it never turns translations on)
+import { statusText, eventTitle, sourceLabelText } from "../status-text.js";
 
 // Visitors see a source only for verified feeds (GPS / carrier API); back-office labels stay in the admin console.
 const VERIFIED_LABELS = new Set([EVENT_SOURCES.gps, EVENT_SOURCES.carrier_api]);
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const fmt = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
+const fmt = (iso) => fmtDateTime(iso);
+const timeAgo = (iso) => fmtAgo(iso);
 const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
 /**
@@ -33,6 +36,7 @@ export function mountCommandCenter(o) {
   async function startRenderer() {
     if (started || state.destroyed) return; started = true;
     o.mapEl.dataset.state = "loading";
+    o.mapEl.style.setProperty("--cc-loading", JSON.stringify(t("cc.loadingMap"))); // CSS placeholder text, in the selected language
     const onSelect = (key) => select(key, { fromMap: true });
     const wantGlobe = forced === "globe" || (forced !== "flat" && globeSupported());
     if (wantGlobe) {
@@ -50,7 +54,7 @@ export function mountCommandCenter(o) {
         state.renderer = await createFlatMap(o.mapEl, { onSelect });
       } catch {
         o.mapEl.dataset.state = "failed";
-        o.mapEl.innerHTML = '<div class="cc-map-msg">The interactive map could not load. Live activity below is still current.</div>';
+        o.mapEl.innerHTML = `<div class="cc-map-msg">${esc(t("cc.mapFailed"))}</div>`;
         return;
       }
     }
@@ -72,11 +76,11 @@ export function mountCommandCenter(o) {
     try {
       const data = await o.load();
       state.delay = o.pollMs;
-      if (data.version && data.version === state.version) { status(`Checked ${timeAgo(new Date().toISOString())}`, "ok"); }
+      if (data.version && data.version === state.version) { status(t("cc.checked", { ago: timeAgo(new Date().toISOString()) }), "ok"); }
       else { state.version = data.version || null; state.data = data; render(); }
     } catch {
       state.delay = Math.min((state.delay || 30000) * 2, 240000);
-      status(state.data ? "Connection lost — showing the last loaded data" : "Live activity is temporarily unavailable", "warn");
+      status(t(state.data ? "cc.connectionLost" : "cc.unavailableLive"), "warn");
     }
     schedule();
   }
@@ -101,9 +105,9 @@ export function mountCommandCenter(o) {
     // Public visitors only get times from verified carrier / GPS feeds (the server withholds staff edit and entry times);
     // stats.lastUpdated is when a record was last edited (admin only).
     const updated = o.mode === "admin" ? d.stats?.lastUpdated : (d.activity || []).map((a) => a.at).filter(Boolean).sort().at(-1);
-    status(updated ? `Last ${o.mode === "admin" ? "update" : "recorded milestone"} ${timeAgo(updated)}`
-      : o.mode !== "admin" && (d.activity || []).length ? "Showing the latest recorded milestones" : "No shipment updates recorded yet", "ok");
-    if (o.statusEl) o.statusEl.title = updated ? `${o.mode === "admin" ? "Last recorded shipment update" : "Newest recorded milestone"}: ${fmt(updated)}` : "";
+    status(updated ? (o.mode === "admin" ? `Last update ${timeAgo(updated)}` : t("cc.lastMilestone", { ago: timeAgo(updated) }))
+      : o.mode !== "admin" && (d.activity || []).length ? t("cc.showingLatest") : t("cc.noUpdates"), "ok");
+    if (o.statusEl) o.statusEl.title = updated ? `${o.mode === "admin" ? "Last recorded shipment update" : t("cc.newestMilestone")}: ${fmt(updated)}` : "";
   }
 
   function renderStats(s) {
@@ -119,9 +123,9 @@ export function mountCommandCenter(o) {
   }
   function countTo(el, target) {
     const from = Number(el.textContent.replace(/\D/g, "")) || 0;
-    if (prefersReducedMotion() || from === target) { el.textContent = target.toLocaleString(); return; }
+    if (prefersReducedMotion() || from === target) { el.textContent = fmtNumber(target); return; }
     const start = performance.now(); const dur = 700;
-    const step = (t) => { const k = Math.min(1, (t - start) / dur); el.textContent = Math.round(from + (target - from) * (1 - (1 - k) ** 3)).toLocaleString(); if (k < 1) requestAnimationFrame(step); };
+    const step = (t) => { const k = Math.min(1, (t - start) / dur); el.textContent = fmtNumber(Math.round(from + (target - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(step); };
     requestAnimationFrame(step);
   }
 
@@ -130,10 +134,10 @@ export function mountCommandCenter(o) {
     const items = o.mode === "admin"
       ? routes.map((r) => ({ routeKey: r.key, ref: r.ref, title: r.status.label, tone: r.status.tone, from: r.originLabel, to: r.destinationLabel,
           place: r.current?.place, at: r.current?.recordedAt || r.updatedAt, sourceLabel: r.publicMap ? "Shown on homepage" : "Private" }))
-      : d.activity || [];
+      : (d.activity || []).map((a) => ({ ...a, title: eventTitle(a) }));
     if (!items.length) {
       o.feedEl.innerHTML = `<li class="cc-feed-empty">${o.mode === "admin" ? "No active shipments with coordinates yet. Add origin/destination points or a location in Live Tracking." :
-        "No shipments are shared publicly right now. Activity appears here when operations publishes a shipment."}</li>`;
+        esc(t("cc.feedEmpty"))}</li>`;
       return;
     }
     o.feedEl.innerHTML = items.map((a) => `
@@ -141,8 +145,8 @@ export function mountCommandCenter(o) {
         <span class="cc-dot tone-${esc(a.tone)}"></span>
         <span class="cc-feed-main">
           <span class="cc-feed-top"><strong>${esc(a.title)}</strong>${a.at ? `<time datetime="${esc(a.at)}">${esc(timeAgo(a.at))}</time>` : o.mode === "admin" ? "<time>time not recorded</time>" : ""}</span>
-          <span class="cc-feed-route">${esc(a.from || "Origin not set")} → ${esc(a.to || "Destination not set")}</span>
-          <span class="cc-feed-meta">${esc(a.ref)}${a.place ? ` · ${esc(a.place)}` : ""}${o.mode === "admin" || VERIFIED_LABELS.has(a.sourceLabel) ? ` · ${esc(a.sourceLabel)}` : ""}</span>
+          <span class="cc-feed-route">${esc(a.from || t("route.originNotSet"))} <span class="cc-arrow" aria-hidden="true">→</span> ${esc(a.to || t("route.destinationNotSet"))}</span>
+          <span class="cc-feed-meta"><bdi dir="ltr">${esc(a.ref)}</bdi>${a.place ? ` · ${esc(a.place)}` : ""}${o.mode === "admin" ? ` · ${esc(a.sourceLabel)}` : VERIFIED_LABELS.has(a.sourceLabel) ? ` · ${esc(sourceLabelText(a.sourceLabel))}` : ""}</span>
         </span></button></li>`).join("");
   }
 
@@ -150,17 +154,17 @@ export function mountCommandCenter(o) {
     if (!o.tableEl) return;
     if (!routes.length) {
       o.tableEl.innerHTML = `<tr class="cc-row-empty"><td colspan="4">${o.mode === "admin" ? "No active shipments with coordinates yet." :
-        "No shipments are shared publicly right now. Routes appear here when operations publishes a shipment."}</td></tr>`;
+        esc(t("cc.tableEmpty"))}</td></tr>`;
       return;
     }
     o.tableEl.innerHTML = routes.slice(0, 12).map((r) => {
       // public: the route's newest recorded event, else its recorded position time; never the record-edit time
       const at = o.mode === "admin" ? r.current?.recordedAt || r.updatedAt : activity.find((a) => a.routeKey === r.key)?.at || r.current?.recordedAt || null;
       return `<tr data-route="${esc(r.key)}" tabindex="0" class="${r.key === state.selected ? "is-selected" : ""}">
-        <td data-label="Shipment"><span class="cc-ref">${esc(r.ref)}</span></td>
-        <td data-label="Route"><span class="cc-route">${esc(r.originLabel || "Origin not set")}<i aria-hidden="true">→</i>${esc(r.destinationLabel || "Destination not set")}</span></td>
-        <td data-label="Status"><span class="cc-pill tone-${esc(r.status.tone)}">${esc(r.status.label)}</span></td>
-        <td data-label="Last update">${at ? `<time datetime="${esc(at)}" title="${esc(fmt(at))}">${esc(timeAgo(at))}</time>` : o.mode === "admin" ? "Not recorded" : "—"}</td></tr>`;
+        <td data-label="${esc(t("cc.col.shipment"))}"><span class="cc-ref" dir="ltr">${esc(r.ref)}</span></td>
+        <td data-label="${esc(t("cc.col.route"))}"><span class="cc-route">${esc(r.originLabel || t("route.originNotSet"))}<i aria-hidden="true">→</i>${esc(r.destinationLabel || t("route.destinationNotSet"))}</span></td>
+        <td data-label="${esc(t("cc.col.status"))}"><span class="cc-pill tone-${esc(r.status.tone)}">${esc(statusText(r.status))}</span></td>
+        <td data-label="${esc(t("cc.col.updated"))}">${at ? `<time datetime="${esc(at)}" title="${esc(fmt(at))}">${esc(timeAgo(at))}</time>` : o.mode === "admin" ? "Not recorded" : "—"}</td></tr>`;
     }).join("");
   }
 
@@ -170,15 +174,15 @@ export function mountCommandCenter(o) {
     if (!r) { o.cardEl.hidden = true; return; }
     o.cardEl.hidden = false;
     const pos = r.current
-      ? `<div class="cc-card-row"><span class="cc-key cc-key-current"></span><div><strong>Recorded position</strong><br>${esc(r.current.place || `${r.current.lat}, ${r.current.lng}`)}${o.mode === "admin" ? `<br><small>${r.current.recordedAt ? `${esc(fmt(r.current.recordedAt))} · ` : "Time not recorded · "}${esc(r.current.sourceLabel || EVENT_SOURCES.admin)}</small>` : VERIFIED_LABELS.has(r.current.sourceLabel) && r.current.recordedAt ? `<br><small>${esc(fmt(r.current.recordedAt))} · ${esc(r.current.sourceLabel)}</small>` : ""}</div></div>`
-      : `<div class="cc-card-row"><span class="cc-key"></span><div><strong>Current position not recorded yet</strong><br><small>Only the planned route is shown.</small></div></div>`;
+      ? `<div class="cc-card-row"><span class="cc-key cc-key-current"></span><div><strong>${esc(t("map.recordedPosition"))}</strong><br>${esc(r.current.place || `${r.current.lat}, ${r.current.lng}`)}${o.mode === "admin" ? `<br><small>${r.current.recordedAt ? `${esc(fmt(r.current.recordedAt))} · ` : "Time not recorded · "}${esc(r.current.sourceLabel || EVENT_SOURCES.admin)}</small>` : VERIFIED_LABELS.has(r.current.sourceLabel) && r.current.recordedAt ? `<br><small>${esc(fmt(r.current.recordedAt))} · ${esc(sourceLabelText(r.current.sourceLabel))}</small>` : ""}</div></div>`
+      : `<div class="cc-card-row"><span class="cc-key"></span><div><strong>${esc(t("cc.card.noPosition"))}</strong><br><small>${esc(t("cc.card.plannedOnly"))}</small></div></div>`;
     o.cardEl.innerHTML = `
-      <div class="cc-card-head"><span class="cc-ref">${esc(r.ref)}</span><span class="cc-pill tone-${esc(r.status.tone)}">${esc(r.status.label)}${r.deliveredRecently ? " · recently" : ""}</span>
-        <button type="button" class="cc-close" aria-label="Close route details" data-close>×</button></div>
-      <div class="cc-card-row"><span class="cc-key cc-key-origin"></span><div><small>From</small><br>${esc(r.originLabel || "Not set")}</div></div>
-      <div class="cc-card-row"><span class="cc-key cc-key-dest"></span><div><small>To</small><br>${esc(r.destinationLabel || "Not set")}</div></div>
+      <div class="cc-card-head"><span class="cc-ref" dir="ltr">${esc(r.ref)}</span><span class="cc-pill tone-${esc(r.status.tone)}">${esc(statusText(r.status))}${r.deliveredRecently ? ` · ${esc(t("cc.card.recently"))}` : ""}</span>
+        <button type="button" class="cc-close" aria-label="${esc(t("cc.card.close"))}" data-close>×</button></div>
+      <div class="cc-card-row"><span class="cc-key cc-key-origin"></span><div><small>${esc(t("route.from"))}</small><br>${esc(r.originLabel || t("route.notSet"))}</div></div>
+      <div class="cc-card-row"><span class="cc-key cc-key-dest"></span><div><small>${esc(t("route.to"))}</small><br>${esc(r.destinationLabel || t("route.notSet"))}</div></div>
       ${pos}
-      <p class="cc-note">Solid line: path to the last recorded position. Dashed: planned route (straight great-circle line), not a GPS track.</p>
+      <p class="cc-note">${esc(t("cc.card.note"))}</p>
       ${o.onOpen ? '<button type="button" class="cc-open" data-open-route>Open shipment</button>' : ""}`;
   }
 
@@ -199,11 +203,16 @@ export function mountCommandCenter(o) {
     if (e.target.closest("[data-open-route]")) { const r = state.data?.routes?.find((x) => x.key === state.selected); if (r) o.onOpen?.(r); }
   });
 
+  // language changed: redraw the last data in the new wording (no new request)
+  const offLang = onLang(() => {
+    o.mapEl.style.setProperty("--cc-loading", JSON.stringify(t("cc.loadingMap")));
+    if (state.data && !state.destroyed) render();
+  });
   refresh();
   return {
     refresh,
     select: (key) => select(key),
-    destroy() { state.destroyed = true; clearTimeout(state.timer); document.removeEventListener("visibilitychange", onVisible); state.renderer?.destroy(); },
+    destroy() { offLang(); state.destroyed = true; clearTimeout(state.timer); document.removeEventListener("visibilitychange", onVisible); state.renderer?.destroy(); },
     get renderer() { return state.renderer?.kind || null; }
   };
 }

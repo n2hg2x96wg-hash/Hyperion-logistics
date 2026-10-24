@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <script>try{if(localStorage.getItem("hx-theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}</script>
+  <!-- saved language (set only by the visitor): applied before first paint; English when none was chosen -->
+  <script>try{var l=localStorage.getItem("hx-lang");if(/^(pt-PT|pt-BR|ro|es|fr|de|it|nl|ar|zh-CN|pcm)$/.test(l)){var h=document.documentElement;h.lang=l;h.dir=l==="ar"?"rtl":"ltr";h.setAttribute("data-i18n-pending","")}}catch(e){}</script>
   <meta name="theme-color" content="#030712">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shipment Tracking | Hyperion Logistics</title>
+  <title data-i18n="meta.title.tracking">Shipment Tracking | Hyperion Logistics</title>
   <meta name="description" content="Track a Hyperion Logistics shipment with your tracking number: current status, last recorded location, route map and milestone timeline.">
   <link rel="canonical" href="https://hyperion-logistics.vercel.app/track.html">
   <link rel="icon" href="/assets/brand/favicon.svg" type="image/svg+xml">
@@ -215,12 +217,13 @@
   <script type="module" src="ui/site-shell.js"></script>
   <link rel="stylesheet" href="ui/track-page.css">
   <link rel="stylesheet" href="ui/theme-light.css">
+  <link rel="stylesheet" href="ui/i18n.css">
 </head>
 <body class="site track-page">
   <!-- site-header -->
   <header class="site-nav" data-site-header data-scroll-nav>
     <div class="wrap">
-      <a class="brand" href="/" aria-label="Hyperion Logistics home">
+      <a class="brand" href="/" aria-label="Hyperion Logistics home" data-i18n-attr="aria-label:nav.home">
         <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
         <span>Hyperion<small>Logistics</small></span>
       </a>
@@ -228,19 +231,19 @@
         <svg class="i-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <svg class="i-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
       </button>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu">
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="navMenu" aria-label="Open menu" data-i18n-attr="aria-label:nav.openMenu">
         <svg class="i-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         <svg class="i-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
       </button>
-      <nav class="nav-panel" id="navMenu" aria-label="Main">
+      <nav class="nav-panel" id="navMenu" aria-label="Main" data-i18n-attr="aria-label:nav.main">
         <ul class="nav-menu">
-          <li><a href="/#services">Services</a></li>
-          <li><a href="/track.html">Tracking</a></li>
-          <li><a href="/#activity">Global activity</a></li>
-          <li><a href="/carriers.html">Carrier network</a></li>
-          <li><a href="/#support">Support</a></li>
+          <li><a href="/#services" data-i18n="nav.services">Services</a></li>
+          <li><a href="/track.html" data-i18n="nav.tracking">Tracking</a></li>
+          <li><a href="/#activity" data-i18n="nav.activity">Global activity</a></li>
+          <li><a href="/carriers.html" data-i18n="nav.carriers">Carrier network</a></li>
+          <li><a href="/#support" data-i18n="nav.support">Support</a></li>
         </ul>
-        <a class="nav-cta" href="/#track">Track a shipment</a>
+        <a class="nav-cta" href="/#track" data-i18n="cta.track">Track a shipment</a>
       </nav>
     </div>
   </header>
@@ -248,12 +251,12 @@
 
   <section class="track-band" id="track" aria-labelledby="trackTitle">
     <div class="wrap">
-      <p class="eyebrow">Hyperion Logistics · Precision tracking</p>
-      <h1 id="trackTitle">Shipment tracking</h1>
-      <p>Detailed status, recorded route and milestone timeline for your shipment.</p>
+      <p class="eyebrow" data-i18n="trackpage.eyebrow">Hyperion Logistics · Precision tracking</p>
+      <h1 id="trackTitle" data-i18n="trackpage.enh.title">Shipment tracking</h1>
+      <p data-i18n="trackpage.enh.lead">Detailed status, recorded route and milestone timeline for your shipment.</p>
       <div class="search-group">
-        <input type="text" id="trackingInput" aria-label="Tracking number" placeholder="Enter Tracking ID (e.g., HY-123456)" oninput="this.value = this.value.toUpperCase()">
-        <button class="btn-search hx-press" onclick="track()">Track</button>
+        <input type="text" id="trackingInput" aria-label="Tracking number" placeholder="Enter Tracking ID (e.g., HY-123456)" dir="ltr" data-i18n-attr="placeholder:trackpage.enh.placeholder; aria-label:track.label" oninput="this.value = this.value.toUpperCase()">
+        <button class="btn-search hx-press" onclick="track()" data-i18n="track.btn.short">Track</button>
       </div>
     </div>
   </section>
@@ -289,11 +292,11 @@
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg>
       </span>
       <div class="hx-support-text">
-        <h2 id="hxSupportTitle">Customer Support <span>Need help with your shipment?</span></h2>
-        <p>Email our support team and include your tracking number. Prefer to copy the address? It's right here:</p>
+        <h2 id="hxSupportTitle" data-i18n-html="support.titleHtml">Customer Support <span>Need help with your shipment?</span></h2>
+        <p data-i18n="support.pageLead">Email our support team and include your tracking number. Prefer to copy the address? It's right here:</p>
         <a class="hx-support-email" href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">hyperionlogistics.com@gmail.com</a>
       </div>
-      <a class="hx-support-btn hx-press" href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">Contact Customer Support</a>
+      <a class="hx-support-btn hx-press" href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry" data-i18n="support.button">Contact Customer Support</a>
     </div>
   </section>
 
@@ -302,23 +305,23 @@
     <div class="wrap">
       <div class="foot-grid">
         <div class="foot-brand">
-          <a class="brand" href="/" aria-label="Hyperion Logistics home">
+          <a class="brand" href="/" aria-label="Hyperion Logistics home" data-i18n-attr="aria-label:nav.home">
             <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></span>
             <span>Hyperion<small>Logistics</small></span>
           </a>
-          <p>Global shipping with precision tracking: every recorded milestone, in one clear view.</p>
+          <p data-i18n="foot.tagline">Global shipping with precision tracking: every recorded milestone, in one clear view.</p>
         </div>
-        <div><h3>Services</h3><ul>
-          <li><a href="/#services">Express shipping</a></li><li><a href="/#services">Air freight</a></li>
-          <li><a href="/#services">Ocean freight</a></li><li><a href="/#services">Road &amp; regional</a></li></ul></div>
-        <div><h3>Tracking</h3><ul>
-          <li><a href="/#track">Track a shipment</a></li><li><a href="/track.html">Tracking page</a></li>
-          <li><a href="/#activity">Global activity</a></li><li><a href="/carriers.html">Carrier network</a></li></ul></div>
-        <div><h3>Support</h3><ul>
+        <div><h3 data-i18n="foot.services">Services</h3><ul>
+          <li><a href="/#services" data-i18n="foot.express">Express shipping</a></li><li><a href="/#services" data-i18n="foot.air">Air freight</a></li>
+          <li><a href="/#services" data-i18n="foot.ocean">Ocean freight</a></li><li><a href="/#services" data-i18n="foot.road">Road &amp; regional</a></li></ul></div>
+        <div><h3 data-i18n="foot.tracking">Tracking</h3><ul>
+          <li><a href="/#track" data-i18n="cta.track">Track a shipment</a></li><li><a href="/track.html" data-i18n="foot.trackingPage">Tracking page</a></li>
+          <li><a href="/#activity" data-i18n="nav.activity">Global activity</a></li><li><a href="/carriers.html" data-i18n="nav.carriers">Carrier network</a></li></ul></div>
+        <div><h3 data-i18n="foot.support">Support</h3><ul>
           <li><a href="mailto:hyperionlogistics.com@gmail.com?subject=Hyperion%20Logistics%20%E2%80%94%20Customer%20Inquiry">hyperionlogistics.com@gmail.com</a></li>
-          <li><a href="/#support">Customer support</a></li></ul></div>
+          <li><a href="/#support" data-i18n="foot.customerSupport">Customer support</a></li></ul></div>
       </div>
-      <div class="foot-base"><span>&copy; 2026 Hyperion Logistics. All rights reserved.</span><span>Carrier names are trademarks of their owners.</span></div>
+      <div class="foot-base"><span data-i18n="foot.rights">&copy; 2026 Hyperion Logistics. All rights reserved.</span><span data-i18n="foot.trademarks">Carrier names are trademarks of their owners.</span></div>
     </div>
   </footer>
   <!-- /site-footer -->

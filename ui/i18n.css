@@ -1,0 +1,77 @@
+/* Language selector and right-to-left (Arabic) layout for the public pages. */
+
+/* A saved non-English choice is applied before first paint (inline script in <head>); the page stays hidden for at most
+   1.2s while its dictionary loads, then shows regardless (English if the dictionary could not load). */
+html[data-i18n-pending] body { visibility: hidden; animation: hx-i18n-show 0s linear 1.2s forwards; }
+@keyframes hx-i18n-show { to { visibility: visible; } }
+
+/* ---------- selector ---------- */
+/* Header: globe + short code; a native <select> lies on top (transparent), so the system picker, keyboard and screen
+   readers work as usual and announce the full language name. */
+.lang-pick { position: relative; margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; flex: none;
+  border-radius: 10px; border: 1px solid rgba(148, 163, 184, 0.28); color: #cbd5e1; font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+.lang-pick:hover { color: #fff; border-color: rgba(148, 163, 184, 0.55); }
+.lang-pick:focus-within { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.lang-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; /* 16px: no zoom on iOS */ }
+.lang-pick .lang-code { min-width: 2ch; text-align: center; }
+.site-nav .lang-pick + .theme-toggle { margin-inline-start: 0; }
+.site-nav .theme-toggle { margin-left: 0; margin-inline-start: 0; }
+@media (max-width: 900px) {
+  .lang-pick { height: 44px; padding: 0 9px; }
+  .site-nav .theme-toggle { margin-right: 0; }
+}
+@media (max-width: 360px) { .lang-pick svg { display: none; } .lang-pick { padding: 0 8px; } }
+
+/* Mobile menu: a full-width row with the language names */
+.lang-row { display: none; }
+@media (max-width: 900px) {
+  .lang-row { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.14); }
+  .lang-row-label { display: inline-flex; align-items: center; gap: 8px; color: var(--hy-muted, #94a3b8); font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .lang-row select { width: 100%; min-height: 50px; padding: 0 14px; border-radius: 10px; font: inherit; font-size: 16px; font-weight: 600;
+    color: #fff; background: #0b1530; border: 1px solid rgba(148, 163, 184, 0.3); }
+  .lang-row select:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+}
+html[data-theme="light"] .lang-pick { color: #1e293b; border-color: #cbd5e1; }
+html[data-theme="light"] .lang-pick:hover { color: #0b1a3d; border-color: #94a3b8; }
+html[data-theme="light"] .lang-row select { color: #0b1a3d; background: #fff; border-color: #cbd5e1; }
+
+/* Long translations wrap instead of overflowing */
+.nav-cta, .btn, .btn-primary2, .btn-search, .hx-support-btn, .hx-btn-sec, .cr-tab { overflow-wrap: anywhere; }
+.btn, .hx-support-btn { white-space: normal; text-align: center; }
+
+/* Identifiers stay left-to-right inside any language */
+.hx-code, .cc-ref, #trackingInput, .hx-support-email, a[href^="mailto:"] { unicode-bidi: isolate; }
+
+/* ---------- right-to-left ---------- */
+html[dir="rtl"] body { text-align: right; }
+html[dir="rtl"] #trackingInput { text-align: right; }
+html[dir="rtl"] #trackingInput:not(:placeholder-shown) { text-align: left; } /* a typed code reads left to right */
+html[dir="rtl"] .hx-tracker { text-align: right; }
+html[dir="rtl"] .hx-status { text-align: left; }
+html[dir="rtl"] .hx-rsum-end.is-dest, html[dir="rtl"] .ng-city:last-child { text-align: left; }
+html[dir="rtl"] .hx-h-sub { margin-left: 0; margin-right: 6px; }
+html[dir="rtl"] .hx-loc-time { margin-left: 0; margin-right: 4px; }
+html[dir="rtl"] .hx-map-head .hx-loc-badge, html[dir="rtl"] .hx-3d-tools, html[dir="rtl"] .cc-close { margin-left: 0; margin-right: auto; }
+html[dir="rtl"] .cr-tab .n { margin-left: 0; margin-right: 6px; }
+html[dir="rtl"] .cr-tile, html[dir="rtl"] .cc-feed-item, html[dir="rtl"] .cc-table th, html[dir="rtl"] .hx-map-fallback dl { text-align: right; }
+html[dir="rtl"] .cc-rules ul { padding-left: 0; padding-right: 18px; }
+/* timeline and route lines run down the start (right) side */
+html[dir="rtl"] .hx-tl::before { left: auto; right: 7px; }
+html[dir="rtl"] .hx-tl-dot { left: auto; right: 0; }
+html[dir="rtl"] .hx-tl { padding: 0 28px 22px 0; }
+html[dir="rtl"] .hx-rs { padding: 0 0 0 8px; }
+html[dir="rtl"] .hx-rs::before { left: 0; right: 14px; }
+html[dir="rtl"] .journey-steps::before, html[dir="rtl"] .journey-steps::after { left: auto; right: 21px; }
+html[dir="rtl"] .fc-arrow { right: auto; left: 20px; transform: scaleX(-1); }
+html[dir="rtl"] .link-arrow::after, html[dir="rtl"] .btn svg, html[dir="rtl"] .cc-route i, html[dir="rtl"] .cc-arrow { display: inline-block; transform: scaleX(-1); }
+/* progress bars and route lines fill from the start (right); the vehicle icon faces the direction of travel */
+html[dir="rtl"] .hx-progress-bar, html[dir="rtl"] .hx-rsum-line, html[dir="rtl"] .hx-od i, html[dir="rtl"] .ng-route i { transform: scaleX(-1); }
+@media (max-width: 720px) {
+  html[dir="rtl"] .hx-status { text-align: right; }
+  html[dir="rtl"] .hx-rs { padding: 0 40px 18px 0; }
+  html[dir="rtl"] .hx-rs::before { left: auto; right: 13px; }
+  html[dir="rtl"] .hx-rs-dot { left: auto; right: 0; }
+}
+/* maps and the globe keep their own (geographic) left-to-right layout */
+html[dir="rtl"] .hx-map, html[dir="rtl"] .cc-map, html[dir="rtl"] .ng-globe, html[dir="rtl"] .hx-scene-stage { direction: ltr; }
+html[dir="rtl"] .hx-map .hx-popup, html[dir="rtl"] .leaflet-tooltip { direction: rtl; text-align: right; }

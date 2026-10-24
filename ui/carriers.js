@@ -5,6 +5,7 @@
 // tilt slightly under a mouse pointer; with reduced motion they simply appear.
 import { CARRIERS, CARRIER_CATEGORIES, carrierCategory, carrierLogoUrl, carrierIntegration } from "../shared/carriers.js";
 import { carrierMedia } from "./carrier-media.js";
+import { t, tn, onLang } from "./i18n.js";
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ORDER = ["express", "air", "ocean", "regional", "custom"];
@@ -16,12 +17,17 @@ function fallback() {
     note: c.note, integration: carrierIntegration(c), partner: c.verifiedPartner === true }));
 }
 
+// Catalogue text is translated only while it is still the built-in wording; anything an admin edited is shown as stored.
+const BUILT_IN = new Map(CARRIERS.map((c) => [c.id, c]));
+const catalogText = (c, field, key) => (c[field] && BUILT_IN.get(c.id)?.[field] === c[field] ? t(`carrier.${c.id}.${key}`, null, c[field]) : c[field]);
+const catLabel = (cat, fallbackLabel) => t(`carriers.cat.${cat}`, null, CARRIER_CATEGORIES[cat] || fallbackLabel || "");
+
 const brand = (c) => (/^#[0-9a-f]{3,6}$/i.test(c.brandColor || "") ? c.brandColor : "#64748b");
 
 // The public directory identifies carriers only. The way each carrier's updates arrive is an internal detail shown in the
 // admin carrier list, not here. A "Verified partner" badge appears only for a partnership an admin recorded with
 // evidence (none today).
-const PARTNER_BADGE = '<span class="cr-chip partner"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/></svg>Verified partner</span>';
+const partnerBadge = () => `<span class="cr-chip partner"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 12 2 2 4-4"/><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/></svg>${esc(t("carriers.partner"))}</span>`;
 
 // category icon: on name-led cards and when a card's photo cannot load
 const CAT_ICON = {
@@ -61,17 +67,17 @@ function tile(c, open, seen) {
   const logo = c.logoUrl ? `<img class="cr-logo" src="${esc(c.logoUrl)}" alt="" loading="lazy" decoding="async">` : "";
   return `<button type="button" class="cr-tile${seen ? " is-in" : ""}" data-id="${esc(c.id)}" data-cat="${esc(cat)}" aria-expanded="${open}" aria-controls="cr-detail" style="--brand:${esc(brand(c))}">
     <span class="cr-media" data-media="${carrierMedia(c).type}">${media(c)}<span class="cr-cat-ico">${catIcon(cat)}</span>${logo}</span>
-    <span class="cr-body"><span class="wm">${esc(c.name)}</span><span class="meta">${esc(CARRIER_CATEGORIES[cat] || c.categoryLabel || "")}</span>
-    ${c.partner === true ? `<span class="chips">${PARTNER_BADGE}</span>` : ""}</span></button>`;
+    <span class="cr-body"><span class="wm">${esc(c.name)}</span><span class="meta">${esc(catLabel(cat, c.categoryLabel))}</span>
+    ${c.partner === true ? `<span class="chips">${partnerBadge()}</span>` : ""}</span></button>`;
 }
 
 function detail(c) {
-  return `<div class="cr-detail" id="cr-detail" role="region" aria-label="${esc(c.name)} details">
+  return `<div class="cr-detail" id="cr-detail" role="region" aria-label="${esc(t("carriers.details", { name: c.name }))}">
     <h4>${esc(c.name)}</h4>
-    ${c.description ? `<p>${esc(c.description)}</p>` : ""}
-    ${c.coverage ? `<p>Coverage: ${esc(c.coverage)}</p>` : ""}
-    ${c.custom && c.note ? `<p>${esc(c.note)}</p>` : ""}
-    ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? PARTNER_BADGE : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Official site ↗</a>` : ""}</div>` : ""}</div>`;
+    ${c.description ? `<p>${esc(catalogText(c, "description", "desc"))}</p>` : ""}
+    ${c.coverage ? `<p>${esc(t("carriers.coverage", { coverage: catalogText(c, "coverage", "coverage") }))}</p>` : ""}
+    ${c.custom && c.note ? `<p>${esc(catalogText(c, "note", "note"))}</p>` : ""}
+    ${c.partner === true || c.website ? `<div class="row">${c.partner === true ? partnerBadge() : ""}${c.website ? `<a href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">${esc(t("carriers.officialSite"))} ↗</a>` : ""}</div>` : ""}</div>`;
 }
 
 export async function mountCarrierDirectory(root, tabsRoot, { collapse = true } = {}) {
@@ -109,8 +115,8 @@ export async function mountCarrierDirectory(root, tabsRoot, { collapse = true } 
     }
     io?.disconnect();
     root.innerHTML = list.length
-      ? `<div class="cr-grid" style="grid-auto-flow: row dense">${parts.join("")}</div>${limit < list.length ? `<button type="button" class="btn btn-ghost cr-more" data-more>Show all ${list.length} carriers</button>` : ""}`
-      : '<p class="cr-note">No carriers in this category yet.</p>';
+      ? `<div class="cr-grid" style="grid-auto-flow: row dense">${parts.join("")}</div>${limit < list.length ? `<button type="button" class="btn btn-ghost cr-more" data-more>${esc(tn("carriers.showAll", list.length))}</button>` : ""}`
+      : `<p class="cr-note">${esc(t("carriers.none"))}</p>`;
     if (io) root.querySelectorAll(".cr-tile:not(.is-in)").forEach((t) => io.observe(t));
   };
   // a picture that fails to load leaves the brand-colour panel and category icon, never a broken image
@@ -139,10 +145,13 @@ export async function mountCarrierDirectory(root, tabsRoot, { collapse = true } 
     openId = openId === t.dataset.id ? null : t.dataset.id; render();
     root.querySelector(`.cr-tile[data-id="${CSS.escape(t.dataset.id)}"]`)?.focus({ preventScroll: true });
   });
-  if (tabsRoot) {
+  const renderTabs = () => {
     const present = ORDER.filter((cat) => carriers.some((c) => c.category === cat));
-    tabsRoot.innerHTML = [["all", "All", carriers.length], ...present.map((c) => [c, CARRIER_CATEGORIES[c], carriers.filter((x) => x.category === c).length])]
+    tabsRoot.innerHTML = [["all", t("carriers.all"), carriers.length], ...present.map((c) => [c, catLabel(c), carriers.filter((x) => x.category === c).length])]
       .map(([k, l, n]) => `<button type="button" class="cr-tab" data-filter="${k}" aria-pressed="${k === filter}">${esc(l)}<span class="n">${n}</span></button>`).join("");
+  };
+  if (tabsRoot) {
+    renderTabs();
     tabsRoot.addEventListener("click", (e) => {
       const b = e.target.closest("[data-filter]"); if (!b) return;
       filter = b.dataset.filter; openId = null;
@@ -150,5 +159,7 @@ export async function mountCarrierDirectory(root, tabsRoot, { collapse = true } 
     });
   }
   small.addEventListener?.("change", render);
+  // language changed: same filter, same open card, new wording
+  onLang(() => { if (tabsRoot) renderTabs(); render(); });
   render();
 }
