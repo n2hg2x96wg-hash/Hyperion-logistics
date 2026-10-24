@@ -1,5 +1,30 @@
-// Shared public header behaviour (homepage + tracking pages): the mobile menu, and same-page section links.
+// Shared public header behaviour (homepage + tracking pages): the mobile menu, the language selector, and same-page
+// section links.
 import "./theme.js";
+import { LANGUAGES, initI18n, setLang, getLang, t, onLang } from "./i18n.js";
+
+// ---------- language selector ----------
+// A native <select> (keyboard, screen readers and phone pickers work as usual). In the header it shows the short code
+// of the current language; the mobile menu has a full-width copy with the language names. Both stay in sync.
+const GLOBE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3Z"/></svg>';
+function langSelect(id, cls) {
+  const opts = LANGUAGES.map((l) => `<option value="${l.code}" lang="${l.code}"${l.dir === "rtl" ? ' dir="rtl"' : ""}>${l.name}</option>`).join("");
+  return `<div class="${cls}">${cls === "lang-pick" ? `${GLOBE}<span class="lang-code" data-lang-current aria-hidden="true">EN</span>` : `<span class="lang-row-label">${GLOBE}<span data-i18n="lang.label">Language</span></span>`}
+    <select id="${id}" data-lang-select aria-label="Language" data-i18n-attr="aria-label:lang.label">${opts}</select></div>`;
+}
+function mountLanguageSelector(header) {
+  if (!header || header.querySelector("[data-lang-select]")) return;
+  header.querySelector("[data-theme-toggle]")?.insertAdjacentHTML("beforebegin", langSelect("hxLang", "lang-pick"));
+  header.querySelector(".nav-panel")?.insertAdjacentHTML("beforeend", langSelect("hxLangMenu", "lang-row"));
+  header.querySelectorAll("[data-lang-select]").forEach((sel) => {
+    sel.value = getLang();
+    // The page is never reloaded or redirected: form fields, an open tracking result and the session stay as they are.
+    sel.addEventListener("change", () => { setLang(sel.value); });
+  });
+}
+const shellHeader = document.querySelector("[data-site-header]");
+mountLanguageSelector(shellHeader);
+initI18n();
 // The menu is a solid sheet with a scrim; it closes on link tap, scrim tap, Escape and when the viewport grows
 // past the breakpoint, and the page behind it cannot scroll while it is open.
 const header = document.querySelector("[data-site-header]");
@@ -19,7 +44,7 @@ if (header) {
     scrim.hidden = !open;
     document.documentElement.classList.toggle("nav-open", open);
     toggle.setAttribute("aria-expanded", String(open));
-    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    toggle.setAttribute("aria-label", open ? t("nav.closeMenu") : t("nav.openMenu"));
     if (open) { lastFocus = document.activeElement; panel.querySelector("a")?.focus({ preventScroll: true }); }
     else if (lastFocus && header.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
   }
@@ -27,11 +52,12 @@ if (header) {
   toggle.addEventListener("click", () => setOpen(!isOpen()));
   scrim.addEventListener("click", () => setOpen(false));
   panel.addEventListener("click", (e) => { if (e.target.closest("a")) setOpen(false); });
+  // choosing a language from the mobile menu keeps the menu open, so the visitor sees the change and closes it themselves
   document.addEventListener("keydown", (e) => {
     if (!isOpen()) return;
     if (e.key === "Escape") { setOpen(false); toggle.focus(); return; }
     if (e.key === "Tab") { // keep focus inside the open menu
-      const items = [toggle, ...panel.querySelectorAll("a")];
+      const items = [toggle, ...panel.querySelectorAll("a, select")];
       const i = items.indexOf(document.activeElement);
       if (e.shiftKey && i <= 0) { e.preventDefault(); items[items.length - 1].focus(); }
       else if (!e.shiftKey && i === items.length - 1) { e.preventDefault(); items[0].focus(); }
@@ -40,6 +66,7 @@ if (header) {
   const onMq = () => { if (!mq.matches) setOpen(false); };
   mq.addEventListener ? mq.addEventListener("change", onMq) : mq.addListener(onMq);
   window.addEventListener("pagehide", () => setOpen(false));
+  onLang(() => toggle.setAttribute("aria-label", isOpen() ? t("nav.closeMenu") : t("nav.openMenu")));
 
   // Mark the current page's link.
   const here = location.pathname.replace(/\/index\.html$/, "/");

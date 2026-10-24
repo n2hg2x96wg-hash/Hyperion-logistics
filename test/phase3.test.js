@@ -11,6 +11,11 @@ process.env.ADMIN_PASSWORD = "test-password-123";
 process.env.SESSION_SECRET = "test-secret-test-secret-1234";
 
 const { createServer } = await import("../dev-server.js");
+// Interface text now lives in ui/locales/en.js (English is the source and the default). `plain()` removes the translation
+// markers from page markup so structural checks still read the English HTML; `EN` holds the English text by key.
+const EN = (await import("../ui/locales/en.js")).default;
+const plain = (html) => html.replace(/ data-i18n(?:-html|-attr)?="[^"]*"/g, "")
+  .replace(/<span>(Track a shipment|Explore freight services|Every milestone time-stamped|Updates appear without refreshing|Real support from our team|Origin|Destination|Recorded position|Travelled|Planned route|Carrier names are trademarks of their owners\.)<\/span>/g, "$1");
 const { __setStoreForTests } = await import("../api/_lib/store/index.js");
 const { createMemoryStore } = await import("../api/_lib/store/memory.js");
 const { validPoint, deriveCountry, coordinateIssue } = await import("../api/_lib/geo.js");
@@ -129,7 +134,7 @@ test("public statistics count countries from the typed place, not a mistyped coo
 });
 
 test("homepage: freight showcase follows the optional shared-shipments section, with real actions and no fabricated proof", () => {
-  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = plain(fs.readFileSync(new URL("../index.html", import.meta.url), "utf8"));
   const pos = (id) => html.indexOf(`id="${id}"`);
   assert.ok(pos("activity") > 0 && pos("activity") < pos("freight") && pos("freight") < pos("journey"), "section order");
   const section = html.slice(pos("freight"), pos("journey"));
@@ -272,7 +277,7 @@ test("homepage flow: hero → optional shared shipments → freight → journey 
 });
 
 test("homepage hero: headline and tracking form unchanged; drawn scene present and decorative layers hidden from assistive tech", () => {
-  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = plain(fs.readFileSync(new URL("../index.html", import.meta.url), "utf8"));
   assert.match(html, /<h1 id="heroTitle">Every shipment\. Every milestone\. <span>One clear view\.<\/span><\/h1>/);
   for (const kept of ['id="trackingInput"', 'onclick="track()"', 'href="#trackForm" data-focus-track>Track a shipment', 'href="#services">Explore our services', 'id="error"'])
     assert.ok(html.includes(kept), `${kept} missing`);
@@ -312,7 +317,7 @@ test("homepage shared shipments: hidden unless public data loaded with at least 
 });
 
 test("journey: three explanatory milestones joined by a connector; reduced motion and no-JS keep everything visible", () => {
-  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const html = plain(fs.readFileSync(new URL("../index.html", import.meta.url), "utf8"));
   const section = html.slice(html.indexOf('id="journey"'), html.indexOf('id="services"'));
   const steps = [...section.matchAll(/<li data-reveal>(?:<picture class="js-thumb">[\s\S]*?<\/picture>)?<strong>([^<]+)<\/strong>/g)].map((m) => m[1]);
   assert.deepEqual(steps, ["Warehouse processing", "Transit and handling", "Final delivery"]);
@@ -390,9 +395,9 @@ test("tracking presentation: the stage comes from the recorded status, the vehic
   const svg = sceneSvg({ stage: "transit", mode: "ship" });
   assert.match(svg, /aria-hidden="true"/); assert.ok(!/<text/.test(svg), "the picture carries no text (no invented place names)");
   const tracker = read("tracker/tracker.js");
-  assert.match(tracker, /Illustration of the current shipment stage\./);
+  assert.equal(EN["tr.scene.cap"], "Illustration of the current shipment stage."); assert.match(tracker, /t\(photo\?\.key === "ship" \? "tr\.scene\.capShip" : "tr\.scene\.cap"\)/);
   assert.ok(!/% of the journey|%<\/|pct\}%/.test(tracker), "no invented percentage in the progress display");
-  assert.match(tracker, /Stage <strong>\$\{cur \+ 1\}<\/strong> of \$\{n\}/);
+  assert.equal(EN["tr.stageOf"], "Stage {i} of {n}"); assert.match(tracker, /tHtml\("tr\.stageOf", \{ i: `<strong>\$\{cur \+ 1\}<\/strong>` \}, \{ n \}\)/);
 });
 
 test("recorded route: oldest first, consecutive repeats merged, nothing invented, destination upcoming until delivered", async () => {
@@ -454,9 +459,10 @@ test("tracker: manual check never overlaps, reports its real outcome, and the ti
   const t = read("tracker/tracker.js");
   assert.match(t, /if \(!refreshing\) refreshing = \(async \(\) => \{/, "one manual check at a time");
   assert.match(t, /b\.disabled = true; b\.setAttribute\("aria-busy", "true"\);/);
-  for (const k of ["updated", "unchanged", "error"]) assert.match(t, new RegExp(`${k}: "`), `feedback for ${k}`);
+  for (const k of ["updated", "unchanged", "error"]) assert.ok(EN[`tr.refresh.${k}`], `feedback for ${k}`);
+  assert.match(t, /refreshNote = \["updated", "unchanged", "error"\]\.includes\(r\) \? r : ""/);
   assert.match(t, /role="status" aria-live="polite"/);
-  assert.match(t, /Last checked \$\{/, "check time labelled separately from the last recorded event");
+  assert.equal(EN["tr.lastChecked"], "Last checked {time}", "check time labelled separately from the last recorded event"); assert.match(t, /t\("tr\.lastChecked"/);
   assert.match(t, /let timelineOrder = "oldest";/);
   assert.match(t, /const latestId = items\[0\]\?\.id;/, "'Latest' still marks the newest recorded event in either order");
 });
@@ -470,21 +476,22 @@ test("tracker: no back-office timestamps or labels for clients; only verified fe
   assert.match(t, /const LIVE_SOURCES = new Set\(\["gps", "carrier_api"\]\);/);
   assert.match(t, /if \(!verifiedFeed\(v\)\) \{ const s = ls\.state === "none" \? "none" : "last";/, "manual locations never read as live or recent");
   assert.match(t, /const latest = v\.timeline\?\.\[0\] \|\| null;/, "the latest milestone is the newest recorded event");
-  assert.match(t, /🕒 Latest recorded milestone/);
-  assert.match(t, /<time datetime="\$\{esc\(t\.timestamp\)\}">/, "event times stay in the timeline");
-  assert.match(read("tracker/map.js"), /cur\?\.updatedAt \? `Reported \$\{fmt\(cur\.updatedAt\)\}` : null/);
+  assert.match(t, /🕒 \$\{esc\(t\("tr\.latestMilestone"\)\)\}/); assert.equal(EN["tr.latestMilestone"], "Latest recorded milestone");
+  assert.match(t, /<time datetime="\$\{esc\(ev\.timestamp\)\}">/, "event times stay in the timeline");
+  assert.match(read("tracker/map.js"), /cur\?\.updatedAt \? t\("map\.reportedAt", \{ when: fmt\(cur\.updatedAt\) \}\) : null/);
   const cc = read("ui/globe/command-center.js");
-  assert.match(cc, /o\.mode === "admin" \|\| VERIFIED_LABELS\.has\(a\.sourceLabel\)/, "homepage feed hides back-office labels");
+  assert.match(cc, /o\.mode === "admin" \? ` · \$\{esc\(a\.sourceLabel\)\}` : VERIFIED_LABELS\.has\(a\.sourceLabel\)/, "homepage feed hides back-office labels");
 });
 
 test("tracker: 3D starts by itself when the scene is in view, with a loading state, timeout and photo fallback", () => {
   const t = read("tracker/tracker.js");
   assert.match(t, /v3io = new IntersectionObserver\(/, "lazy: starts when the scene scrolls into view");
   assert.match(t, /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\);/, "the 3D module is loaded lazily");
-  assert.match(t, /Loading 3D view…/);
+  assert.equal(EN["tr.3d.loading"], "Loading 3D view…"); assert.match(t, /t\("tr\.3d\.loading"\)/);
   assert.match(t, /const V3_TIMEOUT = 15000;/);
-  assert.match(t, /Showing photo — 3D view isn't available on this device\./);
-  assert.match(t, /Showing photo — 3D view turned off to keep this page smooth on this device\./, "slow devices get the photo");
+  assert.equal(EN["tr.3d.unavailable"], "Showing photo — 3D view isn't available on this device.");
+  assert.equal(EN["tr.3d.slow"], "Showing photo — 3D view turned off to keep this page smooth on this device.", "slow devices get the photo");
+  assert.match(t, /t\(kind === "slow" \? "tr\.3d\.slow" : "tr\.3d\.unavailable"\)/);
   for (const a of ["3d", "3d-close", "3d-reset", "3d-zoom-in", "3d-zoom-out", "3d-view"]) assert.ok(t.includes(`data-act="${a}"`) || t.includes(`act === "${a}"`), a);
   assert.doesNotMatch(t, /Explore in 3D/);
   const core = read("tracker/3d/core.js");
@@ -502,8 +509,10 @@ test("homepage tracking form: ids kept, neutral placeholder, loading and error s
   for (const id of ['id="trackForm"', 'id="trackingInput"', 'id="trackHint"', 'id="error"', 'id="btn-text"', 'onclick="track()"', "btn-track"]) assert.ok(h.includes(id), id);
   assert.match(h, /placeholder="Enter your tracking number"/);
   assert.doesNotMatch(h, /HY-\d{3,}/, "no example code that could look like a real shipment");
-  assert.match(h, /label\.textContent = busy \? "Tracking…" : s\.phase === "ready" && !s\.update \? "Shipment found" : "Track shipment"/);
-  for (const k of ["invalid", "notfound", "error"]) assert.match(h, new RegExp(`${k}: "`), k);
+  assert.match(h, /label\.textContent = busy \? t\("track\.btn\.busy"\) : found \? t\("track\.btn\.found"\) : t\("track\.btn\.idle"\)/);
+  assert.deepEqual([EN["track.btn.busy"], EN["track.btn.found"], EN["track.btn.idle"]], ["Tracking…", "Shipment found", "Track shipment"]);
+  assert.match(h, /found = s\.phase === "ready" && !s\.update;/);
+  for (const k of ["invalid", "notfound", "error"]) { assert.match(h, new RegExp(`${k}: t\\("track\\.err\\.${k}"\\)`), k); assert.ok(EN[`track.err.${k}`], k); }
   assert.match(read("ui/site-v2.css"), /\.track-field:focus-within \{/);
 });
 
@@ -637,10 +646,11 @@ test("tracking polish: heading, route line, 'Latest recorded milestone', a statu
   for (const code of Object.values(STATUS)) assert.ok(STATUS_HELP[code] && STATUS_HELP[code].length > 20, code);
   assert.ok(!/because|due to/i.test(Object.values(STATUS_HELP).join(" ")), "no invented reasons");
   const t = read("tracker/tracker.js");
-  assert.match(t, /<div class="hx-od">/); assert.match(t, /What does “\$\{esc\(v\.status\.label\)\}” mean\?/);
-  assert.match(read("index.html"), /<h2 class="track-title">Track your shipment<\/h2>/);
-  const tp = read("track.html"); assert.match(tp, /<div id="error" class="error-message" role="alert"><\/div>/); assert.match(tp, /notfound: "Tracking number not found\."/);
-  assert.match(t, /function routeSummaryHtml\(v\)/); assert.match(t, /Lines connect recorded places; they aren't a tracked path\./);
+  assert.match(t, /<div class="hx-od">/); assert.equal(EN["tr.help.q"], "What does “{status}” mean?"); assert.match(t, /t\("tr\.help\.q", \{ status: statusText\(v\.status\) \}\)/);
+  assert.match(plain(read("index.html")), /<h2 class="track-title">Track your shipment<\/h2>/);
+  const tp = read("track.html"); assert.match(tp, /<div id="error" class="error-message" role="alert"><\/div>/); assert.match(tp, /notfound: t\("track\.err\.notfound"\)/);
+  assert.equal(EN["track.err.notfound"], "Tracking number not found.");
+  assert.match(t, /function routeSummaryHtml\(v\)/); assert.equal(EN["tr.map.cap"], "Lines connect recorded places; they aren't a tracked path."); assert.match(t, /t\("tr\.map\.cap"\)/);
   assert.match(t, /data-slot="mapnote"/, "the map note has a place to render");
 });
 
@@ -749,13 +759,13 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
   // only Red Star Express uses an unbranded stand-in, and it is marked so the card can say it is illustrative
   assert.deepEqual(Object.entries(CARRIER_PHOTOS).filter(([, p]) => p.illustrative).map(([id]) => id), ["redstarexpress"]);
   assert.match(CARRIER_PHOTOS.redstarexpress.alt, /illustrative/i);
-  assert.match(read("ui/carriers.js"), /Illustrative photo: not a \$\{esc\(c\.name\)\} vehicle\./);
+  assert.match(read("ui/carriers.js"), /t\("carriers\.illustrative", \{ name: c\.name \}\)/); assert.equal(EN["carriers.illustrative"], "Illustrative photo: not a {name} vehicle.");
   assert.equal(carrierMedia({ id: "tesla-transport", category: "custom" }).base, "assets/carriers/tesla-semi");
   assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups-truck");
   // credits live on the Image Credits page (linked from every footer), not on the cards or in their details
   assert.ok(!/cr-credit|photoCredit|Wikimedia Commons/.test(read("ui/carriers.js")), "no photo credits on the cards");
   assert.match(read("credits.html"), /CARRIER_PHOTOS/); assert.match(read("credits.html"), /via Wikimedia Commons/);
-  for (const f of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html", "credits.html"]) assert.match(read(f), /<a href="\/credits\.html">Image credits<\/a>/, `${f}: footer link to credits`);
+  for (const f of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html", "credits.html"]) assert.match(plain(read(f)), /<a href="\/credits\.html">Image credits<\/a>/, `${f}: footer link to credits`);
   assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "name", "no prototype lookups");
   assert.equal(carrierMedia({ id: "new-carrier", category: "nonsense" }).category, "custom");
   const shuffled = CARRIERS.slice().reverse().map((c) => [c.id, JSON.stringify(carrierMedia({ id: c.id, category: carrierCategory(c) }))]);
@@ -805,7 +815,7 @@ test("clients never see staff entry/edit times: only verified carrier/GPS times 
   assert.ok(overview.routes.every((r) => !("updatedAt" in r) && !("sortKey" in r)));
   // the tracker shows a milestone time only when the server sent one
   const tr = read("tracker/tracker.js");
-  assert.match(tr, /\$\{t\.timestamp \? `<div class="hx-tl-time">/);
+  assert.match(tr, /\$\{ev\.timestamp \? `<div class="hx-tl-time">/);
   assert.match(tr, /\$\{latest\.timestamp \? `<div class="hx-fact-sub"><time/);
 });
 
@@ -831,7 +841,7 @@ test("Carrier Network page: public carrier directory with the shared header, no 
   const header = (f) => read(f).match(/<!-- site-header -->[\s\S]*?<!-- \/site-header -->/)[0];
   for (const f of ["index.html", "track.html", "tracking-enhanced.html"]) {
     assert.equal(header(f), header("carriers.html"), `${f}: same header`);
-    assert.match(read(f), /<a href="\/carriers\.html">Carrier network<\/a>/);
+    assert.match(plain(read(f)), /<a href="\/carriers\.html">Carrier network<\/a>/);
   }
 });
 

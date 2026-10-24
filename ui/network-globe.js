@@ -9,10 +9,18 @@
 // background tab. Reduced motion: no rotation or gliding markers; routes and cards still change, without movement.
 // No canvas / no geography: cards only.
 import { loadCountries, prefersReducedMotion } from "./globe/geo.js";
+import { COUNTRY_ALIASES } from "../shared/countries.js";
+import { t, getLang, intlLocale, fmtNumber, onLang } from "./i18n.js";
 import { hubById, distanceKm, createScheduler } from "./network-routes.js";
 
 const RAD = Math.PI / 180;
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Country names in the selected language (the browser's own names for ISO codes); English keeps the dataset's names.
+const countryText = (name) => {
+  if (getLang() === "en") return name;
+  const code = COUNTRY_ALIASES[String(name).toLowerCase()] || (name === "Hong Kong SAR" ? "HK" : null);
+  try { return code ? new Intl.DisplayNames([intlLocale()], { type: "region" }).of(code) || name : name; } catch { return name; }
+};
 const key = ([a, b]) => `${a}>${b}`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -142,11 +150,12 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
 
   // ----- cards -----
   function cardHtml(r) {
-    const km = distanceKm(r.a, r.b).toLocaleString("en-US");
-    return `<li class="ng-card" data-key="${esc(r.key)}"><span class="ng-kind">Freight connection</span>
-      <div class="ng-route"><span class="ng-city"><small>Origin</small><strong>${esc(r.a.city)}</strong><span>${esc(r.a.country)}</span></span>
-      <i aria-hidden="true"></i><span class="ng-city"><small>Destination</small><strong>${esc(r.b.city)}</strong><span>${esc(r.b.country)}</span></span></div>
-      <span class="ng-dist">${km} km apart · ${esc(r.a.region === r.b.region ? r.a.region : `${r.a.region} – ${r.b.region}`)}</span></li>`;
+    const km = fmtNumber(distanceKm(r.a, r.b));
+    const region = (x) => t(`region.${x}`, null, x);
+    return `<li class="ng-card" data-key="${esc(r.key)}"><span class="ng-kind">${esc(t("home.network.card"))}</span>
+      <div class="ng-route"><span class="ng-city"><small>${esc(t("route.origin"))}</small><strong>${esc(r.a.city)}</strong><span>${esc(countryText(r.a.country))}</span></span>
+      <i aria-hidden="true"></i><span class="ng-city"><small>${esc(t("route.destination"))}</small><strong>${esc(r.b.city)}</strong><span>${esc(countryText(r.b.country))}</span></span></div>
+      <span class="ng-dist">${esc(t("home.network.apart", { km }))} · ${esc(r.a.region === r.b.region ? region(r.a.region) : `${region(r.a.region)} – ${region(r.b.region)}`)}</span></li>`;
   }
   function renderCards() {
     if (!cards) return;
@@ -167,7 +176,7 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
     const focus = want[want.length - 1]?.key || "";
     for (const li of cards.children) li.classList.toggle("is-focus", li.dataset.key === focus && !li.classList.contains("is-out"));
     root.dataset.routes = want.map((r) => r.key).join(" "); root.dataset.focus = focus;
-    if (srList) srList.innerHTML = want.map((r) => `<li>${esc(r.a.city)}, ${esc(r.a.country)} to ${esc(r.b.city)}, ${esc(r.b.country)}</li>`).join("");
+    if (srList) srList.innerHTML = want.map((r) => `<li>${esc(t("home.network.srItem", { from: `${r.a.city}, ${countryText(r.a.country)}`, to: `${r.b.city}, ${countryText(r.b.country)}` }))}</li>`).join("");
   }
 
   // ----- drawing -----
@@ -320,9 +329,11 @@ export function mountNetworkGlobe(root, { random = Math.random } = {}) {
   const onTheme = () => { palette = readPalette(root); draw(); };
   document.addEventListener("visibilitychange", onVis); document.addEventListener("hx-theme", onTheme);
 
+  // language changed: re-word the visible cards in place
+  const offLang = onLang(() => { if (cards) cards.innerHTML = ""; renderCards(); });
   return {
     visible: () => routes.filter((r) => !r.dying).map((r) => r.key),
-    destroy() { destroyed = true; stop(); ro?.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", onVis); document.removeEventListener("hx-theme", onTheme); }
+    destroy() { destroyed = true; offLang(); stop(); ro?.disconnect(); io?.disconnect(); document.removeEventListener("visibilitychange", onVis); document.removeEventListener("hx-theme", onTheme); }
   };
 }
 
