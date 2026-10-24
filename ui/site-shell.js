@@ -14,6 +14,12 @@ function langSelect(id, cls) {
 }
 function mountLanguageSelector(header) {
   if (!header || header.querySelector("[data-lang-select]")) return;
+  // The selector brings its own styles: a page (or an old saved copy of one) that doesn't link ui/i18n.css would otherwise
+  // show a bare, full-width dropdown in the header.
+  if (!document.querySelector('link[href$="i18n.css"]')) {
+    const css = document.createElement("link"); css.rel = "stylesheet"; css.href = new URL("./i18n.css", import.meta.url).href;
+    document.head.appendChild(css);
+  }
   header.querySelector("[data-theme-toggle]")?.insertAdjacentHTML("beforebegin", langSelect("hxLang", "lang-pick"));
   header.querySelector(".nav-panel")?.insertAdjacentHTML("beforeend", langSelect("hxLangMenu", "lang-row"));
   header.querySelectorAll("[data-lang-select]").forEach((sel) => {

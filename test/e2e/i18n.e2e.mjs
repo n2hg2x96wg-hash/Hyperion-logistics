@@ -208,3 +208,21 @@ test("i18n: a missing translation falls back to English without breaking the pag
   assert.deepEqual(errs, []);
   await ctx.close();
 });
+
+test("i18n: the selector keeps its compact look even on a page that doesn't link its stylesheet (e.g. an old saved copy)", async () => {
+  const ctx = await newContext({ width: 390, height: 844 });
+  await ctx.route(/\/index\.html$/, async (r) => {
+    const res = await r.fetch(); const html = (await res.text()).replace(/<link rel="stylesheet" href="ui\/i18n\.css">/, "");
+    r.fulfill({ response: res, body: html });
+  });
+  const page = await ctx.newPage(); const errs = watch(page);
+  await page.goto(`${base}/index.html`);
+  await page.waitForSelector("#hxLang", { state: "attached" });
+  await page.waitForFunction(() => getComputedStyle(document.querySelector("#hxLang")).opacity === "0");
+  const box = await page.locator(".lang-pick").boundingBox();
+  assert.ok(box.width < 90 && box.height <= 48, `compact selector (${box.width}x${box.height})`);
+  assert.ok(!(await page.locator("#hxLangMenu").isVisible()), "the menu copy stays inside the closed menu");
+  assert.ok(await noOverflow(page));
+  assert.deepEqual(errs, []);
+  await ctx.close();
+});

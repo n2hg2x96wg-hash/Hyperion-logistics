@@ -82,5 +82,12 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/credits.html",
+      "destination": "/carriers.html",
+      "permanent": true
+    }
   ]
 }
