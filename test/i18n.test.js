@@ -142,3 +142,9 @@ test("i18n: system-written event sentences match the server's wording, so they c
   assert.equal(eventTitle({ title: "Facility Arrival", statusCode: "AT_FACILITY" }), "Facility Arrival");
   assert.equal(eventTitle({ title: "Custom title", statusCode: "AT_FACILITY" }), "Custom title", "custom titles are kept");
 });
+
+test("i18n: old links to the removed Image Credits page go to the Carrier Network page", () => {
+  const v = JSON.parse(read("vercel.json"));
+  assert.deepEqual(v.redirects, [{ source: "/credits.html", destination: "/carriers.html", permanent: true }]);
+  assert.match(read("ui/site-shell.js"), /link\[href\$="i18n\.css"\]/, "the selector loads its own styles when a page lacks them");
+});
