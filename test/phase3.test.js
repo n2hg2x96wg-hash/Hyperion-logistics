@@ -734,7 +734,7 @@ test("tawk.to: one chat loader on each public page, guarded against double loads
   for (const page of ["admin.html", "login.html", "dashboard.html"]) assert.ok(!/tawk\.to|hs-scripts/i.test(read(page)), `${page}: staff pages have no customer chat`);
 });
 
-test("carrier cards: own photo by carrier id or a name-led card; never a stage photo or drawing; credits recorded", async () => {
+test("carrier cards: own photo by carrier id or a name-led card; never a stage photo or drawing; no credit lines needed", async () => {
   const { CARRIERS, carrierCategory } = await import("../shared/carriers.js");
   const { carrierMedia, CARRIER_PHOTOS } = await import("../ui/carrier-media.js");
   const exists = (f) => fs.existsSync(new URL(`../${f}`, import.meta.url));
@@ -746,33 +746,36 @@ test("carrier cards: own photo by carrier id or a name-led card; never a stage p
       assert.ok(m.alt && m.alt.length > 10);
     } else assert.deepEqual(m, { type: "name", category: carrierCategory(c) }, `${c.id}: name-led card`);
   }
-  // openly licensed Wikimedia Commons photos, each of the carrier it is mapped to, with the credit its licence requires
+  // public domain or CC0 photos only (no attribution required), each of the carrier it is mapped to
   const ids = CARRIERS.map((c) => c.id);
-  assert.equal(Object.keys(CARRIER_PHOTOS).length, 23, "every carrier has a photo");
+  assert.equal(Object.keys(CARRIER_PHOTOS).length, 19);
   for (const [id, p] of Object.entries(CARRIER_PHOTOS)) {
     assert.ok(ids.includes(id), `${id} is a real carrier`);
     assert.match(p.base, /^assets\/carriers\/[a-z0-9-]+$/, `${id}: a descriptive file name in assets/carriers`);
-    for (const w of p.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(fs.existsSync(new URL(`../${p.base}-${w}.${ext}`, import.meta.url)), `${id}: ${p.base}-${w}.${ext}`);
-    assert.match(p.credit.license, /^(CC BY(-SA)? [0-9.]+|CC0|Public domain)$/, `${id}: open licence`);
-    assert.ok(p.credit.author && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(p.credit.source), `${id}: author and source`);
+    assert.match(p.license, /^(CC0|Public domain)$/, `${id}: no attribution required`);
+    assert.match(p.source, /^https:\/\/commons\.wikimedia\.org\/wiki\/File:/, `${id}: source on record`);
+    assert.ok(!p.credit && !p.illustrative, `${id}: no credit or stand-in`);
   }
-  // only Red Star Express uses an unbranded stand-in, and it is marked so the card can say it is illustrative
-  assert.deepEqual(Object.entries(CARRIER_PHOTOS).filter(([, p]) => p.illustrative).map(([id]) => id), ["redstarexpress"]);
-  assert.match(CARRIER_PHOTOS.redstarexpress.alt, /illustrative/i);
-  assert.match(read("ui/carriers.js"), /t\("carriers\.illustrative", \{ name: c\.name \}\)/); assert.equal(EN["carriers.illustrative"], "Illustrative photo: not a {name} vehicle.");
-  assert.equal(carrierMedia({ id: "tesla-transport", category: "custom" }).base, "assets/carriers/tesla-semi");
-  assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups-truck");
-  // credits live on the Image Credits page (linked from every footer), not on the cards or in their details
-  assert.ok(!/cr-credit|photoCredit|Wikimedia Commons/.test(read("ui/carriers.js")), "no photo credits on the cards");
-  assert.match(read("credits.html"), /CARRIER_PHOTOS/); assert.match(read("credits.html"), /via Wikimedia Commons/);
-  for (const f of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html", "credits.html"]) assert.match(plain(read(f)), /<a href="\/credits\.html">Image credits<\/a>/, `${f}: footer link to credits`);
+  for (const id of ["2goexpress", "aramex", "giglogistics", "redstarexpress"]) assert.equal(carrierMedia({ id, category: "regional" }).type, "name", `${id}: name-led card`);
+  assert.equal(carrierMedia({ id: "tesla-transport", category: "custom" }).base, "assets/carriers/tesla-semi-silver");
+  assert.equal(carrierMedia({ id: "ups", category: "express" }).base, "assets/carriers/ups-tractor-trailer");
+  const cardFiles = fs.readdirSync(new URL("../assets/carriers/", import.meta.url)).filter((f) => /-(480|960)\.(avif|webp|jpg)$/.test(f));
+  assert.equal(cardFiles.length, 19 * 6, "only the mapped photos are shipped");
+  // no credit text, credits page or credits link anywhere on the site
+  assert.ok(!/cr-credit|photoCredit|Wikimedia|Illustrative photo|cr-illus/.test(read("ui/carriers.js") + read("ui/command-center.css")), "no photo credits on the cards");
+  assert.ok(!exists("credits.html"), "no Image Credits page");
+  for (const f of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html"]) {
+    const html = read(f);
+    assert.ok(!/credits\.html|Image credits/i.test(html), `${f}: no credits link`);
+    assert.match(html, /<span data-i18n="foot.trademarks">Carrier names are trademarks of their owners\.<\/span><\/div>/, `${f}: trademark disclaimer kept`);
+  }
   assert.equal(carrierMedia({ id: "constructor", category: "air" }).type, "name", "no prototype lookups");
   assert.equal(carrierMedia({ id: "new-carrier", category: "nonsense" }).category, "custom");
   const shuffled = CARRIERS.slice().reverse().map((c) => [c.id, JSON.stringify(carrierMedia({ id: c.id, category: carrierCategory(c) }))]);
   for (const [id, m] of shuffled) assert.equal(m, JSON.stringify(carrierMedia({ id, category: carrierCategory(CARRIERS.find((c) => c.id === id)) })));
-  const credits = read("assets/carriers/ATTRIBUTION.md");
-  for (const [id, m] of Object.entries(CARRIER_PHOTOS)) { assert.ok(credits.includes(`| ${id} |`) && credits.includes(m.credit.source) && credits.includes(m.base.split("/").pop()), `attribution for ${id}`); }
-  for (const n of ["EMS (Express Mail Service)", "Red Star Express", "Tesla Transport"]) assert.ok(credits.includes(n), `${n} explained in the notes`);
+  const sources = read("assets/carriers/SOURCES.md");
+  for (const [id, m] of Object.entries(CARRIER_PHOTOS)) assert.ok(sources.includes(`| ${id} |`) && sources.includes(m.source) && sources.includes(m.base.split("/").pop()), `source recorded for ${id}`);
+  assert.ok(!exists("assets/carriers/ATTRIBUTION.md"));
   assert.ok(!fs.existsSync(new URL("../assets/carriers/CREDITS.md", import.meta.url)), "owner screenshots with unverified rights are gone");
   const src = read("ui/carriers.js");
   assert.ok(!/<svg class="cr-art"|categoryArtSvg/.test(src + read("ui/carrier-media.js")), "no drawn stand-in pictures");

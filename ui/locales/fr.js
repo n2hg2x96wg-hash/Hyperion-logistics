@@ -43,7 +43,6 @@ export default {
   "foot.customerSupport": "Service client",
   "foot.rights": "© 2026 Hyperion Logistics. Tous droits réservés.",
   "foot.trademarks": "Les noms des transporteurs sont des marques de leurs propriétaires respectifs.",
-  "foot.imageCredits": "Crédits images",
 
   "common.loading": "Chargement…",
 
@@ -481,7 +480,6 @@ export default {
   "carriers.none": "Aucun transporteur dans cette catégorie pour le moment.",
   "carriers.details": "Détails : {name}",
   "carriers.coverage": "Couverture : {coverage}",
-  "carriers.illustrative": "Photo d’illustration : il ne s’agit pas d’un véhicule {name}.",
   "carriers.officialSite": "Site officiel",
   "carriers.partner": "Partenaire vérifié",
   // built-in catalogue text (an admin's edited text is shown as stored)

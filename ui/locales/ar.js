@@ -43,7 +43,6 @@ export default {
   "foot.customerSupport": "دعم العملاء",
   "foot.rights": "© 2026 Hyperion Logistics. جميع الحقوق محفوظة.",
   "foot.trademarks": "أسماء شركات النقل علامات تجارية مملوكة لأصحابها.",
-  "foot.imageCredits": "حقوق الصور",
 
   "common.loading": "جارٍ التحميل…",
 
@@ -496,7 +495,6 @@ export default {
   "carriers.none": "لا توجد شركات نقل في هذه الفئة بعد.",
   "carriers.details": "تفاصيل {name}",
   "carriers.coverage": "التغطية: {coverage}",
-  "carriers.illustrative": "صورة توضيحية: ليست مركبة تابعة لـ {name}.",
   "carriers.officialSite": "الموقع الرسمي",
   "carriers.partner": "شريك موثَّق",
   // built-in catalogue text (an admin's edited text is shown as stored)

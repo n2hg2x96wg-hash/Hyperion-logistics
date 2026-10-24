@@ -43,7 +43,6 @@ export default {
   "foot.customerSupport": "Kundenservice",
   "foot.rights": "© 2026 Hyperion Logistics. Alle Rechte vorbehalten.",
   "foot.trademarks": "Die Namen der Versanddienstleister sind Marken ihrer jeweiligen Inhaber.",
-  "foot.imageCredits": "Bildnachweise",
 
   "common.loading": "Wird geladen…",
 
@@ -480,7 +479,6 @@ export default {
   "carriers.none": "In dieser Kategorie gibt es noch keine Versanddienstleister.",
   "carriers.details": "Details zu {name}",
   "carriers.coverage": "Abdeckung: {coverage}",
-  "carriers.illustrative": "Beispielfoto: kein Fahrzeug von {name}.",
   "carriers.officialSite": "Offizielle Website",
   "carriers.partner": "Verifizierter Partner",
   // built-in catalogue text (an admin's edited text is shown as stored)

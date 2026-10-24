@@ -41,7 +41,6 @@ export default {
   "foot.customerSupport": "客户支持",
   "foot.rights": "© 2026 Hyperion Logistics。保留所有权利。",
   "foot.trademarks": "承运商名称为其各自所有者的商标。",
-  "foot.imageCredits": "图片来源",
 
   "common.loading": "加载中…",
 
@@ -471,7 +470,6 @@ export default {
   "carriers.none": "该类别暂无承运商。",
   "carriers.details": "{name} 详情",
   "carriers.coverage": "覆盖范围：{coverage}",
-  "carriers.illustrative": "示意图片：并非 {name} 的车辆。",
   "carriers.officialSite": "官方网站",
   "carriers.partner": "认证合作伙伴",
   // built-in catalogue text (an admin's edited text is shown as stored)

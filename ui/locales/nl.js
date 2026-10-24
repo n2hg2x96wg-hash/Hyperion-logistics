@@ -43,7 +43,6 @@ export default {
   "foot.customerSupport": "Klantenservice",
   "foot.rights": "© 2026 Hyperion Logistics. Alle rechten voorbehouden.",
   "foot.trademarks": "Namen van vervoerders zijn handelsmerken van hun eigenaren.",
-  "foot.imageCredits": "Beeldverantwoording",
 
   "common.loading": "Laden…",
 
@@ -480,7 +479,6 @@ export default {
   "carriers.none": "Nog geen vervoerders in deze categorie.",
   "carriers.details": "Details van {name}",
   "carriers.coverage": "Dekking: {coverage}",
-  "carriers.illustrative": "Illustratieve foto: geen voertuig van {name}.",
   "carriers.officialSite": "Officiële website",
   "carriers.partner": "Geverifieerde partner",
   // built-in catalogue text (an admin's edited text is shown as stored)

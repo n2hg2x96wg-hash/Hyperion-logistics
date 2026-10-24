@@ -44,7 +44,6 @@ export default {
   "foot.customerSupport": "Asistență clienți",
   "foot.rights": "© 2026 Hyperion Logistics. Toate drepturile rezervate.",
   "foot.trademarks": "Numele transportatorilor sunt mărci ale proprietarilor lor.",
-  "foot.imageCredits": "Credite imagini",
 
   "common.loading": "Se încarcă…",
 
@@ -482,7 +481,6 @@ export default {
   "carriers.none": "Încă nu există transportatori în această categorie.",
   "carriers.details": "Detalii: {name}",
   "carriers.coverage": "Acoperire: {coverage}",
-  "carriers.illustrative": "Fotografie ilustrativă: nu este un vehicul {name}.",
   "carriers.officialSite": "Site oficial",
   "carriers.partner": "Partener verificat",
   // built-in catalogue text (an admin's edited text is shown as stored)

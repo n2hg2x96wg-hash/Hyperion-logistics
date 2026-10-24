@@ -45,7 +45,6 @@ export default {
   "foot.customerSupport": "Customer Support",
   "foot.rights": "© 2026 Hyperion Logistics. All rights reserved.",
   "foot.trademarks": "Carrier names na trademark of the people wey get dem.",
-  "foot.imageCredits": "Who get the pictures",
 
   "common.loading": "E dey load…",
 
@@ -481,7 +480,6 @@ export default {
   "carriers.none": "No carrier dey this category yet.",
   "carriers.details": "{name} details",
   "carriers.coverage": "Where dem dey cover: {coverage}",
-  "carriers.illustrative": "Sample photo: no be {name} vehicle.",
   "carriers.officialSite": "Official website",
   "carriers.partner": "Verified partner",
   // built-in catalogue text (an admin's edited text is shown as stored)

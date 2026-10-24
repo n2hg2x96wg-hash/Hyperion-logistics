@@ -41,7 +41,6 @@ export default {
   "foot.customerSupport": "Assistenza clienti",
   "foot.rights": "© 2026 Hyperion Logistics. Tutti i diritti riservati.",
   "foot.trademarks": "I nomi dei vettori sono marchi dei rispettivi proprietari.",
-  "foot.imageCredits": "Crediti delle immagini",
 
   "common.loading": "Caricamento…",
 
@@ -480,7 +479,6 @@ export default {
   "carriers.none": "Nessun vettore ancora presente in questa categoria.",
   "carriers.details": "Dettagli di {name}",
   "carriers.coverage": "Copertura: {coverage}",
-  "carriers.illustrative": "Foto illustrativa: non è un veicolo di {name}.",
   "carriers.officialSite": "Sito ufficiale",
   "carriers.partner": "Partner verificato",
   // built-in catalogue text (an admin's edited text is shown as stored)
