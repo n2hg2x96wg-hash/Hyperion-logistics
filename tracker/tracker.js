@@ -6,18 +6,19 @@
 //
 // Privacy: the active tracking code lives ONLY in this closure (memory). It is never written to localStorage,
 // sessionStorage, cookies or the address bar. clear()/expire() wipe it together with the rendered shipment.
-import { timeAgo, locationFreshness, LOCATION_STATE_LABELS } from "../shared/status.js";
+import { locationFreshness } from "../shared/status.js";
+import { statusText, stepText, eventTitle, eventDescription, exceptionText } from "../ui/status-text.js";
+import { t, tn, tMaybe, tHtml, tnHtml, fmtDateTime, fmtDate, fmtWeekday, fmtTime, fmtAgo, onLang } from "../ui/i18n.js";
 import { resolveMapData, hasPoints } from "./map-data.js";
 import { presentation, sceneSvg, routeStops, stagePhoto, stagePhotoHtml, stageScene, modelCaption, routeOverlaySvg, STATUS_HELP } from "./scene.js";
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{2,39}$/;
 const LIVE_SOURCES = new Set(["gps", "carrier_api"]); // the only sources that are verified live carrier / telemetry data
-const SOURCE_TEXT = { gps: "GPS", carrier_api: "Carrier update" };
+const sourceText = (src) => (LIVE_SOURCES.has(src) ? t(`source.${src}`) : ""); // only verified feeds are named to clients
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const dtf = (() => { try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }); } catch { return null; } })();
-const fmtDateTime = (iso) => { const d = new Date(iso); return Number.isNaN(+d) ? "" : (dtf ? dtf.format(d) : d.toLocaleString()); };
 const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-const fmtDate = (ymd, style = "full") => { const d = new Date(`${ymd}T00:00:00Z`); return Number.isNaN(+d) ? ymd : new Intl.DateTimeFormat(undefined, { dateStyle: style, timeZone: "UTC" }).format(d); };
+
+const etaUnavailable = (text) => (!text || text === "Delivery estimate unavailable." ? t("eta.unavailable") : text);
 
 export function normalizeCode(input) {
   const code = String(input ?? "").replace(/\s+/g, "").toUpperCase();
@@ -29,17 +30,17 @@ const ICON = { pin: "📍", box: "📦", route: "🧭", truck: "🚚", note: "�
 // Customer Support: a direct email contact (opens the visitor's own email app). Shown with every shipment view,
 // including the homepage tracker and the admin "Client View" preview, so clients can always find it.
 export const SUPPORT_EMAIL = "hyperionlogistics.com@gmail.com";
-const SUPPORT_SUBJECT = "Hyperion Logistics — Customer Inquiry";
+const SUPPORT_SUBJECT = "Hyperion Logistics — Customer Inquiry"; // e-mail subject/body stay in English for the support team
 export const supportHref = (code) => `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(SUPPORT_SUBJECT)}${code ? `&body=${encodeURIComponent(`Tracking number: ${code}\n\n`)}` : ""}`;
 const MAIL_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg>';
 export function supportCardHtml(code, attrs = "") {
   const href = esc(supportHref(code));
   return `<section class="hx-support-card hx-support-inline" id="hx-support" aria-labelledby="hxSupportH" ${attrs}>
     <span class="hx-support-icon">${MAIL_SVG}</span>
-    <div class="hx-support-text"><h3 id="hxSupportH">Customer Support <span>Need help with your shipment?</span></h3>
-      <p>Email our support team${code ? " — your tracking number is added to the message for you" : " and include your tracking number"}.</p>
-      <a class="hx-support-email" href="${href}">${SUPPORT_EMAIL}</a></div>
-    <a class="hx-support-btn hx-press" href="${href}">Contact Customer Support</a></section>`;
+    <div class="hx-support-text"><h3 id="hxSupportH">${esc(t("support.title"))} <span>${esc(t("support.subtitle"))}</span></h3>
+      <p>${esc(t(code ? "support.withCode" : "support.withoutCode"))}</p>
+      <a class="hx-support-email" href="${href}" dir="ltr">${SUPPORT_EMAIL}</a></div>
+    <a class="hx-support-btn hx-press" href="${href}">${esc(t("support.button"))}</a></section>`;
 }
 
 /**
@@ -59,7 +60,7 @@ export function createTracker(root, opts = {}) {
   let abort = null; let inflightCode = null; let map = null; let mapMod = null; let mapFailed = false; let mapToken = 0;
   let es = null; let pollTimer = null; let pollDelay = 0; let esFailures = 0; let sseRetryAt = 0; let tick = null; let destroyed = false;
   let serverOffset = 0; let renderedCode = null; let refreshNote = ""; let noteFor = null; let noteTimer = null;
-  const REFRESH_NOTES = { updated: "✓ New information loaded.", unchanged: "✓ Checked — no new updates since the last recorded one.", error: "Couldn't check right now — showing the last loaded information." }; let shownStage = null; // progress stage last drawn, so the bar animates only on a real change
+  const refreshNoteText = (kind) => (kind ? t(`tr.refresh.${kind}`) : ""); let shownStage = null; // progress stage last drawn, so the bar animates only on a real change
   let cfg = { pollMs: 20000, sse: true };
   const visibilityHandler = () => { if (!document.hidden && state.code && state.view && useRealtime) pollNow(); };
 
@@ -188,10 +189,10 @@ export function createTracker(root, opts = {}) {
   function locState(v = state.view) {
     const ls = v?.locationState;
     if (!ls) return null;
-    if (!verifiedFeed(v)) { const s = ls.state === "none" ? "none" : "last"; return { ...ls, state: s, label: LOCATION_STATE_LABELS[s] }; }
+    if (!verifiedFeed(v)) { const s = ls.state === "none" ? "none" : "last"; return { ...ls, state: s, label: t(`loc.${s}`) }; }
     const s = locationFreshness({ updatedAt: ls.updatedAt, hasCoordinates: ls.hasCoordinates, hasName: !!v.currentLocation,
       statusCode: v.status?.code, now: Date.now() + serverOffset, liveMs: ls.liveMs, recentMs: ls.recentMs });
-    return { ...ls, state: s, label: LOCATION_STATE_LABELS[s] };
+    return { ...ls, state: s, label: t(`loc.${s}`) };
   }
   const badge = (ls) => (ls && (ls.state === "live" || ls.state === "recent") ? `<span class="hx-loc-badge is-${esc(ls.state)}" data-slot="locbadge"><i></i>${esc(ls.label)}</span>` : "");
 
@@ -209,19 +210,15 @@ export function createTracker(root, opts = {}) {
 
   function renderSkeleton() {
     destroyMap(); drop3d();
-    root.innerHTML = `<div class="hx-card hx-skeleton" role="status" aria-label="Loading shipment"><div class="hx-sk hx-sk-a"></div><div class="hx-sk hx-sk-b"></div><div class="hx-sk hx-sk-map"></div><div class="hx-sk hx-sk-c"></div></div>`;
+    root.innerHTML = `<div class="hx-card hx-skeleton" role="status" aria-label="${esc(t("tr.loading"))}"><div class="hx-sk hx-sk-a"></div><div class="hx-sk hx-sk-b"></div><div class="hx-sk hx-sk-map"></div><div class="hx-sk hx-sk-c"></div></div>`;
   }
 
-  const MESSAGES = {
-    notfound: { icon: "🔎", title: "Tracking number not found.", body: "Check the number on your booking confirmation and try again. Letters and numbers must match exactly.", retry: false },
-    invalid: { icon: "⌨️", title: "Please enter a valid tracking number.", body: "Tracking numbers use letters, numbers and dashes only, with at least 3 characters.", retry: false },
-    error: { icon: "📡", title: "We couldn't load tracking right now.", body: "Please check your connection and try again in a moment.", retry: true },
-    expired: { icon: "🔒", title: "Your tracking session has ended.", body: "For your privacy, shipment details are cleared when you leave, reload or stay inactive. Enter your tracking number again to continue.", retry: false }
-  };
+  const MESSAGES = { notfound: { icon: "🔎", retry: false }, invalid: { icon: "⌨️", retry: false }, error: { icon: "📡", retry: true }, expired: { icon: "🔒", retry: false } };
+  let shownMessage = null;
   function renderMessage(kind) {
-    destroyMap(); drop3d(); renderedCode = null;
+    destroyMap(); drop3d(); renderedCode = null; shownMessage = kind;
     const msg = MESSAGES[kind];
-    root.innerHTML = `<div class="hx-card hx-empty" role="alert" data-reveal><div class="hx-empty-ico">${msg.icon}</div><h3>${msg.title}</h3><p>${msg.body}</p>${msg.retry ? '<button type="button" class="hx-btn" data-act="retry">Try again</button>' : ""}</div>`;
+    root.innerHTML = `<div class="hx-card hx-empty" role="alert" data-reveal><div class="hx-empty-ico">${msg.icon}</div><h3>${esc(t(`tr.msg.${kind}.title`))}</h3><p>${esc(t(`tr.msg.${kind}.body`))}</p>${msg.retry ? `<button type="button" class="hx-btn" data-act="retry">${esc(t("tr.tryAgain"))}</button>` : ""}</div>`;
   }
 
   // Stage-based progress. No percentage is shown: the lifecycle position is the only fact the data supports.
@@ -231,14 +228,15 @@ export function createTracker(root, opts = {}) {
     const frac = (i) => (p.stage === "DELIVERED" ? 1 : i <= 0 ? 0 : i / (n - 1));
     const items = p.steps.map((s, i) => {
       const st = p.cancelled ? "" : i < cur ? "done" : i === cur ? (p.held ? "current held" : "current") : "upcoming";
-      const sr = st.startsWith("current") ? (p.held ? "Current, on hold" : "Current") : st === "done" ? "Completed" : "Upcoming";
-      return `<li class="hx-step ${st}" ${i === cur ? 'aria-current="step"' : ""}><span class="hx-step-dot" aria-hidden="true"></span><span class="hx-step-label">${esc(s.label)}</span><span class="hx-sr"> — ${sr}</span></li>`;
+      const sr = t(st.startsWith("current") ? (p.held ? "tr.step.currentHeld" : "tr.step.current") : st === "done" ? "tr.step.done" : "tr.step.upcoming");
+      return `<li class="hx-step ${st}" ${i === cur ? 'aria-current="step"' : ""}><span class="hx-step-dot" aria-hidden="true"></span><span class="hx-step-label">${esc(stepText(s.code, s.label))}</span><span class="hx-sr"> — ${esc(sr)}</span></li>`;
     }).join("");
     if (cur < 0) return `<ol class="hx-steps">${items}</ol>`;
-    const label = p.steps[cur].label;
-    const now = `<div class="hx-stage-now">${esc(label)}${p.held ? " · on hold" : ""}</div>`;
-    const head = `<div class="hx-progress-head"><span>Stage <strong>${cur + 1}</strong> of ${n}</span><span class="hx-progress-label">${esc(label)}</span></div>`;
-    return `${head}<div class="hx-progress-bar" role="progressbar" aria-label="Shipment progress" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${cur + 1}" aria-valuetext="Stage ${cur + 1} of ${n}: ${esc(label)}"><span data-p="${frac(cur)}" style="--hx-p:${frac(cur)}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
+    const label = stepText(p.steps[cur].code, p.steps[cur].label);
+    const onHold = p.held ? ` · ${t("tr.onHold")}` : "";
+    const now = `<div class="hx-stage-now">${esc(label)}${esc(onHold)}</div>`;
+    const head = `<div class="hx-progress-head"><span>${tHtml("tr.stageOf", { i: `<strong>${cur + 1}</strong>` }, { n })}</span><span class="hx-progress-label">${esc(label)}</span></div>`;
+    return `${head}<div class="hx-progress-bar" role="progressbar" aria-label="${esc(t("tr.progress"))}" aria-valuemin="1" aria-valuemax="${n}" aria-valuenow="${cur + 1}" aria-valuetext="${esc(t("tr.stageOf", { i: cur + 1, n }))}: ${esc(label)}"><span data-p="${frac(cur)}" style="--hx-p:${frac(cur)}"></span></div><ol class="hx-steps">${items}</ol>${now}`;
   }
 
   /** Origin → destination with the recorded stage, above the map (no percentage: the stage is the only fact). */
@@ -253,10 +251,10 @@ export function createTracker(root, opts = {}) {
     const frac = p?.stage === "DELIVERED" ? 1 : i <= 0 || n < 2 ? 0 : i / (n - 1);
     const mode = presentation(v).mode; const icon = mode ? MODE_SVG[mode] : "";
     const eta = v.eta?.state === "date" ? fmtDate(v.eta.date, "medium") : v.eta?.state === "delivered" && v.eta.deliveredAt ? fmtDateTime(v.eta.deliveredAt) : "";
-    return `<div class="hx-routesum"><div class="hx-rsum-end"><small>From</small><strong>${esc(v.origin || "Origin not set")}</strong></div>
+    return `<div class="hx-routesum"><div class="hx-rsum-end"><small>${esc(t("route.from"))}</small><strong>${esc(v.origin || t("route.originNotSet"))}</strong></div>
       <div class="hx-rsum-line" aria-hidden="true"><i style="--hx-p:${p?.cancelled ? 0 : frac}"></i>${icon ? `<span class="hx-rsum-mode" style="--hx-p:${p?.cancelled ? 0 : frac}">${icon}</span>` : ""}</div>
-      <div class="hx-rsum-end is-dest"><small>To</small><strong>${esc(v.destination || "Destination not set")}</strong></div>
-      ${i >= 0 || eta ? `<div class="hx-rsum-meta">${i >= 0 ? `<span>${p.cancelled ? "Cancelled" : `Stage ${i + 1} of ${n} · ${esc(p.steps[i].label)}${p.held ? " · on hold" : ""}`}</span>` : ""}${eta ? `<span>${v.eta.state === "delivered" ? "Delivered" : "Estimated delivery"} ${esc(eta)}</span>` : ""}</div>` : ""}</div>`;
+      <div class="hx-rsum-end is-dest"><small>${esc(t("route.to"))}</small><strong>${esc(v.destination || t("route.destinationNotSet"))}</strong></div>
+      ${i >= 0 || eta ? `<div class="hx-rsum-meta">${i >= 0 ? `<span>${p.cancelled ? esc(t("status.CANCELLED")) : `${esc(t("tr.stageOf", { i: i + 1, n }))} · ${esc(stepText(p.steps[i].code, p.steps[i].label))}${p.held ? ` · ${esc(t("tr.onHold"))}` : ""}`}</span>` : ""}${eta ? `<span>${esc(t(v.eta.state === "delivered" ? "eta.deliveredOn" : "eta.estimatedOn", { date: eta }))}</span>` : ""}</div>` : ""}</div>`;
   }
 
   function routeHtml(v, reveal) {
@@ -265,13 +263,13 @@ export function createTracker(root, opts = {}) {
     const MAX = 6; const hidden = Math.max(0, stops.length - MAX);
     const shown = hidden ? [stops[0], ...stops.slice(-(MAX - 1))] : stops;
     const mark = { done: "✓", current: "●", upcoming: "" };
-    const srState = { done: "completed", current: "current", upcoming: "upcoming" };
-    return `<section class="hx-card hx-route" ${reveal ? "data-reveal" : ""} aria-labelledby="hxRouteH"><h3 class="hx-h" id="hxRouteH">Recorded route <small class="hx-h-sub">oldest first</small></h3>
-      <ol class="hx-route-list">${shown.map((x, i) => `${hidden && i === 1 ? `<li class="hx-route-gap">+${hidden} earlier stop${hidden === 1 ? "" : "s"}</li>` : ""}
+    const srState = { done: "tr.step.done", current: "tr.step.current", upcoming: "tr.step.upcoming" };
+    return `<section class="hx-card hx-route" ${reveal ? "data-reveal" : ""} aria-labelledby="hxRouteH"><h3 class="hx-h" id="hxRouteH">${esc(t("tr.route.title"))} <small class="hx-h-sub">${esc(t("tr.route.oldestFirst"))}</small></h3>
+      <ol class="hx-route-list">${shown.map((x, i) => `${hidden && i === 1 ? `<li class="hx-route-gap">${esc(tn("tr.route.earlier", hidden))}</li>` : ""}
         <li class="hx-rs is-${x.state} k-${x.kind}"><span class="hx-rs-dot" aria-hidden="true">${mark[x.state]}</span>
-          <span class="hx-rs-body"><span class="hx-rs-title">${esc(x.title)}<span class="hx-sr"> (${srState[x.state]})</span></span><span class="hx-rs-place">${esc(x.place)}</span>
+          <span class="hx-rs-body"><span class="hx-rs-title">${esc(x.kind === "event" ? eventTitle(x) : x.title)}<span class="hx-sr"> (${esc(t(srState[x.state]))})</span></span><span class="hx-rs-place">${esc(x.place)}</span>
           ${x.at ? `<time class="hx-rs-time" datetime="${esc(x.at)}">${esc(fmtDateTime(x.at))}</time>` : ""}</span></li>`).join("")}</ol>
-      <p class="hx-route-note">Each checkpoint is time-stamped when it is recorded by our operations team or the carrier.</p></section>`;
+      <p class="hx-route-note">${esc(t("tr.route.note"))}</p></section>`;
   }
 
   function sceneHtml(v, ls) {
@@ -281,30 +279,30 @@ export function createTracker(root, opts = {}) {
     const media = photo ? stagePhotoHtml(photo) + (photo.key === "ship" ? routeOverlaySvg(v) : "") : sceneSvg(pr);
     return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}" data-scene="${esc(sc.scene)}" data-animate="${sc.animate}" data-state="${esc(sc.state)}">
       <div class="hx-scene-media"><div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>${bar3dHtml()}</div>
-      <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? `Last recorded at ${esc(loc)}` : "No location recorded yet"}</span>
-      <small data-slot="scenecap">${photo?.key === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage."}</small></figcaption></figure>`;
+      <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? esc(t("tr.scene.lastAt", { place: loc })) : esc(t("tr.scene.noLocation"))}</span>
+      <small data-slot="scenecap">${esc(t(photo?.key === "ship" ? "tr.scene.capShip" : "tr.scene.cap"))}</small></figcaption></figure>`;
   }
 
   function bar3dHtml() {
-    const hint = fine ? "Drag to rotate · click, then scroll to zoom" : "Swipe sideways to rotate · pinch to zoom";
+    const hint = t(fine ? "tr.3d.hintMouse" : "tr.3d.hintTouch");
     return `<div class="hx-3d-bar" data-slot="3dbar" data-mode="loading">
-      <div class="hx-segs hx-3d-mode" role="group" aria-label="Scene view"><button type="button" class="hx-seg" data-act="3d" aria-pressed="true" aria-controls="hx3d">3D</button><button type="button" class="hx-seg" data-act="3d-close" aria-pressed="false">Photo</button></div>
-      <span class="hx-3d-hint">${hint}</span>
-      <div class="hx-segs hx-3d-views" role="group" aria-label="Camera views" data-slot="3dviews"></div>
-      <div class="hx-3d-tools"><button type="button" class="hx-3d-btn" data-act="3d-zoom-out" aria-label="Zoom out" disabled>−</button><button type="button" class="hx-3d-btn" data-act="3d-zoom-in" aria-label="Zoom in" disabled>+</button><button type="button" class="hx-3d-btn" data-act="3d-reset" aria-label="Reset view" disabled>⟲</button></div>
+      <div class="hx-segs hx-3d-mode" role="group" aria-label="${esc(t("tr.3d.sceneView"))}"><button type="button" class="hx-seg" data-act="3d" aria-pressed="true" aria-controls="hx3d">3D</button><button type="button" class="hx-seg" data-act="3d-close" aria-pressed="false">${esc(t("tr.3d.photo"))}</button></div>
+      <span class="hx-3d-hint">${esc(hint)}</span>
+      <div class="hx-segs hx-3d-views" role="group" aria-label="${esc(t("tr.3d.cameraViews"))}" data-slot="3dviews"></div>
+      <div class="hx-3d-tools"><button type="button" class="hx-3d-btn" data-act="3d-zoom-out" aria-label="${esc(t("tr.3d.zoomOut"))}" disabled>−</button><button type="button" class="hx-3d-btn" data-act="3d-zoom-in" aria-label="${esc(t("tr.3d.zoomIn"))}" disabled>+</button><button type="button" class="hx-3d-btn" data-act="3d-reset" aria-label="${esc(t("tr.3d.reset"))}" disabled>⟲</button></div>
       <p class="hx-3d-note" role="status" hidden></p></div>`;
   }
 
   /** Compact delivery estimate for the key-facts strip. */
   function etaFact(eta) {
     if (!eta) return "";
-    let label = "Estimated delivery"; let main = ""; let sub = ""; let cls = "";
-    if (eta.state === "delivered") { label = "Delivered"; main = eta.deliveredAt ? esc(fmtDateTime(eta.deliveredAt)) : "Delivered"; cls = "is-delivered"; }
-    else if (eta.state === "window") { main = `${esc(fmtDateTime(eta.start))}<small> – ${esc(fmtDateTime(eta.end))}</small>`; sub = eta.source && eta.source !== "admin" ? "Provided by carrier" : "Delivery window"; }
-    else if (eta.state === "date") { main = esc(fmtDate(eta.date, "medium")); sub = eta.overdue ? "This date has passed — an update is pending." : (eta.source && eta.source !== "admin" ? "Provided by carrier" : fmtDate(eta.date).split(",")[0]); if (eta.overdue) cls = "is-overdue"; }
-    else if (eta.state === "text") { main = esc(eta.text); }
-    else { main = `<span class="hx-eta-na">${esc(eta.text || "Delivery estimate unavailable.")}</span>`; cls = "is-na"; }
-    return `<div class="hx-fact hx-fact-eta ${cls}"><div class="hx-fact-label">${ICON.clock} ${label}</div><div class="hx-fact-value">${main}</div>${sub ? `<div class="hx-fact-sub">${esc(sub)}</div>` : ""}</div>`;
+    let label = t("eta.estimated"); let main = ""; let sub = ""; let cls = "";
+    if (eta.state === "delivered") { label = t("status.DELIVERED"); main = eta.deliveredAt ? esc(fmtDateTime(eta.deliveredAt)) : esc(t("status.DELIVERED")); cls = "is-delivered"; }
+    else if (eta.state === "window") { main = `${esc(fmtDateTime(eta.start))}<small> – ${esc(fmtDateTime(eta.end))}</small>`; sub = t(eta.source && eta.source !== "admin" ? "eta.byCarrier" : "eta.window"); }
+    else if (eta.state === "date") { main = esc(fmtDate(eta.date, "medium")); sub = eta.overdue ? t("eta.overdue") : (eta.source && eta.source !== "admin" ? t("eta.byCarrier") : fmtWeekday(eta.date)); if (eta.overdue) cls = "is-overdue"; }
+    else if (eta.state === "text") { main = esc(eta.text); } // typed by operations: shown as recorded
+    else { main = `<span class="hx-eta-na">${esc(etaUnavailable(eta.text))}</span>`; cls = "is-na"; }
+    return `<div class="hx-fact hx-fact-eta ${cls}"><div class="hx-fact-label">${ICON.clock} ${esc(label)}</div><div class="hx-fact-value">${main}</div>${sub ? `<div class="hx-fact-sub">${esc(sub)}</div>` : ""}</div>`;
   }
 
   function infoItem(icon, label, value, extra = "", attrs = "") {
@@ -315,34 +313,34 @@ export function createTracker(root, opts = {}) {
   let timelineOrder = "oldest"; // the journey reads in the order it happened; visitors can flip it
   function timelineHtml(items, reveal) {
     if (!items) return "";
-    if (!items.length) return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">Shipment timeline</h3><p class="hx-muted">No tracking events have been recorded yet.</p></section>`;
+    if (!items.length) return `<section class="hx-card" ${reveal ? "data-reveal" : ""}><h3 class="hx-h">${esc(t("tr.tl.title"))}</h3><p class="hx-muted">${esc(t("tr.tl.empty"))}</p></section>`;
     const latestId = items[0]?.id; // the API sends the newest first
     const list = timelineOrder === "oldest" ? items.slice().reverse() : items;
     const sw = (k, label) => `<button type="button" class="hx-seg" data-act="order" data-order="${k}" aria-pressed="${timelineOrder === k}">${label}</button>`;
-    return `<section class="hx-card hx-tl-card" ${reveal ? "data-reveal" : ""}><div class="hx-tl-head"><h3 class="hx-h">Shipment timeline <small class="hx-h-sub"><span data-count="${items.length}">${items.length}</span> recorded update${items.length === 1 ? "" : "s"}</small></h3>
-      ${items.length > 1 ? `<div class="hx-segs" role="group" aria-label="Timeline order">${sw("oldest", "Oldest first")}${sw("latest", "Latest first")}</div>` : ""}</div>
-      <ol class="hx-timeline is-${timelineOrder}" ${reveal ? "data-reveal-stagger" : ""}>${list.map((t) => { const latest = t.id === latestId; return `
-      <li class="hx-tl tone-${esc(t.tone)} ${latest ? "latest" : ""}" ${reveal ? "data-reveal" : ""} ${latest ? 'aria-current="step"' : ""}><span class="hx-tl-dot"></span>
-        <div class="hx-tl-body"><div class="hx-tl-title">${esc(t.title)}${latest ? ' <span class="hx-tl-tag">Latest</span>' : ""}</div>
-        ${t.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(t.location)}</div>` : ""}
-        ${t.description ? `<div class="hx-tl-desc">${esc(t.description)}</div>` : ""}
-        ${t.timestamp ? `<div class="hx-tl-time"><time datetime="${esc(t.timestamp)}">${esc(fmtDateTime(t.timestamp))}</time>${SOURCE_TEXT[t.source] ? ` · ${SOURCE_TEXT[t.source]}` : ""}</div>` : ""}</div></li>`; }).join("")}</ol></section>`;
+    return `<section class="hx-card hx-tl-card" ${reveal ? "data-reveal" : ""}><div class="hx-tl-head"><h3 class="hx-h">${esc(t("tr.tl.title"))} <small class="hx-h-sub">${tnHtml("tr.tl.count", items.length, { n: `<span data-count="${items.length}">${items.length}</span>` })}</small></h3>
+      ${items.length > 1 ? `<div class="hx-segs" role="group" aria-label="${esc(t("tr.tl.order"))}">${sw("oldest", esc(t("tr.tl.oldest")))}${sw("latest", esc(t("tr.tl.latest")))}</div>` : ""}</div>
+      <ol class="hx-timeline is-${timelineOrder}" ${reveal ? "data-reveal-stagger" : ""}>${list.map((ev) => { const latest = ev.id === latestId; return `
+      <li class="hx-tl tone-${esc(ev.tone)} ${latest ? "latest" : ""}" ${reveal ? "data-reveal" : ""} ${latest ? 'aria-current="step"' : ""}><span class="hx-tl-dot"></span>
+        <div class="hx-tl-body"><div class="hx-tl-title">${esc(eventTitle(ev))}${latest ? ` <span class="hx-tl-tag">${esc(t("tr.tl.latestTag"))}</span>` : ""}</div>
+        ${ev.location ? `<div class="hx-tl-loc">${ICON.pin} ${esc(ev.location)}</div>` : ""}
+        ${ev.description ? `<div class="hx-tl-desc">${esc(eventDescription(ev))}</div>` : ""}
+        ${ev.timestamp ? `<div class="hx-tl-time"><time datetime="${esc(ev.timestamp)}">${esc(fmtDateTime(ev.timestamp))}</time>${sourceText(ev.source) ? ` · ${esc(sourceText(ev.source))}` : ""}</div>` : ""}</div></li>`; }).join("")}</ol></section>`;
   }
 
-  function render(v, isUpdate) {
+  function render(v, isUpdate, quiet = false) {
     const reveal = !isUpdate; // entrance motion only for the first render of a shipment, never on live updates
     const R = (kind = "") => (reveal ? `data-reveal${kind ? `="${kind}"` : ""}` : "");
     const pkg = v.package;
-    const pkgText = pkg ? [pkg.description, pkg.weight, pkg.dimensions, pkg.pieces ? `${pkg.pieces} pc` : null].filter(Boolean).map(esc).join(" · ") : "";
+    const pkgText = pkg ? [pkg.description, pkg.weight, pkg.dimensions, pkg.pieces ? t("tr.pieces", { n: pkg.pieces }) : null].filter(Boolean).map(esc).join(" · ") : "";
     const carrier = v.carrier;
-    const carrierName = carrier ? `${esc(carrier.name)}${carrier.custom ? ' <span class="hx-tag" title="Custom/internal carrier arrangement, not an official carrier service">Custom carrier</span>' : ""}` : "";
+    const carrierName = carrier ? `${esc(carrier.name)}${carrier.custom ? ` <span class="hx-tag" title="${esc(t("tr.carrier.customTitle"))}">${esc(t("tr.carrier.custom"))}</span>` : ""}` : "";
     const carrierBits = carrier ? [esc(carrier.name), carrier.serviceType ? esc(carrier.serviceType) : null].filter(Boolean).join(" · ") : "";
-    const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `Carrier ref: ${esc(carrier.trackingNumber)}` : "", carrier.phone ? esc(carrier.phone) : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : "", carrier.trackingUrl ? `<a href="${esc(carrier.trackingUrl)}" target="_blank" rel="noopener noreferrer">Track on carrier site</a>` : "", carrier.custom ? "Custom carrier arrangement" : ""].filter(Boolean).join(" · ")}</div>` : "";
+    const carrierExtra = carrier ? `<div class="hx-info-sub">${[carrier.trackingNumber ? `${esc(t("tr.carrier.refLong"))}: <bdi dir="ltr">${esc(carrier.trackingNumber)}</bdi>` : "", carrier.phone ? `<bdi dir="ltr">${esc(carrier.phone)}</bdi>` : "", carrier.website ? `<a href="${esc(carrier.website)}" target="_blank" rel="noopener noreferrer">${esc(t("tr.carrier.website"))}</a>` : "", carrier.trackingUrl ? `<a href="${esc(carrier.trackingUrl)}" target="_blank" rel="noopener noreferrer">${esc(t("tr.carrier.trackOnSite"))}</a>` : "", carrier.custom ? esc(t("tr.carrier.customArrangement")) : ""].filter(Boolean).join(" · ")}</div>` : "";
     const loc = v.currentLocation; const ls = locState(v);
     // Latest milestone = the newest recorded event. The server sends an event time only for verified carrier / GPS
     // events: the time a member of staff entered or edited a milestone is never shown to clients.
     const latest = v.timeline?.[0] || null;
-    const ago = latest?.timestamp ? timeAgo(latest.timestamp, Date.now() + serverOffset) : null;
+    const ago = latest?.timestamp ? fmtAgo(latest.timestamp, Date.now() + serverOffset) : null;
 
     // The 3D view survives a data update when the stage model is unchanged; otherwise it is rebuilt for the new stage.
     const next3d = stageScene(v); const keep3d = viewer3d && viewer3dKey === `${next3d.scene}:${next3d.animate}:${next3d.state}` ? root.querySelector('[data-slot="3d"]') : null;
@@ -355,38 +353,38 @@ export function createTracker(root, opts = {}) {
       ${preview ? `<div class="hx-preview-banner" role="note"><strong>PREVIEW MODE</strong> — this is exactly what the client sees for this tracking number. Nothing here is editable.</div>` : ""}
       <section class="hx-card hx-header" ${R()}>
         <div class="hx-header-top">
-          <div class="hx-id"><div class="hx-kicker">Tracking number</div><div class="hx-code-row"><h2 class="hx-code">${esc(v.trackingCode)}</h2><button type="button" class="hx-copy hx-press" data-act="copy" aria-label="Copy tracking number"><span aria-hidden="true">⧉</span> <span data-copy-label>Copy</span></button></div>${v.origin || v.destination ? `<div class="hx-od"><span>${esc(v.origin || "Origin not set")}</span><i aria-hidden="true"></i><span>${esc(v.destination || "Destination not set")}</span></div>` : ""}</div>
-          <div class="hx-status"><div class="hx-kicker">Current status</div><span class="hx-pill tone-${esc(v.status.tone)}${v.status.code && !["DELIVERED", "CANCELLED"].includes(v.status.code) ? " is-active" : ""}"><i aria-hidden="true"></i>${esc(v.status.label)}</span></div>
+          <div class="hx-id"><div class="hx-kicker">${esc(t("track.label"))}</div><div class="hx-code-row"><h2 class="hx-code" dir="ltr">${esc(v.trackingCode)}</h2><button type="button" class="hx-copy hx-press" data-act="copy" aria-label="${esc(t("tr.copy.label"))}"><span aria-hidden="true">⧉</span> <span data-copy-label>${esc(t("tr.copy"))}</span></button></div>${v.origin || v.destination ? `<div class="hx-od"><span>${esc(v.origin || t("route.originNotSet"))}</span><i aria-hidden="true"></i><span>${esc(v.destination || t("route.destinationNotSet"))}</span></div>` : ""}</div>
+          <div class="hx-status"><div class="hx-kicker">${esc(t("tr.currentStatus"))}</div><span class="hx-pill tone-${esc(v.status.tone)}${v.status.code && !["DELIVERED", "CANCELLED"].includes(v.status.code) ? " is-active" : ""}"><i aria-hidden="true"></i>${esc(statusText(v.status))}</span></div>
         </div>
         ${sceneHtml(v, ls)}
         <div class="hx-facts" ${reveal ? "data-reveal-stagger" : ""}>
-          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${ls.state === "live" ? "Current location" : ls.state === "none" ? "Location" : "Last known location"}</div><div class="hx-fact-value">${loc ? esc(loc.name) : '<span class="hx-muted">Awaiting location update</span>'}</div>${verifiedFeed(v) ? `<div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time"><time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time> · ${SOURCE_TEXT[v.currentLocation.source]}</span>` : ""}</div>` : ""}</div>` : ""}
-          ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} Carrier</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">Ref ${esc(carrier.trackingNumber)}</div>` : ""}</div>` : ""}
-          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 Latest recorded milestone</div><div class="hx-fact-value">${esc(latest.title)}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : latest.location ? `<div class="hx-fact-sub">${esc(latest.location)}</div>` : ""}</div>` : ""}
+          ${ls ? `<div class="hx-fact hx-fact-loc" ${R()}><div class="hx-fact-label">${ICON.pin} ${esc(t(ls.state === "live" ? "tr.loc.current" : ls.state === "none" ? "tr.loc.location" : "loc.last"))}</div><div class="hx-fact-value">${loc ? esc(loc.name) : `<span class="hx-muted">${esc(t("loc.none"))}</span>`}</div>${verifiedFeed(v) ? `<div class="hx-fact-sub">${badge(ls)}${ls.updatedAt ? ` <span class="hx-loc-time"><time datetime="${esc(ls.updatedAt)}">${esc(fmtDateTime(ls.updatedAt))}</time> · ${esc(sourceText(v.currentLocation.source))}</span>` : ""}</div>` : ""}</div>` : ""}
+          ${carrier ? `<div class="hx-fact" ${R()}><div class="hx-fact-label">${ICON.truck} ${esc(t("tr.carrier"))}</div><div class="hx-fact-value">${carrierName}</div>${carrier.trackingNumber ? `<div class="hx-fact-sub">${esc(t("tr.carrier.ref"))} <bdi dir="ltr">${esc(carrier.trackingNumber)}</bdi></div>` : ""}</div>` : ""}
+          ${latest ? `<div class="hx-fact hx-fact-updated" ${R()}><div class="hx-fact-label">🕒 ${esc(t("tr.latestMilestone"))}</div><div class="hx-fact-value">${esc(eventTitle(latest))}</div>${latest.timestamp ? `<div class="hx-fact-sub"><time datetime="${esc(latest.timestamp)}">${esc(fmtDateTime(latest.timestamp))}</time>${ago ? ` · <span data-ago="${esc(latest.timestamp)}">${esc(ago)}</span>` : ""}</div>` : latest.location ? `<div class="hx-fact-sub">${esc(latest.location)}</div>` : ""}</div>` : ""}
           ${v.eta ? `<div ${R()} class="hx-fact-wrap">${etaFact(v.eta)}</div>` : ""}
         </div>
         <div class="hx-meta" data-slot="meta"></div>
-        ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(v.exception.label)}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}</div></div>` : ""}
-        ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? '<p class="hx-muted">This shipment was cancelled.</p>' : stepsHtml(v.progress)}${v.progress.held ? '<p class="hx-muted hx-held">Progress is paused at the last confirmed stage while this issue is resolved.</p>' : ""}</div>` : ""}
+        ${v.exception ? `<div class="hx-exception" role="alert">${ICON.warn} <div><strong>${esc(exceptionText(v.exception))}</strong>${v.exception.note ? `<div>${esc(v.exception.note)}</div>` : ""}</div></div>` : ""}
+        ${v.progress ? `<div class="hx-progress">${v.progress.cancelled ? `<p class="hx-muted">${esc(t("tr.cancelled"))}</p>` : stepsHtml(v.progress)}${v.progress.held ? `<p class="hx-muted hx-held">${esc(t("tr.held"))}</p>` : ""}</div>` : ""}
       </section>
-      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${ls?.state === "live" ? "Live tracking map" : "Shipment map"}</h3>${badge(ls)}</div>
+      ${v.map ? `<section class="hx-card hx-mapcard" ${R("fade")}><div class="hx-map-head"><h3 class="hx-h" data-slot="maptitle">${esc(t(ls?.state === "live" ? "tr.map.live" : "tr.map.title"))}</h3>${badge(ls)}</div>
         ${routeSummaryHtml(v)}
-        <div class="hx-map" data-slot="map" role="region" aria-label="Shipment map"></div>
-        <p class="hx-map-note"><span data-slot="mapnote"></span> <span class="hx-map-cap">Lines connect recorded places; they aren't a tracked path.</span></p></section>` : ""}
+        <div class="hx-map" data-slot="map" role="region" aria-label="${esc(t("tr.map.title"))}"></div>
+        <p class="hx-map-note"><span data-slot="mapnote"></span> <span class="hx-map-cap">${esc(t("tr.map.cap"))}</span></p></section>` : ""}
       ${routeHtml(v, reveal)}
       ${timelineHtml(v.timeline, reveal)}
       <section class="hx-card hx-details" ${R()}>
-        <h3 class="hx-h">Shipment details</h3>
+        <h3 class="hx-h">${esc(t("tr.details"))}</h3>
         <div class="hx-infos" ${reveal ? "data-reveal-stagger" : ""}>
-          ${infoItem(ICON.flag, "Origin", v.origin ? esc(v.origin) : "", "", R())}
-          ${infoItem(ICON.route, "Destination", v.destination ? esc(v.destination) : "", "", R())}
-          ${infoItem(ICON.truck, "Carrier", carrierBits, carrierExtra, R())}
-          ${infoItem(ICON.box, "Package", pkgText, pkg?.distance ? `<div class="hx-info-sub">Distance: ${esc(pkg.distance)} km</div>` : "", R())}
-          ${infoItem(ICON.money, "Shipping fee", v.fee ? esc(v.fee) : "", "", R())}
+          ${infoItem(ICON.flag, t("route.origin"), v.origin ? esc(v.origin) : "", "", R())}
+          ${infoItem(ICON.route, t("route.destination"), v.destination ? esc(v.destination) : "", "", R())}
+          ${infoItem(ICON.truck, t("tr.carrier"), carrierBits, carrierExtra, R())}
+          ${infoItem(ICON.box, t("tr.package"), pkgText, pkg?.distance ? `<div class="hx-info-sub">${esc(t("tr.distance", { km: pkg.distance }))}</div>` : "", R())}
+          ${infoItem(ICON.money, t("tr.fee"), v.fee ? `<bdi>${esc(v.fee)}</bdi>` : "", "", R())}
         </div>
       </section>
-      ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} Shipment notes</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
-      ${STATUS_HELP[v.status?.code] ? `<details class="hx-card hx-help" ${R()}><summary>What does “${esc(v.status.label)}” mean?</summary><p>${esc(STATUS_HELP[v.status.code])}</p></details>` : ""}
+      ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} ${esc(t("tr.notes"))}</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
+      ${STATUS_HELP[v.status?.code] ? `<details class="hx-card hx-help" ${R()}><summary>${esc(t("tr.help.q", { status: statusText(v.status) }))}</summary><p>${esc(t(`help.${v.status.code}`, null, STATUS_HELP[v.status.code]))}</p></details>` : ""}
       ${supportCardHtml(v.trackingCode, R())}`;
     animateProgress(v, isUpdate);
     renderedCode = v.trackingCode;
@@ -396,7 +394,7 @@ export function createTracker(root, opts = {}) {
     if (v.map) mountMap(resolveMapData(v));
     else destroyMap();
     mount3d(keep3d);
-    if (isUpdate) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
+    if (isUpdate && !quiet) { root.classList.add("hx-flash"); setTimeout(() => root.classList.remove("hx-flash"), 1200); }
   }
 
   /** The progress bar moves only when the recorded stage changes; a first render or an unrelated update draws it in place. */
@@ -433,14 +431,14 @@ export function createTracker(root, opts = {}) {
     const slot = root.querySelector('[data-slot="meta"]'); const v = state.view;
     if (!slot || !v) return;
     if (noteFor && noteFor !== v.trackingCode) { refreshNote = ""; noteFor = null; }
-    const t = state.transport;
+    const tr = state.transport;
     const secs = Math.round((pollDelay || cfg.pollMs || 20000) / 1000);
     // Connection state only. Whether the SHIPMENT is live is the location badge's job, based on recorded data.
-    const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : t === "live" ? '<span class="hx-conn ok"><i></i>Checks for new updates automatically</span>'
-      : t === "polling" ? `<span class="hx-conn poll"><i></i>Checks for new updates every ${secs}s</span>`
-      : t === "offline" ? '<span class="hx-conn off"><i></i>Offline — showing last known update</span>' : '<span class="hx-conn poll"><i></i>Connecting for updates…</span>';
-    const checked = state.lastCheckedAt ? `<small class="hx-checked">Last checked ${esc(new Date(state.lastCheckedAt + serverOffset).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</small>` : "";
-    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="Check for new updates now"><span aria-hidden="true">↻</span> Check now</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> Support</a></div><p class="hx-refresh-note" role="status" aria-live="polite">${esc(refreshNote)}</p>`;
+    const conn = preview ? '<span class="hx-conn poll"><i></i>Preview: updates when you refresh</span>' : tr === "live" ? `<span class="hx-conn ok"><i></i>${esc(t("tr.conn.live"))}</span>`
+      : tr === "polling" ? `<span class="hx-conn poll"><i></i>${esc(t("tr.conn.polling", { s: secs }))}</span>`
+      : tr === "offline" ? `<span class="hx-conn off"><i></i>${esc(t("tr.conn.offline"))}</span>` : `<span class="hx-conn poll"><i></i>${esc(t("tr.conn.connecting"))}</span>`;
+    const checked = state.lastCheckedAt ? `<small class="hx-checked">${esc(t("tr.lastChecked", { time: fmtTime(state.lastCheckedAt + serverOffset) }))}</small>` : "";
+    slot.innerHTML = `<div class="hx-meta-status">${conn}${checked}</div><div class="hx-actions"><button type="button" class="hx-btn-sec hx-press" data-act="refresh" aria-label="${esc(t("tr.checkNow.label"))}"><span aria-hidden="true">↻</span> ${esc(t("tr.checkNow"))}</button><a class="hx-btn-sec hx-press" href="#hx-support" data-act="support"><span aria-hidden="true">✉</span> ${esc(t("nav.support"))}</a></div><p class="hx-refresh-note" role="status" aria-live="polite">${esc(refreshNoteText(refreshNote))}</p>`;
   }
 
   /** Re-evaluate "Live" / "Recently updated" / "Last known" as time passes without new data. */
@@ -449,8 +447,8 @@ export function createTracker(root, opts = {}) {
     const ls = locState(v); if (!ls) return;
     root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => { if (!el.classList.contains(`is-${ls.state}`)) el.outerHTML = badge(ls); });
     if (!badge(ls)) root.querySelectorAll('[data-slot="locbadge"]').forEach((el) => el.remove());
-    const title = root.querySelector('[data-slot="maptitle"]'); if (title) title.textContent = ls.state === "live" ? "Live tracking map" : "Shipment map";
-    root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && timeAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a; });
+    const title = root.querySelector('[data-slot="maptitle"]'); if (title) title.textContent = t(ls.state === "live" ? "tr.map.live" : "tr.map.title");
+    root.querySelectorAll("[data-ago]").forEach((agoEl) => { const iso = agoEl.dataset.ago; const a = iso && fmtAgo(iso, Date.now() + serverOffset); if (a) agoEl.textContent = a; });
     if (v.map) { const md = resolveMapData(v); mapNote(md, ls); if (map && md.current && md.current.state !== ls.state) map.api.update(withState(md, ls)); }
   }
   const withState = (data, ls) => {
@@ -458,21 +456,21 @@ export function createTracker(root, opts = {}) {
     const verified = verifiedFeed(state.view) && !data.current.approx && !data.current.fromTrail; // fallbacks are never "verified"
     const moving = ["IN_TRANSIT", "OUT_FOR_DELIVERY"].includes(state.view?.status?.code);
     return { ...data, mode: moving ? presentation(state.view).mode : null,
-      current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? SOURCE_TEXT[state.view.currentLocation.source] : null, updatedAt: verified ? data.current.updatedAt : null } };
+      current: { ...data.current, state: ls?.state || "last", sourceLabel: verified ? sourceText(state.view.currentLocation.source) : null, updatedAt: verified ? data.current.updatedAt : null } };
   };
 
   // ---------- map ----------
   function mapNote(data, ls) {
     const note = root.querySelector('[data-slot="mapnote"]'); if (!note) return;
     const c = data.current; const when = c?.updatedAt ? fmtDateTime(c.updatedAt) : null;
-    const ends = data.resolved?.origin || data.resolved?.destination ? " Origin and destination are shown at city level." : "";
+    const ends = data.resolved?.origin || data.resolved?.destination ? ` ${t("tr.mapnote.cityLevel")}` : "";
     let text;
-    if (c && !c.approx && !c.fromTrail && ls?.state === "live") text = `Live — position reported ${timeAgo(c.updatedAt, Date.now() + serverOffset)} (${when}).`;
-    else if (c && !c.approx && !c.fromTrail && ls?.state === "recent") text = `Recently updated — position reported ${when}.`;
-    else if (c?.fromTrail) text = `Latest recorded checkpoint shown${c.name ? `: ${c.name}` : ""}.`;
-    else if (c?.approx && data.resolved?.current) text = `Latest recorded place, shown at city level${c.name ? `: ${c.name}` : ""}.`;
-    else if (c) text = verifiedFeed(state.view) ? "Last known location shown." : "Latest recorded location shown (approximate, city level).";
-    else if (data.origin || data.destination) text = "No location has been recorded yet — showing origin and destination.";
+    if (c && !c.approx && !c.fromTrail && ls?.state === "live") text = t("tr.mapnote.live", { ago: fmtAgo(c.updatedAt, Date.now() + serverOffset), when });
+    else if (c && !c.approx && !c.fromTrail && ls?.state === "recent") text = t("tr.mapnote.recent", { when });
+    else if (c?.fromTrail) text = c.name ? t("tr.mapnote.checkpointAt", { place: c.name }) : t("tr.mapnote.checkpoint");
+    else if (c?.approx && data.resolved?.current) text = c.name ? t("tr.mapnote.placeAt", { place: c.name }) : t("tr.mapnote.place");
+    else if (c) text = t(verifiedFeed(state.view) ? "tr.mapnote.last" : "tr.mapnote.approx");
+    else if (data.origin || data.destination) text = t("tr.mapnote.none");
     else text = "";
     note.textContent = `${text}${ends}`.trim();
   }
@@ -482,7 +480,7 @@ export function createTracker(root, opts = {}) {
     if (!el) return;
     const ls = locState();
     mapNote(data, ls);
-    if (!hasPoints(data)) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = '<div class="hx-map-msg"><strong>Awaiting location update</strong><br>No coordinates have been recorded for this shipment yet. The map will appear as soon as a location is recorded.</div>'; return; }
+    if (!hasPoints(data)) { destroyMap(); el.classList.add("hx-map-empty"); el.innerHTML = `<div class="hx-map-msg"><strong>${esc(t("loc.none"))}</strong><br>${esc(t("tr.map.noCoords"))}</div>`; return; }
     if (map && map.el === el) { map.api.update(withState(data, ls)); if (el.querySelector(".hx-map-fallback")) showMapUnavailable(el, data); return; }
     destroyMap();
     if (mapFailed) { fallbackMap(el, data); return; }
@@ -493,8 +491,8 @@ export function createTracker(root, opts = {}) {
         // No tiles from any provider: never leave a blank map. Show a clear panel with the recorded facts instead.
         if (s === "tiles-unavailable") showMapUnavailable(el, state.view ? resolveMapData(state.view) : data);
         if (s === "tiles-ok") el.querySelector(".hx-map-fallback")?.remove();
-        if (s === "street-unavailable") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = "The street map isn't available right now; showing the outline map."; }
-        if (s === "no-current") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = "No location has been recorded yet — showing the route."; }
+        if (s === "street-unavailable") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = t("tr.map.streetUnavailable"); }
+        if (s === "no-current") { const n = root.querySelector('[data-slot="mapnote"]'); if (n) n.textContent = t("tr.map.noCurrent"); }
       } });
       if (destroyed || token !== mapToken || !el.isConnected) { api.destroy(); return; }
       map = { el, api };
@@ -503,13 +501,13 @@ export function createTracker(root, opts = {}) {
   function mapFallbackHtml(data) {
     const v = state.view; const c = data?.current;
     const rows = [
-      ["Last known location", c ? (c.name || `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`) : (v?.currentLocation?.name || "Awaiting location update")],
-      c ? ["Coordinates", `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`] : null,
-      ["Status", v?.status?.label || ""],
-      data?.originLabel ? ["Origin", data.originLabel] : null,
-      data?.destinationLabel ? ["Destination", data.destinationLabel] : null
+      [t("loc.last"), c ? (c.name || `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`) : (v?.currentLocation?.name || t("loc.none"))],
+      c ? [t("tr.coordinates"), `${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}`] : null,
+      [t("cc.col.status"), v?.status ? statusText(v.status) : ""],
+      data?.originLabel ? [t("route.origin"), data.originLabel] : null,
+      data?.destinationLabel ? [t("route.destination"), data.destinationLabel] : null
     ].filter((r) => r && r[1]);
-    return `<div class="hx-map-fallback" role="status"><div class="hx-map-fallback-ico" aria-hidden="true">🗺️</div><strong>Map location temporarily unavailable.</strong><dl>${rows.map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl></div>`;
+    return `<div class="hx-map-fallback" role="status"><div class="hx-map-fallback-ico" aria-hidden="true">🗺️</div><strong>${esc(t("tr.map.unavailable"))}</strong><dl>${rows.map(([k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join("")}</dl></div>`;
   }
   function showMapUnavailable(el, data) {
     if (!el.isConnected) return;
@@ -529,8 +527,8 @@ export function createTracker(root, opts = {}) {
   let viewer3d = null; let viewer3dKey = null; let scene3dMod = null; let v3token = 0; let v3io = null;
   let want3d = true; let failed3d = null; // null | "unavailable" | "slow"
   const V3_TIMEOUT = 15000;
-  const FALLBACK_NOTE = { unavailable: "Showing photo — 3D view isn't available on this device.", slow: "Showing photo — 3D view turned off to keep this page smooth on this device." };
-  const sceneCap = (fig) => (fig.dataset.photo === "ship" ? "Illustration with the shipment's recorded checkpoints." : "Illustration of the current shipment stage.");
+  const fallbackNote = (kind) => t(kind === "slow" ? "tr.3d.slow" : "tr.3d.unavailable");
+  const sceneCap = (fig) => t(fig.dataset.photo === "ship" ? "tr.scene.capShip" : "tr.scene.cap");
   const figKey = (fig) => `${fig.dataset.scene}:${fig.dataset.animate === "true"}:${fig.dataset.state}`;
 
   function drop3d() { v3token++; v3io?.disconnect(); v3io = null; viewer3d?.dispose(); viewer3d = null; viewer3dKey = null; }
@@ -541,11 +539,11 @@ export function createTracker(root, opts = {}) {
     bar.querySelectorAll(".hx-3d-btn, .hx-3d-views .hx-seg").forEach((b) => { b.disabled = mode !== "3d"; });
     bar.querySelector('[data-act="3d"]')?.setAttribute("aria-pressed", String(mode === "3d" || mode === "loading"));
     bar.querySelector('[data-act="3d-close"]')?.setAttribute("aria-pressed", String(mode === "photo"));
-    const note = bar.querySelector(".hx-3d-note"); note.hidden = mode !== "fallback"; note.textContent = mode === "fallback" ? FALLBACK_NOTE[failed3d] || FALLBACK_NOTE.unavailable : "";
+    const note = bar.querySelector(".hx-3d-note"); note.hidden = mode !== "fallback"; note.textContent = mode === "fallback" ? fallbackNote(failed3d) : "";
   }
   function setViews(fig, active) {
     const box = fig.querySelector('[data-slot="3dviews"]'); if (!box || !viewer3d) return;
-    if (!box.childElementCount) box.innerHTML = viewer3d.views.map((x) => `<button type="button" class="hx-seg" data-act="3d-view" data-view="${esc(x.id)}" aria-pressed="false">${esc(x.label)}</button>`).join("");
+    if (!box.childElementCount) box.innerHTML = viewer3d.views.map((x) => `<button type="button" class="hx-seg" data-act="3d-view" data-view="${esc(x.id)}" aria-pressed="false">${esc(tMaybe(`view3d.${x.id}`) ?? x.label)}</button>`).join("");
     box.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === active)));
   }
   const captionFor = (fig) => modelCaption(fig.dataset.scene, fig.dataset.state);
@@ -577,7 +575,7 @@ export function createTracker(root, opts = {}) {
     const token = ++v3token;
     slot.hidden = false; slot.id = "hx3d"; slot.innerHTML = "";
     fig.querySelector(".hx-3d-loading")?.remove();
-    fig.querySelector(".hx-scene-stage").insertAdjacentHTML("beforeend", '<div class="hx-3d-loading" role="status"><span class="hx-spinner" aria-hidden="true"></span>Loading 3D view…</div>');
+    fig.querySelector(".hx-scene-stage").insertAdjacentHTML("beforeend", `<div class="hx-3d-loading" role="status"><span class="hx-spinner" aria-hidden="true"></span>${esc(t("tr.3d.loading"))}</div>`);
     fig.setAttribute("aria-busy", "true"); setBar(fig, "loading");
     let built = false; // the scene exists but is still being drawn / measured
     const load = (async () => {
@@ -625,8 +623,8 @@ export function createTracker(root, opts = {}) {
       document.body.appendChild(t); t.select(); try { ok = document.execCommand("copy"); } catch { ok = false; } t.remove();
     }
     const label = btn?.querySelector("[data-copy-label]"); if (!label) return;
-    label.textContent = ok ? "Copied" : "Copy failed"; btn.classList.toggle("is-done", ok);
-    setTimeout(() => { if (label.isConnected) { label.textContent = "Copy"; btn.classList.remove("is-done"); } }, 1600);
+    label.textContent = t(ok ? "tr.copied" : "tr.copyFailed"); btn.classList.toggle("is-done", ok);
+    setTimeout(() => { if (label.isConnected) { label.textContent = t("tr.copy"); btn.classList.remove("is-done"); } }, 1600);
   }
 
   function reset() {
@@ -643,7 +641,7 @@ export function createTracker(root, opts = {}) {
     if (act === "refresh") {
       const b = e.target.closest("[data-act]"); if (b.disabled) return;
       b.classList.add("is-busy"); b.disabled = true; b.setAttribute("aria-busy", "true");
-      refresh().then((r) => { refreshNote = REFRESH_NOTES[r] || ""; noteFor = state.view?.trackingCode || null; }).finally(() => {
+      refresh().then((r) => { refreshNote = ["updated", "unchanged", "error"].includes(r) ? r : ""; noteFor = state.view?.trackingCode || null; }).finally(() => {
         renderMeta();
         clearTimeout(noteTimer); noteTimer = setTimeout(() => { refreshNote = ""; root.querySelector(".hx-refresh-note")?.replaceChildren(); }, 6000);
       });
@@ -673,6 +671,14 @@ export function createTracker(root, opts = {}) {
   const onLeave = (e) => { const st = e.target.closest?.(".hx-scene-stage"); if (st) { st.style.removeProperty("--rx"); st.style.removeProperty("--ry"); } };
   if (fine) { root.addEventListener("pointermove", onPointer); root.addEventListener("pointerout", onLeave); }
   tick = setInterval(refreshFreshness, 30000);
+  // Language changed: redraw the same result in place (no new lookup, no lost state); the map is rebuilt so its
+  // controls and labels follow, the 3D view is kept.
+  const offLang = onLang(() => {
+    if (destroyed) return;
+    if (state.phase === "ready" && state.view) { destroyMap(); render(state.view, true, true); }
+    else if (shownMessage && state.phase === shownMessage) renderMessage(state.phase);
+    else if (state.phase === "loading" && root.querySelector(".hx-skeleton")) root.querySelector(".hx-skeleton").setAttribute("aria-label", t("tr.loading"));
+  });
 
   return {
     track, refresh, getState: () => ({ ...state }),
@@ -682,7 +688,7 @@ export function createTracker(root, opts = {}) {
     /** Same as clear(), but tells the client why the shipment disappeared. */
     expire() { const had = !!state.code; reset(); if (had) { setPhase("expired"); renderMessage("expired"); } else { root.innerHTML = ""; setPhase("idle"); } },
     destroy() {
-      destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect();
+      destroyed = true; reset(); clearInterval(tick); counterIO?.disconnect(); offLang();
       root.removeEventListener("pointermove", onPointer); root.removeEventListener("pointerout", onLeave); drop3d();
       document.removeEventListener("visibilitychange", visibilityHandler); root.innerHTML = "";
     }

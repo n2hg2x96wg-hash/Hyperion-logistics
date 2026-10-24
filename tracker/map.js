@@ -5,6 +5,7 @@
 // The first view is the shipment itself (origin, destination, recorded points), never a world overview.
 // Layers are created once and moved in place on updates, so new positions never rebuild the map.
 import { loadCountries } from "../ui/globe/geo.js";
+import { t, fmtDateTime } from "../ui/i18n.js"; // English unless the page turned translations on
 const LEAFLET_CSS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css";
 const LEAFLET_JS = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js";
 
@@ -45,9 +46,9 @@ function providers(cfg) {
     .map((t) => ({ url: t.url, options: { attribution: t.attribution || "", maxZoom: t.maxZoom || 19, crossOrigin: false } }));
 }
 
-const fmt = (iso) => { try { return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)); } catch { return iso; } };
+const fmt = (iso) => fmtDateTime(iso) || iso;
 const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-const STATE_LABEL = { live: "Live", recent: "Recently updated", last: "Last known location" };
+const stateLabel = (s) => t(`loc.${s}`);
 
 function popupNode(title, lines) {
   const el = document.createElement("div"); el.className = "hx-popup";
@@ -187,7 +188,7 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   }
   let streetBtn = null;
   function setStreet(on) {
-    streetOn = on; streetBtn?.setAttribute("aria-pressed", String(on)); if (streetBtn) streetBtn.textContent = on ? "Outline map" : "Street map";
+    streetOn = on; streetBtn?.setAttribute("aria-pressed", String(on)); if (streetBtn) streetBtn.textContent = t(on ? "map.outline" : "map.street");
     if (on) {
       if (outline) map.removeLayer(outline);
       el.classList.add("hx-base-street"); el.classList.remove("hx-base-outline");
@@ -210,7 +211,7 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
   map.on("mouseout", () => { if (!touch) map.scrollWheelZoom.disable(); });
   if (interactiveHint) {
     const hint = L.DomUtil.create("div", "hx-map-hint", el);
-    hint.textContent = touch ? "Tap the map to move around" : "Click the map to zoom with the scroll wheel";
+    hint.textContent = t(touch ? "map.hintTouch" : "map.hintMouse");
     setTimeout(() => hint.classList.add("is-gone"), 6000); // it explains the gesture once, then gets out of the way
   }
 
@@ -224,9 +225,9 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
     onAdd() {
       const box = L.DomUtil.create("div", `hx-map-ctl${small() ? " is-row" : ""}`);
       const mk = (text, title, fn) => { const b = L.DomUtil.create("button", "", box); b.type = "button"; b.textContent = text; b.title = title; b.setAttribute("aria-label", title); L.DomEvent.on(b, "click", (e) => { L.DomEvent.stop(e); fn(); }); return b; };
-      mk("Fit route", "Fit the entire route", () => fit());
-      mk("Locate", "Center on the shipment's latest recorded position", () => locate());
-      streetBtn = mk("Street map", "Switch between the outline map and the street map", () => setStreet(!streetOn));
+      mk(t("map.fit"), t("map.fitTitle"), () => fit());
+      mk(t("map.locate"), t("map.locateTitle"), () => locate());
+      streetBtn = mk(t("map.street"), t("map.streetTitle"), () => setStreet(!streetOn));
       streetBtn.setAttribute("aria-pressed", "false");
       L.DomEvent.disableClickPropagation(box);
       return box;
@@ -284,19 +285,20 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
     const pts = [];
 
     const short = (s) => String(s || "").split(",")[0].trim();
-    const city = (p) => (p?.approx ? "Shown at city level" : null);
+    const city = (p) => (p?.approx ? t("map.cityLevel") : null);
+    const O = t("route.origin"); const D = t("route.destination");
     const atOrigin = samePt(o, c); // still at the origin: one label for both markers, so neither hides the other
-    placeMarker("origin", o, "hx-m-origin", "Origin", popupNode("Origin", [data.originLabel, city(data.origin)]), 0, atOrigin ? "" : data.originLabel ? `Origin · ${short(data.originLabel)}` : "Origin");
-    placeMarker("dest", d, "hx-m-dest", "Destination", popupNode("Destination", [data.destinationLabel, city(data.destination)]), 0, data.destinationLabel ? `Destination · ${short(data.destinationLabel)}` : "Destination");
+    placeMarker("origin", o, "hx-m-origin", O, popupNode(O, [data.originLabel, city(data.origin)]), 0, atOrigin ? "" : data.originLabel ? `${O} · ${short(data.originLabel)}` : O);
+    placeMarker("dest", d, "hx-m-dest", D, popupNode(D, [data.destinationLabel, city(data.destination)]), 0, data.destinationLabel ? `${D} · ${short(data.destinationLabel)}` : D);
     const cur = data.current;
     const approx = cur && !cur.sourceLabel; // admin-recorded places are geocoded to city level
-    placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}${cur?.approx ? " is-approx" : ""}`, "Latest recorded location",
-      popupNode(cur?.state === "live" ? "Current location (live)" : "Latest recorded location", [
-        cur?.name, approx ? "Approximate location (city level)" : null,
-        cur?.at ? `Recorded ${fmt(cur.at)}` : null,
-        cur?.updatedAt ? `Reported ${fmt(cur.updatedAt)}` : null, // the tracker passes a time only for GPS / carrier positions
-        cur?.sourceLabel ? `Source: ${cur.sourceLabel}` : null, cur?.state && cur.state !== "live" ? STATE_LABEL[cur.state] : null
-      ]), 1000, atOrigin ? "Origin · latest" : `${cur?.state === "live" ? "Now" : "Latest"}${cur?.name ? ` · ${short(cur.name)}` : ""}`, data.mode || null);
+    placeMarker("current", c, `hx-m-current hx-state-${cur?.state || "last"}${cur?.approx ? " is-approx" : ""}`, t("map.latestRecorded"),
+      popupNode(t(cur?.state === "live" ? "map.currentLive" : "map.latestRecorded"), [
+        cur?.name, approx ? t("map.approx") : null,
+        cur?.at ? t("map.recordedAt", { when: fmt(cur.at) }) : null,
+        cur?.updatedAt ? t("map.reportedAt", { when: fmt(cur.updatedAt) }) : null, // the tracker passes a time only for GPS / carrier positions
+        cur?.sourceLabel ? t("map.source", { source: cur.sourceLabel }) : null, cur?.state && cur.state !== "live" ? stateLabel(cur.state) : null
+      ]), 1000, atOrigin ? `${O} · ${t("map.latestShort")}` : `${t(cur?.state === "live" ? "map.now" : "map.latest")}${cur?.name ? ` · ${short(cur.name)}` : ""}`, data.mode || null);
 
     // travelled path: origin -> recorded points (in time order) -> current
     const travelled = [];
@@ -307,10 +309,10 @@ export async function createMap(el, { onStatus, interactiveHint = true, initial 
     placeLine("remaining", from && d && !samePt(from, d) ? curve(from, d) : null, () => ({ color: colors().dash, weight: 2.5, opacity: 0.9, dashArray: "6 9" }));
 
     layers.trail.clearLayers();
-    trail.forEach((t) => {
-      if (samePt(t.ll, c)) return;
-      L.circleMarker(t.ll, { radius: 4, color: colors().trail, weight: 2, fillColor: colors().trailFill, fillOpacity: 1 })
-        .bindPopup(popupNode(t.name || "Recorded position", [t.timestamp ? fmt(t.timestamp) : null])).addTo(layers.trail);
+    trail.forEach((tp) => {
+      if (samePt(tp.ll, c)) return;
+      L.circleMarker(tp.ll, { radius: 4, color: colors().trail, weight: 2, fillColor: colors().trailFill, fillOpacity: 1 })
+        .bindPopup(popupNode(tp.name || t("map.recordedPosition"), [tp.timestamp ? fmt(tp.timestamp) : null])).addTo(layers.trail);
     });
 
     [o, d, c, ...trail.map((t) => t.ll)].forEach((ll) => ll && pts.push(ll));
