@@ -645,6 +645,24 @@
     .inline-field { display: flex; gap: 8px; } .inline-field input { flex: 1 1 auto; min-width: 0; } .inline-field .btn-action { flex: 0 0 auto; }
     .field-err { color: #b91c1c; font-size: 12px; font-weight: 600; min-height: 0; margin: 0 0 8px; }
     .field-err:empty { display: none; }
+    .form-err { padding: 10px 12px; border-radius: 10px; background: rgba(220,38,38,.1); border: 1px solid rgba(220,38,38,.35); font-size: 14px; }
+    [aria-invalid="true"] { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,.18) !important; }
+    [data-cust][hidden], .reg-choice[hidden] { display: none !important; }
+    .reg-choice { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+    body .reg-choice label { text-transform: none !important; letter-spacing: normal !important; font-size: 15px !important; color: inherit !important; flex: 1 1 auto; }
+    .reg-choice input { width: 18px; height: 18px; margin: 0; flex: none; }
+    .reg-choice label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(148,163,184,.35); cursor: pointer; font-weight: 600; }
+    .reg-choice label:has(input:checked) { border-color: #3b82f6; background: rgba(59,130,246,.12); }
+    .reg-more { margin: 4px 0 12px; } .reg-more summary { cursor: pointer; font-weight: 600; padding: 8px 0; min-height: 44px; display: flex; align-items: center; }
+    .fee-total { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px; border-radius: 12px; border: 1px dashed rgba(148,163,184,.45); }
+    .fee-total strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+    .reg-review { display: grid; gap: 4px 16px; grid-template-columns: minmax(110px, max-content) 1fr; padding: 14px; border-radius: 12px; background: rgba(148,163,184,.08); margin-bottom: 12px; font-size: 14px; }
+    .reg-review dt { opacity: .75; } .reg-review dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .reg-result { padding: 14px; border-radius: 12px; border: 1px solid rgba(34,197,94,.45); background: rgba(34,197,94,.1); margin-bottom: 12px; }
+    .reg-result strong.code { font-size: 20px; letter-spacing: .04em; }
+    .reg-result .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .client-state.pending { background: rgba(245,158,11,.15); color: #b45309; }
+    @media (max-width: 640px) { .reg-review { grid-template-columns: 1fr; } .reg-review dd { margin-bottom: 6px; } }
     input[aria-invalid="true"] { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
     .panel-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
     .form-msg { font-size: 13px; font-weight: 700; } .form-msg.ok { color: #15803d; } .form-msg.err { color: #b91c1c; }
@@ -808,7 +826,7 @@
         <div class="nav-section">Operations</div>
         <button class="toggle-btn active" id="btn-dashboard" onclick="switchView('dashboard')">Overview</button>
         <button class="toggle-btn" id="btn-shipments" onclick="switchView('shipments')">Shipments</button>
-        <button class="toggle-btn" id="btn-create" onclick="switchView('create')">Create Shipment</button>
+        <button class="toggle-btn" id="btn-create" onclick="switchView('create')">Register Shipment</button>
         <button class="toggle-btn" id="btn-globe" onclick="switchView('globe')">Global Tracking</button>
         <button class="toggle-btn" id="btn-tracking" onclick="switchView('tracking')">Live Tracking</button>
         <button class="toggle-btn" id="btn-events" onclick="switchView('events')">Tracking Events</button>
@@ -878,113 +896,126 @@
         </div>
       </div>
 
-      <!-- Create Shipment -->
+      <!-- Register Shipment (customer + shipment, saved together on the server) -->
       <div class="form-card" id="view-create">
         <div class="card-header">
-          <h3>Create Shipment</h3>
-          <p>Registers the shipment, generates the first tracking event and records the action in the activity log</p>
+          <h3>Register Shipment</h3>
+          <p>Choose or create the customer, enter the shipment, review, then save. Nothing is saved until you press Save, and a failed save leaves nothing half-done.</p>
         </div>
-        <form id="createForm">
-          <div class="section-label">📦 Basic Information</div>
+        <form id="createForm" novalidate>
+          <div class="section-label">1 · Customer</div>
+          <div class="reg-choice" role="radiogroup" aria-label="Customer" data-needs="clients" hidden>
+            <label><input type="radio" name="custMode" value="existing" checked> Existing customer</label>
+            <label><input type="radio" name="custMode" value="new"> New customer</label>
+            <label><input type="radio" name="custMode" value="none"> No customer account</label>
+          </div>
+          <div class="form-grid" data-cust="existing">
+            <div class="form-group" data-needs="clients" hidden>
+              <label for="customerId">Customer *</label>
+              <select id="customerId" aria-describedby="customerIdHint"><option value="">Choose a customer…</option></select>
+              <p class="field-hint" id="customerIdHint">The customer sees this shipment and its updates in My account. Register as many shipments for the same customer as you need.</p>
+            </div>
+          </div>
+          <div data-cust="new" hidden>
+            <div class="form-grid">
+              <div class="form-group"><label for="regName">Full name *</label><input id="regName" type="text" autocomplete="off" maxlength="120"></div>
+              <div class="form-group"><label for="regEmail">Email (used to sign in) *</label><input id="regEmail" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="254"></div>
+              <div class="form-group"><label for="regPhone">Phone</label><input id="regPhone" type="tel" inputmode="tel" autocomplete="off" maxlength="24" placeholder="+234 801 234 5678"></div>
+            </div>
+            <div class="section-label">2 · Account and access</div>
+            <div class="form-grid">
+              <div class="form-group"><label for="regPassword">Initial password * (6+ characters)</label><input id="regPassword" type="password" autocomplete="new-password" minlength="6"><p class="field-hint">Share it privately. Sign-in is switched on only after the shipment is saved.</p></div>
+              <div class="form-group"><label for="regStatus">Account status</label>
+                <select id="regStatus"><option value="active">Active (can sign in)</option><option value="pending">Pending (sign-in off)</option></select></div>
+              <div class="form-group" style="grid-column:1/-1;"><label for="regNotes">Admin notes about this customer (never shown to them)</label><textarea id="regNotes" maxlength="2000"></textarea></div>
+            </div>
+          </div>
+          <p class="hint" data-cust="none" hidden>The shipment is saved without a customer account. You can link one later from Edit shipment.</p>
+
+          <div class="section-label">3 · Shipment identification</div>
           <div class="form-grid">
             <div class="form-group">
               <label for="id">Tracking ID</label>
-              <input id="id" type="text" placeholder="Auto-generated when courier is selected (or type your own)" spellcheck="false" maxlength="40">
+              <input id="id" type="text" placeholder="Leave empty to generate one" spellcheck="false" autocapitalize="characters" maxlength="40">
               <div class="courier-prefix-hint" id="courierPrefixHint">Tracking prefix: --</div>
             </div>
+            <div class="form-group"><label for="pkgDescription">Shipment title / description</label><input id="pkgDescription" type="text" maxlength="300" placeholder="e.g., 2 cartons of documents"></div>
             <div class="form-group">
-              <label for="status">Initial status *</label>
-              <select id="status" required></select>
+              <label for="courier">Carrier *</label>
+              <select id="courier" required onchange="autoGenerateTrackingId()"><option value="">-- Select a carrier --</option></select>
             </div>
+            <div class="form-group"><label for="courierTrackingNumber">Carrier's own tracking number</label><input id="courierTrackingNumber" type="text" maxlength="80" placeholder="If the carrier issued one"></div>
             <div class="form-group">
-              <label for="serviceType">Service type</label>
-              <input id="serviceType" type="text" placeholder="e.g., Express, Freight, Economy" maxlength="80">
+              <label for="serviceType">Shipping method</label>
+              <input id="serviceType" type="text" list="serviceTypeList" maxlength="80" placeholder="Air freight, Sea freight, Road freight, Express…">
+              <datalist id="serviceTypeList"><option value="Air freight"><option value="Sea freight"><option value="Road freight"><option value="Express"><option value="Economy"></datalist>
             </div>
-            <div class="form-group">
-              <label for="clientRef">Client / account reference</label>
-              <input id="clientRef" type="text" placeholder="Internal only - never shown to clients" maxlength="120">
-            </div>
-            <div class="form-group">
-              <label for="notifyEmail">Customer email for notifications (optional)</label>
-              <input id="notifyEmail" type="email" inputmode="email" autocomplete="off" maxlength="254" placeholder="customer@example.com" aria-describedby="notifyEmailHint">
-              <p class="field-hint" id="notifyEmailHint">Only used to email this customer when a milestone is recorded. Never shown on the tracking page.</p>
-            </div>
-            <div class="form-group" data-needs="clients" hidden>
-              <label for="customerId">Customer account (in-app notifications)</label>
-              <select id="customerId" aria-describedby="customerIdHint"><option value="">No customer account</option></select>
-              <p class="field-hint" id="customerIdHint">Optional. The customer sees this shipment and its status updates in their account on the website.</p>
-            </div>
-          </div>
-
-          <div class="section-label">🚚 Courier Information</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="courier">Courier *</label>
-              <select id="courier" required onchange="autoGenerateTrackingId()">
-                <option value="">-- Select a Courier --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="courierTrackingNumber">Courier Tracking Number</label>
-              <input id="courierTrackingNumber" type="text" placeholder="Carrier-provided tracking number">
-            </div>
-          </div>
-
-          <div class="section-label">📍 Location Information</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="origin">Origin Location *</label>
-              <input id="origin" type="text" placeholder="e.g., Philippines, Manila" required>
-            </div>
-            <div class="form-group">
-              <label for="destination">Destination Location *</label>
-              <input id="destination" type="text" placeholder="e.g., United States, Alabama" required>
-            </div>
-            <div class="form-group">
-              <label for="location">Current Location</label>
-              <input id="location" type="text" placeholder="e.g., Japan, Tokyo">
-            </div>
-            <div class="form-group">
-              <label for="distance">Distance (km)</label>
-              <input id="distance" type="text" placeholder="e.g., 5240">
-            </div>
-          </div>
-
-          <div class="section-label">🗺️ Map Coordinates (optional)</div>
-          <div class="form-grid">
-            <div class="form-group"><label for="latitude">Current latitude</label><input id="latitude" type="text" inputmode="decimal" placeholder="e.g., 35.6762" autocomplete="off" aria-describedby="createCoordErr"></div>
-            <div class="form-group"><label for="longitude">Current longitude</label><input id="longitude" type="text" inputmode="decimal" placeholder="e.g., 139.6503" autocomplete="off" aria-describedby="createCoordErr"></div>
-          </div>
-          <div class="field-err" id="createCoordErr" role="alert"></div>
-          <p class="hint">Origin and destination are placed on the map automatically (geocoded server-side) unless you set exact points in Live Tracking.</p>
-
-          <div class="section-label">🕒 Estimated Delivery</div>
-          <div class="form-grid">
             <div class="form-group"><label for="etaDate">Estimated delivery date</label><input id="etaDate" type="date"></div>
-            <div class="form-group"><p class="hint" style="margin-top:28px;">Leave empty if unknown — clients will see "Delivery estimate unavailable."</p></div>
+            <div class="form-group"><label>Shipment creation date</label><p class="hint" style="margin:6px 0 0;">Recorded automatically when you save.</p></div>
+            <div class="form-group"><label for="clientRef">Internal reference</label><input id="clientRef" type="text" maxlength="120" placeholder="Admin only, never shown to the customer"></div>
           </div>
 
-          <div class="section-label">📦 Package &amp; Notes</div>
+          <div class="section-label">4 · Origin and destination</div>
           <div class="form-grid">
-            <div class="form-group"><label for="pkgDescription">Package description</label><input id="pkgDescription" type="text" maxlength="300"></div>
-            <div class="form-group"><label for="pkgWeight">Weight</label><input id="pkgWeight" type="text" maxlength="40" placeholder="e.g., 12 kg"></div>
-            <div class="form-group"><label for="pkgDimensions">Dimensions</label><input id="pkgDimensions" type="text" maxlength="60" placeholder="e.g., 40x30x20 cm"></div>
-            <div class="form-group"><label for="pkgPieces">Pieces</label><input id="pkgPieces" type="text" maxlength="10"></div>
-            <div class="form-group"><label for="notes">Shipment notes (visible to client if enabled)</label><textarea id="notes" maxlength="1000"></textarea></div>
+            <div class="form-group"><label for="origin">Origin (city, country) *</label><input id="origin" type="text" maxlength="160" placeholder="e.g., Lagos, Nigeria" required></div>
+            <div class="form-group"><label for="pickupAddress">Pickup address</label><input id="pickupAddress" type="text" maxlength="300" autocomplete="off" placeholder="Street and number (admin only)"></div>
+            <div class="form-group"><label for="destination">Destination (city, country) *</label><input id="destination" type="text" maxlength="160" placeholder="e.g., London, United Kingdom" required></div>
+            <div class="form-group"><label for="deliveryAddress">Delivery address</label><input id="deliveryAddress" type="text" maxlength="300" autocomplete="off" placeholder="Street and number (admin only)"></div>
+            <div class="form-group"><label for="location">Current recorded location</label><input id="location" type="text" maxlength="160" placeholder="Where it is now, if known"></div>
+          </div>
+          <details class="reg-more"><summary>Exact map position (optional)</summary>
+            <div class="form-grid">
+              <div class="form-group"><label for="latitude">Current latitude</label><input id="latitude" type="text" inputmode="decimal" placeholder="e.g., 35.6762" autocomplete="off" aria-describedby="createCoordErr"></div>
+              <div class="form-group"><label for="longitude">Current longitude</label><input id="longitude" type="text" inputmode="decimal" placeholder="e.g., 139.6503" autocomplete="off" aria-describedby="createCoordErr"></div>
+            </div>
+            <div class="field-err" id="createCoordErr" role="alert"></div>
+            <p class="hint">Only enter a position you actually know. Origin and destination are placed on the map from their names; nothing is presented as live tracking. Add checkpoints later with Add event.</p>
+          </details>
+
+          <div class="section-label">5 · Route and measurements</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="distanceValue">Shipping distance</label>
+              <div class="inline-field"><input id="distanceValue" type="text" inputmode="decimal" maxlength="12" placeholder="e.g., 5240"><select id="distanceUnit" aria-label="Distance unit"><option value="km">km</option><option value="mi">miles</option></select></div>
+              <p class="field-hint">Entered by you; it is not calculated or verified.</p></div>
+            <div class="form-group"><label for="weightValue">Weight</label>
+              <div class="inline-field"><input id="weightValue" type="text" inputmode="decimal" maxlength="12" placeholder="e.g., 12.5"><select id="weightUnit" aria-label="Weight unit"><option value="kg">kg</option><option value="lb">lb</option></select></div></div>
+            <div class="form-group"><label for="pkgDimensions">Dimensions</label><input id="pkgDimensions" type="text" maxlength="60" placeholder="e.g., 40 x 30 x 20 cm"></div>
+            <div class="form-group"><label for="pkgPieces">Number of packages</label><input id="pkgPieces" type="text" inputmode="numeric" maxlength="10" placeholder="e.g., 2"></div>
+          </div>
+
+          <div class="section-label">6 · Fees and payment</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="feeCurrency">Currency *</label>
+              <input id="feeCurrency" type="text" list="currencyList" maxlength="3" autocapitalize="characters" spellcheck="false" placeholder="USD" style="text-transform:uppercase;">
+              <datalist id="currencyList"><option value="USD"><option value="EUR"><option value="GBP"><option value="NGN"><option value="GHS"><option value="KES"><option value="ZAR"><option value="CAD"><option value="AUD"><option value="AED"><option value="CNY"><option value="JPY"><option value="INR"><option value="PHP"><option value="BRL"></datalist>
+              <p class="field-hint">All charges are in this currency. Nothing is converted.</p></div>
+            <div class="form-group"><label for="paymentStatus">Payment status</label>
+              <select id="paymentStatus"><option value="unpaid">Unpaid</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select></div>
+            <div class="form-group"><label for="feeShipping">Shipping fee</label><input id="feeShipping" class="fee-input" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+            <div class="form-group"><label for="feeCustoms">Customs / duty</label><input id="feeCustoms" class="fee-input" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+            <div class="form-group"><label for="feeHandling">Handling / processing</label><input id="feeHandling" class="fee-input" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+            <div class="form-group"><label for="feeInsurance">Insurance</label><input id="feeInsurance" class="fee-input" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+            <div class="form-group"><label for="feeOther">Other charge</label><input id="feeOther" class="fee-input" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+            <div class="form-group"><label for="feeOtherLabel">Other charge is for</label><input id="feeOtherLabel" type="text" maxlength="80" placeholder="e.g., Storage, 3 days"></div>
+            <div class="form-group" style="grid-column:1/-1;"><div class="fee-total" aria-live="polite"><span>Total</span><strong id="feeTotal">—</strong></div></div>
+            <div class="form-group" style="grid-column:1/-1;"><label for="feeNote">Fee note (admin only)</label><input id="feeNote" type="text" maxlength="500"></div>
+          </div>
+
+          <div class="section-label">7 · Tracking status and notes</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="status">Current status *</label><select id="status" required></select><p class="field-hint">Recorded with the time you save; later changes go in the shipment's timeline.</p></div>
+            <div class="form-group"><label for="notifyEmail">Email updates to (optional)</label><input id="notifyEmail" type="email" inputmode="email" autocomplete="off" maxlength="254" placeholder="customer@example.com" aria-describedby="notifyEmailHint"><p class="field-hint" id="notifyEmailHint">Only used to email milestones. Never shown on the tracking page.</p></div>
+            <div class="form-group"><label for="notes">Shipment notes (the customer can see these)</label><textarea id="notes" maxlength="1000"></textarea></div>
             <div class="form-group"><label for="internalNotes">Internal notes (admin only)</label><textarea id="internalNotes" maxlength="2000"></textarea></div>
           </div>
 
-          <div class="section-label">💵 Shipping Information</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="fee">Shipping Fee</label>
-              <input id="fee" type="text" placeholder="e.g., ₱39,719.00">
-            </div>
-          </div>
-
+          <div class="section-label">8 · Review and save</div>
+          <div class="reg-review" id="regReview" aria-live="polite"></div>
+          <div class="field-err form-err" id="regErr" role="alert" hidden></div>
+          <div class="reg-result" id="regResult" role="status" hidden></div>
           <div class="form-footer sticky-actions">
-            <button type="submit" class="btn btn-save hx-press"><span id="save-btn-text">Save Shipment</span></button>
-            <button type="reset" class="btn btn-reset">Clear</button>
+            <button type="submit" class="btn btn-save hx-press"><span id="save-btn-text">Save shipment</span></button>
+            <button type="button" class="btn btn-reset" id="regClear">Clear form</button>
           </div>
         </form>
       </div>
@@ -1218,21 +1249,30 @@
         <div class="courier-stats-grid" id="clientsSummary">
           <div class="courier-stat"><span>Loading clients...</span><strong>--</strong></div>
         </div>
-        <form id="clientForm" style="margin-top:16px;">
+        <form id="clientForm" style="margin-top:16px;" novalidate>
           <h4 id="clientFormTitle" class="form-h">Create Client</h4>
-          <div class="client-form-grid">
-            <input id="clientName" type="text" placeholder="Client Name" required>
-            <input id="clientEmail" type="email" placeholder="Client Email" required>
-            <input id="clientPassword" type="password" placeholder="Password (required for new)">
-            <select id="clientStatus">
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-            <input id="clientXrpHoldings" type="number" step="0.0001" min="0" placeholder="XRP Holdings" value="0">
-            <input id="clientTslaHoldings" type="number" step="0.0001" min="0" placeholder="TSLA Holdings" value="0">
-            <input id="clientMaxXrp" type="number" step="0.01" min="0" placeholder="Max XRP Limit" value="0">
-            <input id="clientMaxTsla" type="number" step="0.01" min="0" placeholder="Max TSLA Limit" value="0">
+          <div class="section-label">👤 Customer information</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="clientName">Full name *</label><input id="clientName" type="text" autocomplete="off" maxlength="120" required></div>
+            <div class="form-group"><label for="clientEmail">Email (used to sign in) *</label><input id="clientEmail" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="254" required></div>
+            <div class="form-group"><label for="clientPhone">Phone</label><input id="clientPhone" type="tel" inputmode="tel" autocomplete="off" maxlength="24" placeholder="+234 801 234 5678"></div>
           </div>
+          <div class="section-label">🔐 Account and access</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="clientPassword" id="clientPasswordLabel">Initial password * (6+ characters)</label><input id="clientPassword" type="password" autocomplete="new-password" minlength="6"><p class="field-hint">Share it with the customer privately; they sign in at My account. It is never shown again.</p></div>
+            <div class="form-group"><label for="clientStatus">Account status</label>
+              <select id="clientStatus"><option value="active">Active (can sign in)</option><option value="pending">Pending (set up, sign-in off)</option><option value="suspended">Suspended (sign-in off)</option></select></div>
+          </div>
+          <div class="section-label">💼 Balances and limits</div>
+          <div class="form-grid">
+            <div class="form-group"><label for="clientXrpHoldings">XRP holdings</label><input id="clientXrpHoldings" type="number" step="0.0001" min="0" value="0" inputmode="decimal"></div>
+            <div class="form-group"><label for="clientTslaHoldings">TSLA holdings</label><input id="clientTslaHoldings" type="number" step="0.0001" min="0" value="0" inputmode="decimal"></div>
+            <div class="form-group"><label for="clientMaxXrp">Max XRP limit</label><input id="clientMaxXrp" type="number" step="0.01" min="0" value="0" inputmode="decimal"></div>
+            <div class="form-group"><label for="clientMaxTsla">Max TSLA limit</label><input id="clientMaxTsla" type="number" step="0.01" min="0" value="0" inputmode="decimal"></div>
+          </div>
+          <div class="section-label">📝 Admin notes</div>
+          <div class="form-group"><label for="clientAdminNotes">Internal notes (admin only, never shown to the customer)</label><textarea id="clientAdminNotes" maxlength="2000"></textarea></div>
+          <div class="field-err form-err" id="clientFormErr" role="alert" hidden></div>
           <div class="form-footer" style="margin-top:12px;">
             <button type="submit" class="btn btn-save"><span id="clientSubmitText">Save Client</span></button>
             <button type="button" class="btn btn-reset" id="clientCancelEdit" style="display:none;">Cancel Edit</button>
@@ -1249,7 +1289,8 @@
           <select id="clientStatusFilter" aria-label="Filter by status">
             <option value="all">All statuses</option>
             <option value="active">Active</option>
-            <option value="inactive">Deactivated</option>
+            <option value="pending">Pending</option>
+            <option value="suspended">Suspended</option>
           </select>
           <button type="button" class="btn-action" id="clientRefresh">Refresh</button>
         </div>
@@ -1469,8 +1510,24 @@
 
         <div class="section-label">💵 Shipping Information</div>
         <div class="form-grid">
-          <div class="form-group"><label for="shipmentFeeInput">Shipping Fee</label><input id="shipmentFeeInput" type="text" placeholder="e.g., ₱39,719.00"></div>
+          <div class="form-group"><label for="shipmentFeeInput">Fee (older free-text field)</label><input id="shipmentFeeInput" type="text" placeholder="Leave empty when using the itemised fees below"></div>
+          <div class="form-group"><label for="shipmentPickupInput">Pickup address (admin only)</label><input id="shipmentPickupInput" type="text" maxlength="300" autocomplete="off"></div>
+          <div class="form-group"><label for="shipmentDeliveryInput">Delivery address (admin only)</label><input id="shipmentDeliveryInput" type="text" maxlength="300" autocomplete="off"></div>
         </div>
+        <div class="section-label">Fees and payment</div>
+        <div class="form-grid">
+          <div class="form-group"><label for="editFeeCurrency">Currency</label><input id="editFeeCurrency" type="text" list="currencyList" maxlength="3" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase;"></div>
+          <div class="form-group"><label for="editPaymentStatus">Payment status</label><select id="editPaymentStatus"><option value="unpaid">Unpaid</option><option value="partial">Partially paid</option><option value="paid">Paid</option></select></div>
+          <div class="form-group"><label for="editFeeShipping">Shipping fee</label><input id="editFeeShipping" class="edit-fee" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+          <div class="form-group"><label for="editFeeCustoms">Customs / duty</label><input id="editFeeCustoms" class="edit-fee" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+          <div class="form-group"><label for="editFeeHandling">Handling / processing</label><input id="editFeeHandling" class="edit-fee" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+          <div class="form-group"><label for="editFeeInsurance">Insurance</label><input id="editFeeInsurance" class="edit-fee" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+          <div class="form-group"><label for="editFeeOther">Other charge</label><input id="editFeeOther" class="edit-fee" type="text" inputmode="decimal" maxlength="16" placeholder="0.00"></div>
+          <div class="form-group"><label for="editFeeOtherLabel">Other charge is for</label><input id="editFeeOtherLabel" type="text" maxlength="80"></div>
+          <div class="form-group" style="grid-column:1/-1;"><div class="fee-total"><span>Total</span><strong id="editFeeTotal">—</strong></div></div>
+          <div class="form-group" style="grid-column:1/-1;"><label for="editFeeNote">Fee note (admin only)</label><input id="editFeeNote" type="text" maxlength="500"></div>
+        </div>
+        <div class="field-err form-err" id="editErr" role="alert" hidden></div>
 
         <div class="form-footer">
           <button type="submit" class="btn btn-save">Save Shipment</button>
@@ -1568,8 +1625,9 @@
     window.autoGenerateTrackingId = function() {
       const courierId = document.getElementById("courier").value;
       if (courierId) {
-        const trackingCode = generateTrackingCode(courierId);
-        document.getElementById("id").value = trackingCode;
+        // fill in a suggestion, but never replace an ID the admin typed
+        const field = document.getElementById("id");
+        if (!field.value.trim() || field.value === field.dataset.auto) { field.value = generateTrackingCode(courierId); field.dataset.auto = field.value; }
         updateCourierPrefixHint();
       }
     };

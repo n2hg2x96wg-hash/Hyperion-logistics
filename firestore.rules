@@ -24,6 +24,14 @@ service cloud.firestore {
       }
     }
 
+    // Admin-only client data (internal notes) and admin registration records: server API only, never the browser.
+    match /client_private/{clientId} {
+      allow read, write: if false;
+    }
+    match /registrations/{submissionId} {
+      allow read, write: if false;
+    }
+
     match /portfolio_history/{clientId}/history/{dateId} {
       allow read: if isAdmin() || isClient(clientId);
       allow create, update, delete: if isAdmin();

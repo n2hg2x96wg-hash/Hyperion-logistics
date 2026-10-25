@@ -6,7 +6,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (iso) => { if (!iso) return "—"; const d = new Date(iso); return Number.isNaN(+d) ? "—" : d.toLocaleString(); };
 const VIEWS = ["dashboard", "create", "shipments", "globe", "tracking", "events", "preview", "audit", "couriers", "clients", "settings"];
-const TITLES = { dashboard: "Overview", create: "Create Shipment", shipments: "Shipments", globe: "Global Tracking", tracking: "Live Tracking", events: "Tracking Events", preview: "Client View", audit: "Activity Logs", couriers: "Carriers", clients: "Clients", settings: "Settings & Backup" };
+const TITLES = { dashboard: "Overview", create: "Register Shipment", shipments: "Shipments", globe: "Global Tracking", tracking: "Live Tracking", events: "Tracking Events", preview: "Client View", audit: "Activity Logs", couriers: "Carriers", clients: "Clients", settings: "Settings & Backup" };
 const WORKSPACE_VIEWS = ["tracking", "events", "preview"];
 const VIS_LABELS = {
   map: ["Show live map", "Interactive map with route"], location: ["Show current location", "Location name, marker and position source"],
@@ -89,6 +89,8 @@ export function initControlCenter(host) {
     populateStaticSelects();
     document.querySelectorAll('[data-needs="clients"]').forEach((el) => { el.hidden = !can("clients"); });
     fillCustomerSelect("customerId", "").catch(() => {});
+    if (!can("clients")) document.querySelector('input[name="custMode"][value="none"]').checked = true;
+    showCustMode();
     switchView(state.view);
     startKeepAlive();
   }
@@ -424,31 +426,144 @@ export function initControlCenter(host) {
     $("visGrid").innerHTML = VISIBILITY_KEYS.map((k) => `<label><input type="checkbox" data-vis="${k}" checked><span>${esc(VIS_LABELS[k][0])}<small>${esc(VIS_LABELS[k][1])}</small></span></label>`).join("");
   }
 
-  // ---------- create ----------
-  function packageFrom(prefix) {
-    return { description: nv(`${prefix}Description`), weight: nv(`${prefix}Weight`), dimensions: nv(`${prefix}Dimensions`), pieces: nv(`${prefix}Pieces`) };
+  // ---------- register shipment (customer + shipment; saved together by the server) ----------
+  // amounts: the same rule as the server (digits, optional 2 decimals), added up in whole cents
+  const MONEY_RE = /^(\d{1,12})(?:\.(\d{0,2}))?$/;
+  const FEES = [["feeShipping", "shipping"], ["feeCustoms", "customs"], ["feeHandling", "handling"], ["feeInsurance", "insurance"], ["feeOther", "other"]];
+  const cents = (text) => { const m = MONEY_RE.exec(String(text).replace(/[\s,]/g, "")); return m ? Number(m[1]) * 100 + Number((m[2] || "").padEnd(2, "0")) : NaN; };
+  function feeTotals() {
+    let total = 0; let bad = null;
+    for (const [id] of FEES) { const v = nv(id); if (!v) continue; const c = cents(v); if (Number.isNaN(c)) { bad = bad || id; } else total += c; }
+    return { total, bad };
   }
+  const money = (c, cur) => { const amount = `${Math.floor(c / 100).toLocaleString()}.${String(c % 100).padStart(2, "0")}`; return cur ? `${cur} ${amount}` : amount; };
+  const custMode = () => (can("clients") ? document.querySelector('input[name="custMode"]:checked')?.value || "existing" : "none");
+  const newSubmissionId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, "");
+  let submissionId = newSubmissionId();
+
+  function showCustMode() {
+    const mode = custMode();
+    document.querySelectorAll("[data-cust]").forEach((el) => { el.hidden = el.dataset.cust !== mode; });
+    renderReview();
+  }
+  function renderReview() {
+    const { total, bad } = feeTotals(); const cur = nv("feeCurrency").toUpperCase();
+    $("feeTotal").textContent = bad ? "Check the amounts" : total ? money(total, cur || "—") : "—";
+    const mode = custMode();
+    const custText = mode === "existing" ? ($("customerId").selectedOptions[0]?.value ? $("customerId").selectedOptions[0].textContent : "Not chosen yet")
+      : mode === "new" ? `New: ${nv("regName") || "—"} · ${nv("regEmail") || "—"} (${$("regStatus").value === "active" ? "Active" : "Pending"})` : "No customer account";
+    const rows = [["Customer", custText], ["Tracking ID", nv("id") || "Generated when saved"], ["Carrier", $("courier").selectedOptions[0]?.value ? $("courier").selectedOptions[0].textContent : "—"],
+      ["Method", nv("serviceType") || "—"], ["From", [nv("origin"), nv("pickupAddress")].filter(Boolean).join(" · ") || "—"], ["To", [nv("destination"), nv("deliveryAddress")].filter(Boolean).join(" · ") || "—"],
+      ["Status", $("status").selectedOptions[0]?.textContent || "—"], ["Fees", total ? `${money(total, cur || "?")} · ${$("paymentStatus").selectedOptions[0].textContent}` : "None entered"]];
+    $("regReview").innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  }
+  function regError(message, field) {
+    $("createForm").querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+    $("regErr").textContent = message || ""; $("regErr").hidden = !message;
+    const map = { name: "regName", email: "regEmail", password: "regPassword", phone: "regPhone", status: "regStatus", adminNotes: "regNotes", customerId: "customerId",
+      trackingCode: "id", origin: "origin", destination: "destination", courier: "courier", currency: "feeCurrency", paymentStatus: "paymentStatus", otherLabel: "feeOtherLabel",
+      fee_shipping: "feeShipping", fee_customs: "feeCustoms", fee_handling: "feeHandling", fee_insurance: "feeInsurance", fee_other: "feeOther", notifyEmail: "notifyEmail",
+      etaDate: "etaDate", pickupAddress: "pickupAddress", deliveryAddress: "deliveryAddress", latitude: "latitude", longitude: "longitude" };
+    const el = field && $(map[field] || field);
+    if (el) { el.setAttribute("aria-invalid", "true"); el.closest("details")?.setAttribute("open", ""); el.focus(); el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    else if (message) $("regErr").scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  /** Checks made before sending (the server repeats every one of them). Returns [message, field] or null. */
+  function precheck() {
+    const mode = custMode();
+    if (mode === "existing" && !nv("customerId")) return ["Choose the customer, or pick New customer / No customer account.", "customerId"];
+    if (mode === "new") {
+      if (!nv("regName")) return ["Enter the customer's full name.", "name"];
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(nv("regEmail"))) return ["Enter a valid email address for the customer.", "email"];
+      if ($("regPassword").value.length < 6) return ["Set an initial password of at least 6 characters.", "password"];
+      if (nv("regPhone") && !/^\+?[0-9 ()./-]{6,24}$/.test(nv("regPhone"))) return ["Enter the phone number with digits only (spaces, +, - and brackets allowed).", "phone"];
+    }
+    if (!nv("courier")) return ["Choose the carrier.", "courier"];
+    if (!nv("origin")) return ["Enter the origin (city, country).", "origin"];
+    if (!nv("destination")) return ["Enter the destination (city, country).", "destination"];
+    for (const [id, unit] of [["distanceValue", "distance"], ["weightValue", "weight"]]) if (nv(id) && !/^\d{1,9}([.,]\d{1,3})?$/.test(nv(id))) return [`Enter the ${unit} as a number, e.g. 12.5.`, id];
+    const { total, bad } = feeTotals();
+    if (bad) return ["Enter amounts like 1250 or 1250.50 (no currency symbols, at most 2 decimals).", bad];
+    if (total && !/^[A-Za-z]{3}$/.test(nv("feeCurrency"))) return ["Choose the currency for the fees, e.g. USD.", "currency"];
+    if (nv("feeOther") && cents(nv("feeOther")) > 0 && !nv("feeOtherLabel")) return ["Say what the other charge is for.", "otherLabel"];
+    return null;
+  }
+  function payload() {
+    const mode = custMode();
+    const coords = checkCoords("latitude", "longitude", "createCoordErr");
+    if (!coords.ok) return null;
+    const lat = numOrUndef("latitude"); const lng = numOrUndef("longitude");
+    const w = nv("weightValue");
+    const pkg = { description: nv("pkgDescription"), weight: w ? `${w.replace(",", ".")} ${$("weightUnit").value}` : "", dimensions: nv("pkgDimensions"), pieces: nv("pkgPieces") };
+    const d = nv("distanceValue");
+    const { total } = feeTotals();
+    const shipment = {
+      trackingCode: nv("id") || undefined, statusCode: $("status").value, courier: nv("courier"), courierTrackingNumber: nv("courierTrackingNumber"),
+      serviceType: nv("serviceType"), clientRef: nv("clientRef"), notifyEmail: nv("notifyEmail") || undefined, origin: nv("origin"), destination: nv("destination"), location: nv("location"),
+      pickupAddress: nv("pickupAddress"), deliveryAddress: nv("deliveryAddress"), distance: d ? `${d.replace(",", ".")} ${$("distanceUnit").value}` : "",
+      etaDate: nv("etaDate") || undefined, notes: nv("notes"), internalNotes: nv("internalNotes"), package: pkg,
+      ...(total || nv("feeNote") ? { charges: { currency: nv("feeCurrency").toUpperCase(), shipping: nv("feeShipping"), customs: nv("feeCustoms"), handling: nv("feeHandling"),
+        insurance: nv("feeInsurance"), other: nv("feeOther"), otherLabel: nv("feeOtherLabel"), paymentStatus: $("paymentStatus").value, note: nv("feeNote") } } : {})
+    };
+    if (lat !== undefined || lng !== undefined) { shipment.latitude = lat; shipment.longitude = lng; }
+    const customer = mode === "existing" ? { mode, id: nv("customerId") } : mode === "new"
+      ? { mode, client: { name: nv("regName"), email: nv("regEmail").toLowerCase(), phone: nv("regPhone"), password: $("regPassword").value, status: $("regStatus").value, adminNotes: nv("regNotes") } }
+      : { mode: "none" };
+    return { submissionId, customer, shipment };
+  }
+  function clearRegistration({ keepCustomer = false } = {}) {
+    const keep = keepCustomer ? { mode: custMode(), id: nv("customerId") } : null;
+    $("createForm").reset(); $("courierPrefixHint").textContent = "Tracking prefix: --";
+    $("regErr").hidden = true; $("regPassword").value = "";
+    if (keep) { document.querySelector(`input[name="custMode"][value="${keep.mode}"]`).checked = true; $("customerId").value = keep.id; }
+    submissionId = newSubmissionId();
+    showCustMode();
+  }
+  $("createForm").addEventListener("input", renderReview);
+  $("createForm").addEventListener("change", (e) => { if (e.target.name === "custMode") showCustMode(); else renderReview(); });
+  $("regClear").addEventListener("click", () => { clearRegistration(); $("regResult").hidden = true; });
   $("createForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    guarded("create", e.submitter || $("createForm").querySelector('[type="submit"]'), async () => {
-      if (!nv("courier")) { host.showToast("Please select a courier", "error"); return; }
-      const coords = checkCoords("latitude", "longitude", "createCoordErr");
-      if (!coords.ok) { $("latitude").focus(); return; }
-      const lat = numOrUndef("latitude"); const lng = numOrUndef("longitude");
-      const shipment = {
-        trackingCode: nv("id") || undefined, statusCode: $("status").value, courier: nv("courier"), courierTrackingNumber: nv("courierTrackingNumber"),
-        serviceType: nv("serviceType"), clientRef: nv("clientRef"), notifyEmail: nv("notifyEmail") || undefined, customerId: can("clients") ? nv("customerId") || undefined : undefined, origin: nv("origin"), destination: nv("destination"), location: nv("location"),
-        distance: nv("distance"), fee: nv("fee"), etaDate: nv("etaDate") || undefined, notes: nv("notes"), internalNotes: nv("internalNotes"),
-        package: packageFrom("pkg")
-      };
-      if (lat !== undefined || lng !== undefined) { shipment.latitude = lat; shipment.longitude = lng; }
-      const { shipment: created } = await api("create", { shipment });
-      host.showToast(`Shipment ${created.id} created`, "success");
-      $("createForm").reset(); $("courierPrefixHint").textContent = "Tracking prefix: --";
-      fillCustomerSelect("customerId", "").catch(() => {});
-      state.list = { cursor: null, rows: [] };
-      openShipment(created.id, "tracking");
-    });
+    const btn = e.submitter || $("createForm").querySelector('[type="submit"]');
+    const problem = precheck();
+    if (problem) { regError(...problem); return; }
+    regError("");
+    const body = payload(); if (!body) { $("latitude").focus(); return; }
+    if (state.busy.has("create")) return;
+    state.busy.add("create"); btn.disabled = true; $("save-btn-text").textContent = "Saving…";
+    (async () => {
+      try {
+        const r = await api("registerShipment", body);
+        // the new customer (if any) now exists: reload the list and keep them selected for another shipment
+        const customerId = r.customer?.id || "";
+        await fillCustomerSelect("customerId", customerId).catch(() => {});
+        const ch = r.shipment.charges;
+        $("regResult").innerHTML = `<div>Saved. Tracking ID <strong class="code">${esc(r.shipment.id)}</strong></div>
+          <div class="hint" style="margin:6px 0 0;">${esc(r.shipment.origin)} → ${esc(r.shipment.destination)}${r.customer ? ` · Customer: ${esc(r.customer.name || r.customer.email)} (${esc(r.customer.status)})` : ""}${ch?.total ? ` · Total ${esc(money(ch.total, ch.currency))}` : ""}</div>
+          ${r.warning ? `<p class="field-err" style="margin-top:8px;">${esc(r.warning)}</p>` : ""}
+          <div class="btn-row"><button type="button" class="btn-action" data-reg="open" data-code="${esc(r.shipment.id)}">Open shipment</button>
+          <button type="button" class="btn-action subtle btn-copy" data-act="copy" data-code="${esc(r.shipment.id)}">Copy tracking ID</button></div>`;
+        $("regResult").hidden = false;
+        clearRegistration({ keepCustomer: !!customerId });
+        if (customerId) { document.querySelector('input[name="custMode"][value="existing"]').checked = true; $("customerId").value = customerId; showCustMode(); }
+        host.showToast(r.repeated ? `Already saved: ${r.shipment.id}` : r.message, "success");
+        state.list = { cursor: null, rows: [] };
+        $("regResult").scrollIntoView({ block: "center", behavior: "smooth" });
+      } catch (err) {
+        if (err.silent) return;
+        // everything typed stays in the form; the same submission ID makes a retry safe
+        const msg = err.code === "network" ? "The connection dropped. Nothing you typed was lost; press Save again. If it was saved, you'll see the same tracking ID (it is never saved twice)." : err.message;
+        regError(`Not saved: ${msg}`, err.field);
+        host.showToast(`Not saved: ${msg}`, "error");
+      } finally {
+        state.busy.delete("create"); btn.disabled = false; $("save-btn-text").textContent = "Save shipment";
+      }
+    })();
+  });
+  $("regResult").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.reg === "open") openShipment(b.dataset.code, "tracking");
+    if (b.dataset.act === "copy") navigator.clipboard?.writeText(b.dataset.code).then(() => host.showToast("Tracking ID copied", "success")).catch(() => {});
   });
 
   // ---------- shipments list ----------
@@ -515,9 +630,9 @@ export function initControlCenter(host) {
   async function fillCustomerSelect(id, selected) {
     const sel = $(id); if (!sel || !can("clients")) return;
     const { clients } = await api("listClients");
-    const opts = [new Option("No customer account", "")];
+    const opts = [new Option(id === "customerId" ? "Choose a customer…" : "No customer account", "")];
     for (const c of clients.slice().sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email))) {
-      opts.push(new Option(`${c.name || c.email} · ${c.email}${c.status !== "active" ? " (inactive)" : ""}`, c.id));
+      opts.push(new Option(`${c.name || c.email} · ${c.email}${c.status !== "active" ? ` (${c.status === "pending" ? "pending" : "suspended"})` : ""}`, c.id));
     }
     if (selected && !clients.some((c) => c.id === selected)) opts.push(new Option("Unknown account (no longer exists)", selected));
     sel.replaceChildren(...opts); sel.value = selected || "";
@@ -525,6 +640,14 @@ export function initControlCenter(host) {
 
   // ---------- edit modal ----------
   let editing = null;
+  const EDIT_FEES = [["editFeeShipping", "shipping"], ["editFeeCustoms", "customs"], ["editFeeHandling", "handling"], ["editFeeInsurance", "insurance"], ["editFeeOther", "other"]];
+  function editFeeTotal() {
+    let total = 0; let bad = false;
+    for (const [id] of EDIT_FEES) { const v = nv(id); if (!v) continue; const c = cents(v); if (Number.isNaN(c)) bad = true; else total += c; }
+    $("editFeeTotal").textContent = bad ? "Check the amounts" : total ? money(total, nv("editFeeCurrency").toUpperCase() || "—") : "—";
+    return { total, bad };
+  }
+  document.querySelectorAll(".edit-fee, #editFeeCurrency").forEach((el) => el.addEventListener("input", editFeeTotal));
   async function openEdit(code) {
     await guarded("edit-open", null, async () => {
       const full = await api("get", { code }); const s = full.shipment; editing = s;
@@ -538,6 +661,11 @@ export function initControlCenter(host) {
       set("shipmentLatitudeInput", s.latitude); set("shipmentLongitudeInput", s.longitude); set("shipmentFeeInput", s.fee);
       const p = s.package || {}; set("shipmentPkgDescription", p.description); set("shipmentPkgWeight", p.weight); set("shipmentPkgDimensions", p.dimensions); set("shipmentPkgPieces", p.pieces);
       set("shipmentNotesInput", s.notes); set("shipmentInternalNotesInput", s.internalNotes);
+      set("shipmentPickupInput", s.pickupAddress); set("shipmentDeliveryInput", s.deliveryAddress);
+      const ch = s.charges || {}; const amt = (c) => (Number.isInteger(c) && c > 0 ? `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}` : "");
+      set("editFeeCurrency", ch.currency); $("editPaymentStatus").value = ch.paymentStatus || "unpaid";
+      for (const [id, key] of EDIT_FEES) set(id, amt(ch[key]));
+      set("editFeeOtherLabel", ch.otherLabel); set("editFeeNote", ch.note); editFeeTotal(); $("editErr").hidden = true;
       if (can("clients")) await fillCustomerSelect("shipmentCustomerInput", s.customerId || "").catch(() => {});
       $("shipmentModal").classList.add("show");
     });
@@ -561,8 +689,28 @@ export function initControlCenter(host) {
       const pkg = { description: nv("shipmentPkgDescription"), weight: nv("shipmentPkgWeight"), dimensions: nv("shipmentPkgDimensions"), pieces: nv("shipmentPkgPieces") };
       const prevPkg = s.package || {};
       if (Object.keys(pkg).some((k) => (pkg[k] || "") !== (prevPkg[k] || ""))) changes.package = pkg;
+      cmp("pickupAddress", nv("shipmentPickupInput")); cmp("deliveryAddress", nv("shipmentDeliveryInput"));
+      // fees: send them when anything changed; the server validates and recomputes the total
+      const { total, bad } = editFeeTotal();
+      if (bad) { $("editErr").textContent = "Enter amounts like 1250 or 1250.50 (no currency symbols, at most 2 decimals)."; $("editErr").hidden = false; return; }
+      const prevCh = s.charges || {};
+      const nextCh = { currency: nv("editFeeCurrency").toUpperCase(), paymentStatus: $("editPaymentStatus").value, otherLabel: nv("editFeeOtherLabel"), note: nv("editFeeNote"),
+        ...Object.fromEntries(EDIT_FEES.map(([id, key]) => [key, nv(id)])) };
+      const sameCh = (prevCh.currency || "") === nextCh.currency && (prevCh.paymentStatus || "unpaid") === nextCh.paymentStatus && (prevCh.otherLabel || "") === nextCh.otherLabel
+        && (prevCh.note || "") === nextCh.note && EDIT_FEES.every(([, key]) => (Number.isInteger(prevCh[key]) ? prevCh[key] : 0) === (nextCh[key] ? cents(nextCh[key]) : 0));
+      if (!sameCh) changes.charges = total || nextCh.note ? nextCh : null;
       if (!Object.keys(changes).length) { host.showToast("No changes to save", "success"); closeShipmentModal(); return; }
-      const r = await api("update", { code: s.id, changes });
+      $("editErr").hidden = true;
+      let r;
+      try { r = await api("update", { code: s.id, changes }); }
+      catch (err) {
+        if (err.code === "reassign_confirm" && confirm(`${err.message}\n\nMove ${s.id} to the selected customer?`)) r = await api("update", { code: s.id, changes: { ...changes, confirmReassign: true } });
+        else {
+          if (err.code === "reassign_confirm") err.silent = true; // the admin chose not to move it: nothing changed
+          else if (!err.silent) { $("editErr").textContent = `Not saved: ${err.message}`; $("editErr").hidden = false; }
+          throw err;
+        }
+      }
       host.showToast(r.unchanged ? "No changes to save" : "Shipment updated", "success");
       closeShipmentModal(); state.list = { cursor: null, rows: [] }; if (state.view === "shipments") runSearch(true);
       if (state.sel?.shipment.id === s.id) selectShipment(s.id);

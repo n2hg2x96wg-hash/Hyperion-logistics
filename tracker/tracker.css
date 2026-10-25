@@ -497,3 +497,12 @@ html[data-theme="light"] :is(.hx-rsum-end small, .hx-rsum-meta, .hx-map-cap) { c
 html[data-theme="light"] .hx-rsum-line { background: #dbe4f0; }
 /* a latest location placed from the city table (not a recorded coordinate) reads as approximate: dashed ring, no fill glow */
 .hx-marker.hx-m-current.is-approx { border-style: dashed; box-shadow: 0 0 0 4px rgba(217, 119, 6, .18), 0 2px 8px rgba(0,0,0,.35); }
+
+/* itemised fees (customer view) */
+.hx-charges .hx-info-value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.hx-pay { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(148,163,184,.18); }
+.hx-pay.is-paid { background: rgba(34,197,94,.16); color: #15803d; } .hx-pay.is-partial { background: rgba(245,158,11,.18); color: #b45309; } .hx-pay.is-unpaid { background: rgba(239,68,68,.14); color: #b91c1c; }
+html:not([data-theme="light"]) .hx-pay.is-paid { color: #86efac; } html:not([data-theme="light"]) .hx-pay.is-partial { color: #fcd34d; } html:not([data-theme="light"]) .hx-pay.is-unpaid { color: #fca5a5; }
+.hx-charge-lines { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.hx-charge-lines li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed rgba(148,163,184,.25); padding-bottom: 4px; }
+.hx-charge-lines bdi { font-variant-numeric: tabular-nums; }

@@ -1092,9 +1092,10 @@ test("admin on iPhone: bottom tab bar, readable text, status breakdown, e-mail f
     assert.deepEqual(small, [], "no text below 13px on the overview");
     // create with a notification address through the form, then find it in the list
     await page.click('#tabBar [data-tab="more"]'); await page.click("#btn-create");
+    await page.check('input[name="custMode"][value="none"]');
     await page.selectOption("#courier", "dhl"); await page.fill("#origin", `Tema, Ghana ${theme}`); await page.fill("#destination", "Lome, Togo"); await page.fill("#notifyEmail", "Customer@Example.com");
     await page.click('#view-create button[type="submit"]');
-    await page.waitForFunction(() => /[A-Z]+-\d{6}/.test(document.getElementById("wsCurrent")?.textContent || "") || document.querySelector(".toast"), null, { timeout: 15000 });
+    await page.waitForSelector("#regResult:not([hidden]) .code", { timeout: 15000 });
     const list = await api(page, { action: "list", q: "", limit: 50 });
     const made = list.json.items.find((i) => i.origin === `Tema, Ghana ${theme}` && i.destination === "Lome, Togo" && !i.archived);
     const full = await api(page, { action: "get", code: made.id });

@@ -263,8 +263,9 @@ export function createFirestoreStore() {
     // Schema (existing): Firebase Auth user uid  <->  clients/{uid}  (+ portfolio_history/{uid}/history/{date}).
     // Shipments are NOT linked to client accounts (only a free-text clientRef), so client operations never touch them.
     async listClientRecords() {
-      const snap = await db.collection("clients").get();
-      const rows = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const [snap, priv] = await Promise.all([db.collection("clients").get(), db.collection("client_private").get()]);
+      const notes = new Map(priv.docs.map((d) => [d.id, d.get("admin_notes") || ""]));
+      const rows = snap.docs.map((d) => ({ ...d.data(), admin_notes: notes.get(d.id) || "", id: d.id }));
       const meta = new Map();
       const auth = getAuth(app);
       for (let i = 0; i < rows.length; i += 100) {
@@ -285,17 +286,20 @@ export function createFirestoreStore() {
       return n;
     },
     async getClientRecord(uid) {
-      const snap = await db.collection("clients").doc(uid).get();
+      const [snap, priv] = await Promise.all([db.collection("clients").doc(uid).get(), db.collection("client_private").doc(uid).get()]);
       if (!snap.exists) return null;
       const user = await getAuth(app).getUser(uid).catch(() => null);
-      return { ...snap.data(), id: snap.id, auth: user ? { disabled: user.disabled, admin: user.customClaims?.admin === true } : null };
+      return { ...snap.data(), admin_notes: priv.exists ? priv.get("admin_notes") || "" : "", id: snap.id, auth: user ? { disabled: user.disabled, admin: user.customClaims?.admin === true } : null };
     },
     async createClientAccount({ email, password, displayName, disabled = false }, profile, history, auditEntry) {
       const auth = getAuth(app);
       const user = await auth.createUser({ email, password, displayName, disabled: !!disabled });
       try {
         const batch = db.batch();
-        batch.set(db.collection("clients").doc(user.uid), { ...profile, created_at: new Date(), updated_at: new Date() });
+        // admin notes live in client_private/{uid}: the customer can read their own clients/{uid} document
+        const { admin_notes: notes, ...pub } = profile;
+        batch.set(db.collection("clients").doc(user.uid), { ...pub, created_at: new Date(), updated_at: new Date() });
+        if (notes) batch.set(db.collection("client_private").doc(user.uid), { admin_notes: notes });
         if (history) batch.set(db.collection("portfolio_history").doc(user.uid).collection("history").doc(history.dateKey), { ...history.values, timestamp: new Date() }, { merge: true });
         if (auditEntry) batch.set(db.collection("audit_logs").doc(), { ...auditEntry, client: user.uid });
         await batch.commit();
@@ -334,10 +338,17 @@ export function createFirestoreStore() {
         await auth.updateUser(uid, { ...(password ? { password } : {}), ...(disabled !== undefined ? { disabled } : {}) }).catch((err) => { if (err?.code !== "auth/user-not-found") throw err; });
       }
       const batch = db.batch();
-      batch.set(ref, { ...patch, updated_at: new Date() }, { merge: true });
+      const { admin_notes: notes, ...pub } = patch; // admin notes go to the admin-only client_private/{uid}
+      batch.set(ref, { ...pub, updated_at: new Date() }, { merge: true });
+      if (notes !== undefined) batch.set(db.collection("client_private").doc(uid), { admin_notes: notes }, { merge: true });
       if (history) batch.set(db.collection("portfolio_history").doc(uid).collection("history").doc(history.dateKey), { ...history.values, timestamp: new Date() }, { merge: true });
       if (auditEntry) batch.set(db.collection("audit_logs").doc(), auditEntry);
-      await batch.commit();
+      try { await batch.commit(); }
+      catch (err) {
+        // the profile did not change: put sign-in back the way it was, so status and sign-in never disagree
+        if (disabled !== undefined) await auth.updateUser(uid, { disabled: !disabled }).catch(() => {});
+        throw err;
+      }
     },
     /**
      * Permanent deletion of ONE client, keyed by its document ID. Order keeps the system consistent:
@@ -376,6 +387,7 @@ export function createFirestoreStore() {
         historySnap.docs.forEach((d) => batch.delete(d.ref));
         batch.delete(parent);
         batch.delete(ref);
+        batch.delete(db.collection("client_private").doc(uid));
         if (entry) batch.set(db.collection("audit_logs").doc(), entry);
         await batch.commit();
       } catch (err) {
