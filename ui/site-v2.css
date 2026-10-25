@@ -69,9 +69,19 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 
 /* ---------- hero ---------- */
 .hero3 { position: relative; isolation: isolate; min-height: min(860px, calc(100svh - var(--hy-nav-h))); display: flex; align-items: center; padding: 72px 0 64px; overflow: hidden; background: #030712; }
-/* original drawn scene (assets/hero/scene.svg): container ship, port cranes, cargo aircraft. Decorative; if it fails the
-   hero is plain navy and fully usable. */
-.hero3-media { position: absolute; inset: 0; z-index: -2; background: #030712 var(--hero-photo, url("../assets/hero/scene.svg")) 70% 62% / cover no-repeat; transform: scale(1.02); }
+/* photograph of a container ship at a container terminal (assets/hero/port-*, licence in assets/hero/CREDITS.md), sized
+   per screen; the dark theme tones it toward navy. Decorative; if it fails the hero is plain navy and fully usable. */
+.hero3-media { position: absolute; inset: 0; z-index: -2; background: #030712 url("../assets/hero/port-1920.jpg") 62% 50% / cover no-repeat;
+  background-image: image-set(url("../assets/hero/port-1920.avif") type("image/avif"), url("../assets/hero/port-1920.webp") type("image/webp"), url("../assets/hero/port-1920.jpg") type("image/jpeg"));
+  filter: brightness(.78) saturate(.88); transform: scale(1.02); }
+@media (max-width: 1100px) {
+  .hero3-media { background-image: url("../assets/hero/port-1280.jpg");
+    background-image: image-set(url("../assets/hero/port-1280.avif") type("image/avif"), url("../assets/hero/port-1280.webp") type("image/webp"), url("../assets/hero/port-1280.jpg") type("image/jpeg")); }
+}
+@media (min-width: 1700px) {
+  .hero3-media { background-image: url("../assets/hero/port-2560.jpg");
+    background-image: image-set(url("../assets/hero/port-2560.avif") type("image/avif"), url("../assets/hero/port-2560.webp") type("image/webp"), url("../assets/hero/port-2560.jpg") type("image/jpeg")); }
+}
 /* readability: dark only under the text column, the scene stays clear on the right */
 .hero3::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(90deg, rgba(3, 7, 18, 0.92) 0%, rgba(3, 7, 18, 0.8) 30%, rgba(3, 7, 18, 0.38) 50%, rgba(3, 7, 18, 0.06) 68%, rgba(3, 7, 18, 0) 100%),
@@ -132,7 +142,10 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 @media (max-width: 640px) {
   /* phones: the scene is a clear band across the top of the hero, the copy starts on the calm water below it */
   .hero3 { padding: clamp(160px, 50vw, 214px) 0 44px; min-height: 0; }
-  .hero3-media { background: #030712 var(--hero-photo-mobile, url("../assets/hero/scene-mobile.svg")) center -20px / 100% auto no-repeat; }
+  .hero3-media { background: #030712 url("../assets/hero/port-mobile-1080.jpg") center top / 100% auto no-repeat;
+    background-image: image-set(url("../assets/hero/port-mobile-1080.avif") type("image/avif"), url("../assets/hero/port-mobile-1080.webp") type("image/webp"), url("../assets/hero/port-mobile-1080.jpg") type("image/jpeg"));
+    /* the photo band (1080×472, full width) fades into the navy instead of ending on a hard edge */
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(43.7vw * .62), transparent 43.7vw); mask-image: linear-gradient(180deg, #000 calc(43.7vw * .62), transparent 43.7vw); }
   .hero3::before { background: linear-gradient(180deg, rgba(3, 7, 18, 0) 0%, rgba(3, 7, 18, 0) 26%, rgba(3, 7, 18, 0.55) 40%, rgba(3, 7, 18, 0.85) 52%, var(--hy-bg-0) 70%); }
   .hero3 h1 { margin: 14px 0 14px; text-shadow: 0 2px 18px rgba(3, 7, 18, 0.8); }
   .hero3 .lead { margin-bottom: 24px; }
@@ -164,7 +177,7 @@ html[data-activity]:not([data-activity="ready"]) :is(.nav-menu, .site-footer) li
 
 /* ---------- tracking pages: compact band ---------- */
 .track-band { position: relative; isolation: isolate; padding: 48px 0 36px; overflow: hidden; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
-.track-band::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(3, 7, 18, 0.96), rgba(3, 7, 18, 0.7)), #030712 url("../assets/hero/scene.svg") center 62% / cover no-repeat; }
+.track-band::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(3, 7, 18, 0.96), rgba(3, 7, 18, 0.7)), #030712 url("../assets/hero/port-1280.jpg") 62% 50% / cover no-repeat; }
 .track-band h1 { font-size: clamp(28px, 4.4vw, 44px); letter-spacing: -0.03em; line-height: 1.1; margin: 14px 0 8px; color: #fff; }
 .track-band p { color: #cbd5e1; margin: 0 0 22px; max-width: 620px; }
 .track-band .search-group { display: flex; gap: 10px; max-width: 620px; }

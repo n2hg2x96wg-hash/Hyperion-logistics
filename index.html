@@ -69,7 +69,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preload" href="assets/hero/scene.svg" as="image" type="image/svg+xml">
+  <!-- hero photograph: the same file the stylesheet picks for this screen width (AVIF where supported) -->
+  <link rel="preload" href="assets/hero/port-mobile-1080.avif" as="image" type="image/avif" media="(max-width: 640px)">
+  <link rel="preload" href="assets/hero/port-1280.avif" as="image" type="image/avif" media="(min-width: 641px) and (max-width: 1100px)">
+  <link rel="preload" href="assets/hero/port-1920.avif" as="image" type="image/avif" media="(min-width: 1101px) and (max-width: 1699px)">
+  <link rel="preload" href="assets/hero/port-2560.avif" as="image" type="image/avif" media="(min-width: 1700px)">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="ui/tokens.css">
   <link rel="stylesheet" href="ui/site-v2.css">
@@ -130,7 +134,7 @@
 
   <main>
     <section class="hero3" id="track" aria-labelledby="heroTitle">
-      <div class="hero3-media" role="img" aria-label="Illustration: a container ship leaving a lit port at dusk, with a cargo aircraft overhead" data-i18n-attr="aria-label:home.hero.imgAlt"></div>
+      <div class="hero3-media" role="img" aria-label="Photo: a large container ship moored under cranes at a container terminal" data-i18n-attr="aria-label:home.hero.imgAlt"></div>
       <svg class="hero3-routes" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">
         <path class="r1" id="heroR1" d="M860 600 C 1000 380, 1240 300, 1460 250" pathLength="1"/>
         <path class="r2" id="heroR2" d="M760 470 C 980 330, 1180 300, 1330 330" pathLength="1"/>
