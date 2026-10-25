@@ -216,11 +216,11 @@ test("carrier gallery: own photo or name-led card per carrier (never a stage pho
   // the tracking result picks its stage picture from the shipment's status, independently of the carrier pictures
   await page.goto(`${base}/track.html?code=${codes.hub}`); // DHL, At facility
   await page.waitForSelector(".hx-scene .hx-scene-photo img");
-  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/aerial-/);
+  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/stage-facility-/);
   assert.match(await page.textContent("#results"), /DHL/);
   await page.goto(`${base}/track.html?code=${codes.sea}`); // Maersk, in transit by sea: the stage picture, not Maersk's card photo
   await page.waitForSelector(".hx-scene .hx-scene-photo img");
-  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/ship-/);
+  assert.match(await page.getAttribute(".hx-scene-photo img", "src"), /\/assets\/stages\/stage-sea-/);
   assert.equal(await page.locator('#results img[src*="assets/carriers/"]').count(), 0);
   assert.deepEqual(errors, []);
   await ctx.close();
@@ -409,10 +409,10 @@ for (const w of [390, 768, 1280]) {
       const h1 = document.getElementById("heroTitle").getBoundingClientRect();
       return { bg: m.backgroundImage, h1: [h1.left, h1.right], text: document.getElementById("heroTitle").textContent };
     });
-    assert.match(hero.bg, w <= 640 ? /assets\/hero\/scene-mobile\.svg/ : /assets\/hero\/scene\.svg/);
+    assert.match(hero.bg, w <= 640 ? /assets\/hero\/port-mobile-1080\.(avif|webp|jpg)/ : w <= 1100 ? /assets\/hero\/port-1280\.(avif|webp|jpg)/ : /assets\/hero\/port-1920\.(avif|webp|jpg)/);
     assert.equal(hero.text, "Every shipment. Every milestone. One clear view.");
     assert.ok(hero.h1[0] >= 0 && hero.h1[1] <= w + 1, `headline fits: ${hero.h1}`);
-    const scene = await page.evaluate(async (url) => (await fetch(url)).status, w <= 640 ? "/assets/hero/scene-mobile.svg" : "/assets/hero/scene.svg");
+    const scene = await page.evaluate(async (url) => (await fetch(url)).status, w <= 640 ? "/assets/hero/port-mobile-1080.jpg" : w <= 1100 ? "/assets/hero/port-1280.jpg" : "/assets/hero/port-1920.jpg");
     assert.equal(scene, 200);
     await page.waitForTimeout(1800); // entrance animation finished
     assert.deepEqual(await page.$$eval(".hero3-copy > *", (els) => els.map((e) => getComputedStyle(e).opacity)).then((o) => [...new Set(o)]), ["1"], "all hero copy visible after the entrance");
@@ -646,7 +646,7 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.fill("#trackingInput", codes.sea); await page.keyboard.press("Enter");
   await page.waitForSelector(".hx-scene .hx-scene-photo img");
   const fig = await page.$eval(".hx-scene", (f) => ({ photo: f.dataset.photo, model: f.dataset.scene, src: f.querySelector("img").currentSrc || f.querySelector("img").src }));
-  assert.equal(fig.photo, "ship"); assert.equal(fig.model, "ship"); assert.match(fig.src, /assets\/stages\/ship-342\./);
+  assert.equal(fig.photo, "ship"); assert.equal(fig.model, "ship"); assert.match(fig.src, /assets\/stages\/stage-sea-(720|1280)\.(avif|webp|jpg)$/);
   await page.waitForFunction(() => { const i = document.querySelector(".hx-scene-photo img"); return i.complete && i.naturalWidth > 0; });
   const labels = await page.$$eval(".hx-route-overlay text:not(.ro-more)", (t) => t.map((x) => x.textContent));
   assert.equal(labels[0], "Shanghai"); assert.equal(labels.at(-1), "Rotterdam");
@@ -1060,15 +1060,15 @@ test("light theme reaches every band: daylight hero, light freight copy, light t
   const page = await ctx.newPage(); const errors = watchErrors(page);
   await page.goto(`${base}/index.html?map=flat`);
   const st = await page.evaluate(() => ({
-    hero: getComputedStyle(document.querySelector(".hero3-media")).backgroundImage,
+    hero: getComputedStyle(document.querySelector(".hero3-media")).backgroundImage, filter: getComputedStyle(document.querySelector(".hero3-media")).filter,
     h1: getComputedStyle(document.getElementById("heroTitle")).color,
     freight: getComputedStyle(document.getElementById("freightTitle")).color,
     card: getComputedStyle(document.querySelector(".track-card")).backgroundColor
   }));
-  assert.match(st.hero, /scene-day\.svg/); assert.equal(st.h1, "rgb(11, 26, 61)"); assert.equal(st.freight, "rgb(11, 26, 61)");
+  assert.match(st.hero, /assets\/hero\/port-1920\./); assert.equal(st.filter, "none", "the photo at full daylight brightness"); assert.equal(st.h1, "rgb(11, 26, 61)"); assert.equal(st.freight, "rgb(11, 26, 61)");
   assert.match(st.card, /rgba?\(255, 255, 255/);
   await page.goto(`${base}/track.html`);
-  assert.match(await page.$eval(".track-band", (b) => getComputedStyle(b, "::before").backgroundImage), /scene-day\.svg/);
+  assert.match(await page.$eval(".track-band", (b) => getComputedStyle(b, "::before").backgroundImage), /assets\/hero\/port-1280\.jpg/);
   assert.equal(await page.$eval(".track-band h1", (h) => getComputedStyle(h).color), "rgb(11, 26, 61)");
   assert.deepEqual(errors, []);
   await ctx.close();

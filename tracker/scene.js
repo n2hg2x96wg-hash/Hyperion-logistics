@@ -115,16 +115,16 @@ export function routeStops(view) {
   return stops.map((x, i) => ({ ...x, state: i < current ? "done" : i === current ? "current" : "upcoming" }));
 }
 
-// ---------- owner's stage photos (assets/stages, see CREDITS.md) and the optional 3D model per stage ----------
-// Photos illustrate the kind of place or vehicle for the recorded stage; they never claim to show the actual facility,
-// vessel or parcel. Stages without a fitting photo keep the drawn illustration above.
+// ---------- stage photographs (assets/stages, licences in CREDITS.md) and the optional 3D model per stage ----------
+// Real photographs of the kind of place or vehicle for the recorded stage; the caption says they are representative and
+// never the actual facility, vessel or parcel. Stages without a fitting photo keep the drawn illustration above.
+// (The keys are the stage slots used across the tracker and its translations, kept from the earlier pictures.)
 const PHOTOS = {
-  dock: { file: "dock", widths: [720, 1179], w: 1179, h: 784, alt: "Illustration: a distribution warehouse with trucks at its loading docks at dusk" },
-  aerial: { file: "aerial", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: aerial view of a large distribution centre with trailers at its loading bays" },
-  campus: { file: "campus", widths: [720, 1099], w: 1099, h: 638, alt: "Illustration: a secured logistics campus with a gated entrance" },
-  ship: { file: "ship", widths: [342], w: 342, h: 250, alt: "Illustration: a container ship at sea, seen from above" },
-  air: { file: "air", widths: [342], w: 342, h: 250, alt: "Illustration: a cargo aircraft being loaded at an airport" },
-  dusk: { file: "dusk", widths: [720, 1179], w: 1179, h: 664, alt: "Illustration: a distribution warehouse with a delivery van in front" }
+  dock: { file: "stage-warehouse", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a warehouse aisle lined with wrapped pallets" },
+  aerial: { file: "stage-facility", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a forklift moving a pallet in a distribution centre" },
+  campus: { file: "stage-customs", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: customs officers inspecting the seal of a cargo container" },
+  ship: { file: "stage-sea", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a container ship at sea" },
+  dusk: { file: "stage-delivery", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a delivery van being unloaded at the kerb" }
 };
 const PHOTO_BY_STATUS = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk" };
 
@@ -134,7 +134,7 @@ export function stagePhoto(view) {
   const { stage, mode } = presentation(view);
   let key = PHOTO_BY_STATUS[code] || null;
   if (stage === "transit" && mode === "ship") key = "ship";
-  if (stage === "transit" && mode === "plane") key = "air";
+  // air freight keeps the drawn aircraft: no suitable unbranded, licensed photo of a civilian freighter yet
   return key ? { key, ...PHOTOS[key], alt: t(`stagePhoto.${key}`, null, PHOTOS[key].alt) } : null;
 }
 
@@ -191,9 +191,9 @@ export function modelCaption(scene, state = "normal") {
 export function stagePhotoHtml(p) {
   const set = (ext) => p.widths.map((w) => `/assets/stages/${p.file}-${w}.${ext} ${w}w`).join(", ");
   const largest = p.widths[p.widths.length - 1];
-  return `<picture class="hx-scene-photo is-${p.key}"><source type="image/avif" srcset="${set("avif")}" sizes="(max-width: 720px) 100vw, 600px">`
-    + `<source type="image/webp" srcset="${set("webp")}" sizes="(max-width: 720px) 100vw, 600px">`
-    + `<img src="/assets/stages/${p.file}-${largest}.jpg" srcset="${set("jpg")}" sizes="(max-width: 720px) 100vw, 600px" width="${p.w}" height="${p.h}" alt="${String(p.alt).replace(/"/g, "&quot;")}" decoding="async" onerror="this.closest('picture').classList.add('is-missing')"></picture>`;
+  return `<picture class="hx-scene-photo is-${p.key}"><source type="image/avif" srcset="${set("avif")}" sizes="(max-width: 1200px) 100vw, 1120px">`
+    + `<source type="image/webp" srcset="${set("webp")}" sizes="(max-width: 1200px) 100vw, 1120px">`
+    + `<img src="/assets/stages/${p.file}-${largest}.jpg" srcset="${set("jpg")}" sizes="(max-width: 1200px) 100vw, 1120px" width="${p.w}" height="${p.h}" alt="${String(p.alt).replace(/"/g, "&quot;")}" decoding="async" onerror="this.closest('picture').classList.add('is-missing')"></picture>`;
 }
 
 /**

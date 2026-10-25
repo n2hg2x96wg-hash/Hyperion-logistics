@@ -280,7 +280,7 @@ export function createTracker(root, opts = {}) {
     return `<figure class="hx-scene" data-stage="${esc(pr.stage)}" data-mode="${esc(pr.mode || "none")}" data-photo="${esc(photo?.key || "none")}" data-scene="${esc(sc.scene)}" data-animate="${sc.animate}" data-state="${esc(sc.state)}">
       <div class="hx-scene-media"><div class="hx-scene-stage${photo ? " has-photo" : ""}">${media}<div class="hx-3d" data-slot="3d" hidden></div></div>${bar3dHtml()}</div>
       <figcaption><strong>${esc(pr.label)}</strong><span>${loc ? esc(t("tr.scene.lastAt", { place: loc })) : esc(t("tr.scene.noLocation"))}</span>
-      <small data-slot="scenecap">${esc(t(photo?.key === "ship" ? "tr.scene.capShip" : "tr.scene.cap"))}</small></figcaption></figure>`;
+      <small data-slot="scenecap">${esc(t(!photo ? "tr.scene.cap" : photo.key === "ship" ? "tr.scene.capShip" : "tr.scene.capPhoto"))}</small></figcaption></figure>`;
   }
 
   function bar3dHtml() {
@@ -528,7 +528,7 @@ export function createTracker(root, opts = {}) {
   let want3d = true; let failed3d = null; // null | "unavailable" | "slow"
   const V3_TIMEOUT = 15000;
   const fallbackNote = (kind) => t(kind === "slow" ? "tr.3d.slow" : "tr.3d.unavailable");
-  const sceneCap = (fig) => t(fig.dataset.photo === "ship" ? "tr.scene.capShip" : "tr.scene.cap");
+  const sceneCap = (fig) => t(fig.dataset.photo === "none" ? "tr.scene.cap" : fig.dataset.photo === "ship" ? "tr.scene.capShip" : "tr.scene.capPhoto");
   const figKey = (fig) => `${fig.dataset.scene}:${fig.dataset.animate === "true"}:${fig.dataset.state}`;
 
   function drop3d() { v3token++; v3io?.disconnect(); v3io = null; viewer3d?.dispose(); viewer3d = null; viewer3dKey = null; }

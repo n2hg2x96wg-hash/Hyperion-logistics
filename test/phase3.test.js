@@ -281,14 +281,20 @@ test("homepage hero: headline and tracking form unchanged; drawn scene present a
   assert.match(html, /<h1 id="heroTitle">Every shipment\. Every milestone\. <span>One clear view\.<\/span><\/h1>/);
   for (const kept of ['id="trackingInput"', 'onclick="track()"', 'href="#trackForm" data-focus-track>Track a shipment', 'href="#services">Explore our services', 'id="error"'])
     assert.ok(html.includes(kept), `${kept} missing`);
-  assert.match(html, /class="hero3-media" role="img" aria-label="Illustration:[^"]+"/);
+  assert.match(html, /class="hero3-media" role="img" aria-label="Photo:[^"]+"/);
   assert.match(html, /<svg class="hero3-routes"[^>]*aria-hidden="true"/);
   const css = fs.readFileSync(new URL("../ui/site-v2.css", import.meta.url), "utf8");
-  for (const f of ["scene.svg", "scene-mobile.svg"]) {
-    assert.ok(css.includes(`assets/hero/${f}`), `${f} used`);
-    const svg = fs.readFileSync(new URL(`../assets/hero/${f}`, import.meta.url), "utf8");
-    assert.ok(svg.length < 48000, `${f} stays small`); assert.ok(!/<image|href="http/.test(svg), `${f} is self-contained`);
+  // a real photograph (licence recorded in assets/hero/CREDITS.md), local files only, in AVIF, WebP and JPEG per size
+  for (const f of ["port-1280", "port-1920", "port-2560", "port-mobile-1080"]) {
+    assert.ok(css.includes(`assets/hero/${f}.avif`) && css.includes(`assets/hero/${f}.jpg`), `${f} used`);
+    for (const ext of ["avif", "webp", "jpg"]) {
+      const size = fs.statSync(new URL(`../assets/hero/${f}.${ext}`, import.meta.url)).size;
+      assert.ok(size < 420 * 1024, `${f}.${ext} is compressed (${size} bytes)`);
+    }
   }
+  assert.ok(!/assets\/hero\/scene(-mobile)?\.svg/.test(css), "the drawn scene is no longer the hero");
+  assert.ok(!/url\("?https?:/.test(css), "no remote images");
+  assert.match(read("assets/hero/CREDITS.md"), /port-\*[\s\S]*CC0/);
   // the entrance animation only runs when motion is allowed; the hero has a solid fallback colour
   const hero = css.slice(css.indexOf("/* ---------- hero ---------- */"), css.indexOf("/* ---------- tracking pages"));
   assert.match(hero, /\.hero3 \{[^}]*background: #030712/);
@@ -395,7 +401,8 @@ test("tracking presentation: the stage comes from the recorded status, the vehic
   const svg = sceneSvg({ stage: "transit", mode: "ship" });
   assert.match(svg, /aria-hidden="true"/); assert.ok(!/<text/.test(svg), "the picture carries no text (no invented place names)");
   const tracker = read("tracker/tracker.js");
-  assert.equal(EN["tr.scene.cap"], "Illustration of the current shipment stage."); assert.match(tracker, /t\(photo\?\.key === "ship" \? "tr\.scene\.capShip" : "tr\.scene\.cap"\)/);
+  assert.equal(EN["tr.scene.cap"], "Illustration of the current shipment stage."); assert.match(tracker, /t\(!photo \? "tr\.scene\.cap" : photo\.key === "ship" \? "tr\.scene\.capShip" : "tr\.scene\.capPhoto"\)/);
+  assert.match(EN["tr.scene.capPhoto"], /^Representative photo .*not the actual vessel, vehicle or facility\.$/); assert.match(EN["tr.scene.capShip"], /not the actual vessel\.$/);
   assert.ok(!/% of the journey|%<\/|pct\}%/.test(tracker), "no invented percentage in the progress display");
   assert.equal(EN["tr.stageOf"], "Stage {i} of {n}"); assert.match(tracker, /tHtml\("tr\.stageOf", \{ i: `<strong>\$\{cur \+ 1\}<\/strong>` \}, \{ n \}\)/);
 });
@@ -528,7 +535,7 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
     if (p) for (const w of p.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(fs.existsSync(new URL(`../assets/stages/${p.file}-${w}.${ext}`, import.meta.url)), `${p.file}-${w}.${ext}`);
   }
   assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, ...sea }).key, "ship");
-  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).key, "air");
+  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }), null, "air freight keeps the drawn aircraft");
   assert.equal(stagePhoto({ status: { code: "SOMETHING_NEW" } }), null, "unknown status keeps the neutral drawing");
   // every status x mode gives a known scene; movement only for normal stages
   const expectScene = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs", OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered", DELAYED: "delayed", EXCEPTION: "hold", CANCELLED: "cancelled" };
@@ -570,12 +577,14 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
   assert.match(read("tracker/tracker.js"), /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\)/);
   assert.ok(!/localStorage|sessionStorage|document\.cookie/.test(s3d));
   const credits = read("assets/stages/CREDITS.md");
-  assert.match(credits, /rights to be confirmed/i); assert.match(credits, /`dock-\*`/); assert.match(credits, /`aerial-\*`/); assert.match(credits, /built entirely in code/);
+  for (const f of ["stage-warehouse", "stage-facility", "stage-customs", "stage-sea", "stage-delivery"]) assert.match(credits, new RegExp(`\`${f}-\\*\``), f);
+  assert.ok(!/rights to be confirmed/i.test(credits.split("## Earlier pictures")[0]), "every picture in use has a recorded licence");
+  assert.match(credits, /built entirely in code/);
 });
 
-test("light theme: day scenes for hero and tracking band, map palette follows the theme, no forced dark bands", () => {
+test("light theme: daylight hero photo and tracking band, map palette follows the theme, no forced dark bands", () => {
   const css = read("ui/theme-light.css");
-  assert.match(css, /scene-day\.svg/); assert.match(css, /scene-mobile-day\.svg/);
+  assert.match(css, /\.hero3-media \{[^}]*filter: none/, "the photo is shown at full brightness"); assert.match(css, /port-1280\.jpg/);
   assert.ok(!/color-scheme: dark/.test(css), "no section is forced dark in the light theme");
   for (const f of ["assets/hero/scene-day.svg", "assets/hero/scene-mobile-day.svg"]) { const svg = read(f); assert.ok(svg.length < 48000); assert.ok(!/<image|href="http/.test(svg)); }
   assert.match(read("ui/globe/palette.js"), /data-theme|dataset\.theme/);
@@ -866,5 +875,5 @@ test("carrier images and shipment-stage images are separate: no shared files, im
     assert.equal(new Set(keys).size, 1, `${code}: same stage picture for every carrier (${keys})`);
   }
   assert.equal(stagePhoto(view("dhl", "AT_FACILITY")).key, "aerial");
-  assert.equal(stagePhoto(view("ups", "AT_FACILITY")).file, "aerial", "UPS's own photo never replaces the stage picture");
+  assert.equal(stagePhoto(view("ups", "AT_FACILITY")).file, "stage-facility", "UPS's own photo never replaces the stage picture");
 });

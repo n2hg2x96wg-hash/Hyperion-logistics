@@ -21,9 +21,9 @@ html[data-theme="light"] .nav-scrim { background: rgba(15, 23, 42, 0.35); }
   html[data-theme="light"] .nav-menu a:hover, html[data-theme="light"] .nav-menu a[aria-current="page"] { background: transparent; color: #1d4ed8; }
 }
 
-/* hero: daylight version of the drawn scene, a light veil under the copy, navy text */
+/* hero: the same photograph at full daylight brightness, a light veil under the copy, navy text */
 html[data-theme="light"] .hero3 { background: #eef5fd; }
-html[data-theme="light"] .hero3-media { background-image: url("../assets/hero/scene-day.svg"); background-color: #cfe5f7; }
+html[data-theme="light"] .hero3-media { background-color: #cfe5f7; filter: none; }
 html[data-theme="light"] .hero3::before {
   background: linear-gradient(90deg, rgba(245, 248, 254, 0.94) 0%, rgba(245, 248, 254, 0.82) 30%, rgba(245, 248, 254, 0.35) 52%, rgba(245, 248, 254, 0) 70%),
               linear-gradient(0deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 22%); }
@@ -49,7 +49,7 @@ html[data-theme="light"] .track-card.has-error .track-field { border-color: #dc2
 html[data-theme="light"] #error.show { color: #b91c1c; }
 html[data-theme="light"] #error.show { color: #b91c1c; }
 @media (max-width: 640px) {
-  html[data-theme="light"] .hero3-media { background-image: url("../assets/hero/scene-mobile-day.svg"); background-color: var(--hy-bg-0); }
+  html[data-theme="light"] .hero3-media { background-color: var(--hy-bg-0); }
   html[data-theme="light"] .hero3::before { background: linear-gradient(180deg, rgba(245, 248, 254, 0) 0%, rgba(245, 248, 254, 0) 26%, rgba(245, 248, 254, 0.6) 40%, rgba(245, 248, 254, 0.9) 52%, var(--hy-bg-0) 70%); }
   html[data-theme="light"] .hero3 h1 { text-shadow: 0 1px 12px rgba(245, 248, 254, 0.9); }
 }
@@ -69,8 +69,8 @@ html[data-theme="light"] .freight-stage .eyebrow { color: #1d4ed8; }
   html[data-theme="light"] .freight-media::after { background: linear-gradient(180deg, var(--hy-bg-0) 0%, rgba(245, 248, 254, 0) 20%, rgba(245, 248, 254, 0) 70%, var(--hy-bg-0) 100%); }
 }
 
-/* tracking pages: the band uses the daylight scene */
-html[data-theme="light"] .track-band::before { background: linear-gradient(90deg, rgba(245, 248, 254, 0.96), rgba(245, 248, 254, 0.72)), #cfe5f7 url("../assets/hero/scene-day.svg") center 62% / cover no-repeat; }
+/* tracking pages: the band uses the hero photograph under a light veil */
+html[data-theme="light"] .track-band::before { background: linear-gradient(90deg, rgba(245, 248, 254, 0.96), rgba(245, 248, 254, 0.72)), #cfe5f7 url("../assets/hero/port-1280.jpg") 62% 50% / cover no-repeat; }
 html[data-theme="light"] .track-band h1 { color: #0b1a3d; }
 html[data-theme="light"] .track-band p { color: #2c3e5f; }
 html[data-theme="light"] .track-band .eyebrow { color: #1d4ed8; }
