@@ -528,14 +528,16 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
   const { SCENES } = await import("../tracker/scene3d.js");
   const { STATUS } = await import("../shared/status.js");
   const sea = { carrier: { name: "Maersk" } }; const courier = { carrier: { name: "DHL" } };
-  const expectPhoto = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk", PICKED_UP: null, IN_TRANSIT: null, DELIVERED: null, DELAYED: null, EXCEPTION: null, CANCELLED: null };
+  const expectPhoto = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk", PICKED_UP: "dusk", IN_TRANSIT: "dock", DELIVERED: "delivered", DELAYED: "dock", EXCEPTION: "aerial", CANCELLED: "dock" };
   for (const code of Object.values(STATUS)) {
     assert.equal(stagePhoto({ status: { code }, ...courier })?.key ?? null, expectPhoto[code], code);
     const p = stagePhoto({ status: { code }, ...courier });
     if (p) for (const w of p.widths) for (const ext of ["avif", "webp", "jpg"]) assert.ok(fs.existsSync(new URL(`../assets/stages/${p.file}-${w}.${ext}`, import.meta.url)), `${p.file}-${w}.${ext}`);
   }
   assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, ...sea }).key, "ship");
-  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }), null, "air freight keeps the drawn aircraft");
+  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "Emirates SkyCargo" } }).key, "air");
+  assert.equal(stagePhoto({ status: { code: "IN_TRANSIT" }, carrier: { name: "DHL", serviceType: "Road freight" } }).key, "road");
+  assert.equal(stagePhoto({ status: { code: "PICKED_UP" }, ...sea }).key, "dusk", "collection shows the van, whatever the mode");
   assert.equal(stagePhoto({ status: { code: "SOMETHING_NEW" } }), null, "unknown status keeps the neutral drawing");
   // every status x mode gives a known scene; movement only for normal stages
   const expectScene = { CREATED: "processing", PROCESSING: "processing", PICKED_UP: "collection", AT_FACILITY: "facility", CUSTOMS: "customs", OUT_FOR_DELIVERY: "delivery", DELIVERED: "delivered", DELAYED: "delayed", EXCEPTION: "hold", CANCELLED: "cancelled" };
@@ -577,7 +579,7 @@ test("stage photos and 3D scenes: every status maps safely, files exist, caption
   assert.match(read("tracker/tracker.js"), /scene3dMod = scene3dMod \|\| await import\("\.\/scene3d\.js"\)/);
   assert.ok(!/localStorage|sessionStorage|document\.cookie/.test(s3d));
   const credits = read("assets/stages/CREDITS.md");
-  for (const f of ["stage-warehouse", "stage-facility", "stage-customs", "stage-sea", "stage-delivery"]) assert.match(credits, new RegExp(`\`${f}-\\*\``), f);
+  for (const f of ["stage-warehouse", "stage-facility", "stage-customs", "stage-sea", "stage-air", "stage-road", "stage-delivery", "stage-delivered"]) assert.match(credits, new RegExp(`\`${f}-\\*\``), f);
   assert.ok(!/rights to be confirmed/i.test(credits.split("## Earlier pictures")[0]), "every picture in use has a recorded licence");
   assert.match(credits, /built entirely in code/);
 });
