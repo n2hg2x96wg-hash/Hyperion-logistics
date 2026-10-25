@@ -73,9 +73,14 @@ export default async function handler(req, res) {
       }
       case "audit": return send(res, 200, { items: await svc.recentAudit({ limit: Number(body.limit) || 100, code: body.code }) });
       case "settings": return send(res, 200, await settings());
-      case "create": return send(res, 200, { shipment: await svc.createShipment(identity, body.shipment || {}) });
+      case "create": {
+        const shipment = { ...(body.shipment || {}) };
+        if ("customerId" in shipment && !can(identity.role, "clients")) delete shipment.customerId; // linking a customer account needs client access
+        return send(res, 200, { shipment: await svc.createShipment(identity, shipment) });
+      }
       case "update": {
         const patch = { ...(body.changes || {}) };
+        if ("customerId" in patch && !can(identity.role, "clients")) delete patch.customerId;
         if (patch.visibility && !can(identity.role, "visibility")) delete patch.visibility;
         if ("publicMap" in patch && !can(identity.role, "visibility")) delete patch.publicMap;
         return send(res, 200, await svc.updateShipment(identity, body.code, patch));

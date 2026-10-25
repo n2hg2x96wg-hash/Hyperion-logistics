@@ -87,6 +87,8 @@ export function initControlCenter(host) {
     $("loginOverlay").classList.add("hidden"); $("appRoot").classList.remove("hidden");
     await host.afterLogin?.();
     populateStaticSelects();
+    document.querySelectorAll('[data-needs="clients"]').forEach((el) => { el.hidden = !can("clients"); });
+    fillCustomerSelect("customerId", "").catch(() => {});
     switchView(state.view);
     startKeepAlive();
   }
@@ -435,7 +437,7 @@ export function initControlCenter(host) {
       const lat = numOrUndef("latitude"); const lng = numOrUndef("longitude");
       const shipment = {
         trackingCode: nv("id") || undefined, statusCode: $("status").value, courier: nv("courier"), courierTrackingNumber: nv("courierTrackingNumber"),
-        serviceType: nv("serviceType"), clientRef: nv("clientRef"), notifyEmail: nv("notifyEmail") || undefined, origin: nv("origin"), destination: nv("destination"), location: nv("location"),
+        serviceType: nv("serviceType"), clientRef: nv("clientRef"), notifyEmail: nv("notifyEmail") || undefined, customerId: can("clients") ? nv("customerId") || undefined : undefined, origin: nv("origin"), destination: nv("destination"), location: nv("location"),
         distance: nv("distance"), fee: nv("fee"), etaDate: nv("etaDate") || undefined, notes: nv("notes"), internalNotes: nv("internalNotes"),
         package: packageFrom("pkg")
       };
@@ -443,6 +445,7 @@ export function initControlCenter(host) {
       const { shipment: created } = await api("create", { shipment });
       host.showToast(`Shipment ${created.id} created`, "success");
       $("createForm").reset(); $("courierPrefixHint").textContent = "Tracking prefix: --";
+      fillCustomerSelect("customerId", "").catch(() => {});
       state.list = { cursor: null, rows: [] };
       openShipment(created.id, "tracking");
     });
@@ -506,6 +509,20 @@ export function initControlCenter(host) {
     await guarded(`del:${code}`, null, async () => { await api("delete", { code }); host.showToast("Shipment deleted", "success"); if (state.sel?.shipment.id === code) state.sel = null; runSearch(true); });
   }
 
+  // ---------- customer account picker (shipment forms) ----------
+  // Lists the registered client accounts, so a shipment can be linked to the customer who should see it and receive its
+  // status notifications. Admins without client access never see the picker (the server ignores the field for them too).
+  async function fillCustomerSelect(id, selected) {
+    const sel = $(id); if (!sel || !can("clients")) return;
+    const { clients } = await api("listClients");
+    const opts = [new Option("No customer account", "")];
+    for (const c of clients.slice().sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email))) {
+      opts.push(new Option(`${c.name || c.email} · ${c.email}${c.status !== "active" ? " (inactive)" : ""}`, c.id));
+    }
+    if (selected && !clients.some((c) => c.id === selected)) opts.push(new Option("Unknown account (no longer exists)", selected));
+    sel.replaceChildren(...opts); sel.value = selected || "";
+  }
+
   // ---------- edit modal ----------
   let editing = null;
   async function openEdit(code) {
@@ -521,6 +538,7 @@ export function initControlCenter(host) {
       set("shipmentLatitudeInput", s.latitude); set("shipmentLongitudeInput", s.longitude); set("shipmentFeeInput", s.fee);
       const p = s.package || {}; set("shipmentPkgDescription", p.description); set("shipmentPkgWeight", p.weight); set("shipmentPkgDimensions", p.dimensions); set("shipmentPkgPieces", p.pieces);
       set("shipmentNotesInput", s.notes); set("shipmentInternalNotesInput", s.internalNotes);
+      if (can("clients")) await fillCustomerSelect("shipmentCustomerInput", s.customerId || "").catch(() => {});
       $("shipmentModal").classList.add("show");
     });
   }
@@ -537,6 +555,7 @@ export function initControlCenter(host) {
       cmp("courierTrackingNumber", nv("shipmentCourierTrackingNumberInput")); cmp("origin", nv("shipmentOriginInput")); cmp("destination", nv("shipmentDestinationInput"));
       cmp("location", nv("shipmentLocationInput")); cmp("distance", nv("shipmentDistanceInput")); cmp("fee", nv("shipmentFeeInput"));
       cmp("notes", nv("shipmentNotesInput")); cmp("internalNotes", nv("shipmentInternalNotesInput"));
+      if (can("clients")) cmp("customerId", $("shipmentCustomerInput").value, s.customerId);
       const lat = nv("shipmentLatitudeInput"); const lng = nv("shipmentLongitudeInput");
       if (String(s.latitude ?? "") !== lat || String(s.longitude ?? "") !== lng) { changes.latitude = lat; changes.longitude = lng; }
       const pkg = { description: nv("shipmentPkgDescription"), weight: nv("shipmentPkgWeight"), dimensions: nv("shipmentPkgDimensions"), pieces: nv("shipmentPkgPieces") };
