@@ -32,6 +32,13 @@ export function createFirestoreStore() {
   return {
     kind: "firestore",
 
+    /** Whether client sign-in accounts can be created: "ok", "not_configured" (Authentication not set up in the Firebase
+     *  project) or "error". Reads one account at most; reports no account data. */
+    async clientSignInStatus() {
+      try { await getAuth(app).listUsers(1); return "ok"; }
+      catch (err) { return err?.code === "auth/configuration-not-found" ? "not_configured" : "error"; }
+    },
+
     async getShipment(code) {
       const snap = await shipments.doc(code).get();
       return snap.exists ? stripId(snap) : null;
@@ -283,9 +290,9 @@ export function createFirestoreStore() {
       const user = await getAuth(app).getUser(uid).catch(() => null);
       return { ...snap.data(), id: snap.id, auth: user ? { disabled: user.disabled, admin: user.customClaims?.admin === true } : null };
     },
-    async createClientAccount({ email, password, displayName }, profile, history, auditEntry) {
+    async createClientAccount({ email, password, displayName, disabled = false }, profile, history, auditEntry) {
       const auth = getAuth(app);
-      const user = await auth.createUser({ email, password, displayName });
+      const user = await auth.createUser({ email, password, displayName, disabled: !!disabled });
       try {
         const batch = db.batch();
         batch.set(db.collection("clients").doc(user.uid), { ...profile, created_at: new Date(), updated_at: new Date() });
@@ -298,6 +305,27 @@ export function createFirestoreStore() {
       }
       return user.uid;
     },
+    /** Map customerId -> number of shipments linked to it (one indexed query; ids only). */
+    async countShipmentsByCustomer() {
+      const snap = await shipments.where("customerId", ">", "").select("customerId").get();
+      const counts = new Map();
+      snap.forEach((d) => { const id = d.get("customerId"); if (id) counts.set(id, (counts.get(id) || 0) + 1); });
+      return counts;
+    },
+    // admin registrations (customer + shipment): one per submission id, so a repeated click or a retry never saves twice
+    async claimRegistration(id, at) {
+      const ref = db.collection("registrations").doc(id);
+      return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const cur = snap.exists ? snap.data() : null;
+        if (cur?.state === "done") return { state: "done", result: cur.result };
+        if (cur?.state === "pending" && Date.parse(at) - Date.parse(cur.at) < 120000) return { state: "pending" };
+        tx.set(ref, { state: "pending", at });
+        return { state: "new" };
+      });
+    },
+    async completeRegistration(id, result) { await db.collection("registrations").doc(id).set({ state: "done", result, at: new Date().toISOString() }); },
+    async releaseRegistration(id) { await db.collection("registrations").doc(id).delete(); },
     async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
       const ref = db.collection("clients").doc(uid);
       if (!(await ref.get()).exists) throw Object.assign(new Error("missing"), { code: "client_missing" });

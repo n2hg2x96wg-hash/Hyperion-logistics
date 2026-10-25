@@ -153,6 +153,16 @@ export function buildClientView({ shipment, events = [], locations = [], courier
   }
   if (vis.notes && shipment.notes) view.notes = String(shipment.notes).slice(0, 1000);
   if (vis.fee && shipment.fee) view.fee = String(shipment.fee).slice(0, 40);
+  // itemised charges (whole cents + currency; the admin-only fee note is never sent)
+  const ch = shipment.charges;
+  if (vis.fee && ch && Number.isInteger(ch.total) && ch.total > 0) {
+    view.charges = {
+      currency: ch.currency || null, paymentStatus: ["unpaid", "partial", "paid"].includes(ch.paymentStatus) ? ch.paymentStatus : "unpaid",
+      lines: ["shipping", "customs", "handling", "insurance", "other"].filter((k) => Number.isInteger(ch[k]) && ch[k] > 0)
+        .map((k) => ({ type: k, label: k === "other" ? String(ch.otherLabel || "").slice(0, 80) || null : null, cents: ch[k] })),
+      totalCents: ch.total
+    };
+  }
 
   if (vis.map) {
     const map = {

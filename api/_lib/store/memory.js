@@ -15,6 +15,7 @@ export function createMemoryStore(seed = {}) {
   const couriers = new Map(Object.entries(seed.couriers || {}));
   const clients = new Map(Object.entries(seed.clients || {}).map(([k, v]) => [k, clone(v)]));
   const portfolioHistory = new Map(Object.entries(seed.portfolioHistory || {}).map(([k, v]) => [k, new Map(Object.entries(clone(v)))]));
+  const registrations = new Map();
   const authUsers = new Map(Object.entries(seed.authUsers || {}).map(([k, v]) => [k, clone(v)]));
   const idTokens = new Map(Object.entries(seed.idTokens || {}));
   const notifications = new Map(); // customer uid -> Map(id -> notification)
@@ -27,9 +28,11 @@ export function createMemoryStore(seed = {}) {
 
   return {
     kind: "memory",
+    async clientSignInStatus() { return "ok"; },
     async getShipment(code) { const s = shipments.get(code); return s ? clone(s) : null; },
 
     async mutateShipment(code, fn) {
+      if (faults.has("shipmentWrite")) throw new Error("simulated database failure");
       const current = shipments.get(code) ? clone(shipments.get(code)) : null;
       const result = fn(current);
       if (!result) return null;
@@ -175,10 +178,11 @@ export function createMemoryStore(seed = {}) {
       const u = authUsers.get(uid);
       return { ...clone(clients.get(uid)), id: uid, auth: u ? { disabled: !!u.disabled, admin: u.admin === true } : null };
     },
-    async createClientAccount({ email, password }, profile, history, auditEntry) {
+    async createClientAccount({ email, password, disabled = false }, profile, history, auditEntry) {
+      if (faults.has("authNotConfigured")) throw Object.assign(new Error("There is no configuration corresponding to the provided identifier."), { code: "auth/configuration-not-found" });
       if ([...authUsers.values()].some((u) => u.email === email)) throw Object.assign(new Error("exists"), { code: "auth/email-already-exists" });
       const uid = `uid_${crypto.randomBytes(6).toString("hex")}`;
-      authUsers.set(uid, { email, password, disabled: false, createdAt: new Date().toISOString() });
+      authUsers.set(uid, { email, password, disabled: !!disabled, createdAt: new Date().toISOString() });
       clients.set(uid, { ...clone(profile), created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
       if (history) { if (!portfolioHistory.has(uid)) portfolioHistory.set(uid, new Map()); portfolioHistory.get(uid).set(history.dateKey, clone(history.values)); }
       if (auditEntry) audit.push({ ...clone(auditEntry), client: uid });
@@ -187,6 +191,7 @@ export function createMemoryStore(seed = {}) {
     async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
       if (!clients.has(uid)) throw Object.assign(new Error("missing"), { code: "client_missing" });
       const u = authUsers.get(uid);
+      if ((password || disabled !== undefined) && faults.has("authNotConfigured")) throw Object.assign(new Error("There is no configuration corresponding to the provided identifier."), { code: "auth/configuration-not-found" });
       if (u && password) u.password = password;
       if (u && disabled !== undefined) u.disabled = disabled;
       const cur = clients.get(uid);
@@ -235,6 +240,21 @@ export function createMemoryStore(seed = {}) {
       idTokens.set(token, { uid: r.uid, email });
       return { token, uid: r.uid };
     },
+    async countShipmentsByCustomer() {
+      const counts = new Map();
+      for (const s of shipments.values()) if (s.customerId) counts.set(s.customerId, (counts.get(s.customerId) || 0) + 1);
+      return counts;
+    },
+    // one admin registration (customer + shipment) per submission id, so a repeated click or retry never saves twice
+    async claimRegistration(id, at) {
+      const cur = registrations.get(id);
+      if (cur?.state === "done") return { state: "done", result: clone(cur.result) };
+      if (cur?.state === "pending" && Date.parse(at) - Date.parse(cur.at) < 120000) return { state: "pending" };
+      registrations.set(id, { state: "pending", at });
+      return { state: "new" };
+    },
+    async completeRegistration(id, result) { registrations.set(id, { state: "done", result: clone(result), at: new Date().toISOString() }); },
+    async releaseRegistration(id) { registrations.delete(id); },
     async listCustomerShipments(uid, limit = 50) {
       return [...shipments.values()].filter((s) => s.customerId === uid && s.archived !== true).slice(0, limit).map(clone);
     },
