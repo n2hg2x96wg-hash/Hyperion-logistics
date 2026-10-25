@@ -409,6 +409,8 @@ export default {
   "stagePhoto.campus": "Foto: Zollbeamte prüfen die Plombe eines Frachtcontainers",
   "stagePhoto.ship": "Foto: ein Containerschiff auf See",
   "stagePhoto.dusk": "Foto: ein Lieferwagen wird am Straßenrand entladen",
+  "stagePhoto.air": "Foto: ein Frachtflugzeug im Landeanflug",
+  "stagePhoto.road": "Foto: ein Lkw mit Kofferauflieger auf einer Autobahn",
   "scene3d.caption": "3D-Illustration für diese Phase: {what} – nicht das tatsächliche Gebäude, Fahrzeug oder Paket.",
   "scene3d.note.held": "Ohne Bewegung dargestellt, solange die Sendung angehalten ist.",
   "scene3d.note.cancelled": "Ohne Bewegung dargestellt: Die Sendung ist storniert.",

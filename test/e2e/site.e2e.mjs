@@ -514,8 +514,8 @@ for (const w of [390, 768, 1280]) {
     assert.equal(scene.stage, "transit", "IN_TRANSIT -> transit stage");
     assert.equal(scene.mode, "none", "DHL runs several modes: no vehicle is guessed without a recorded service type");
     assert.equal(scene.scene, "neutral");
-    assert.match(scene.text, /Illustration of the current shipment stage\.|3D illustration of a typical pallet of parcels/);
-    assert.ok(scene.h > 100, "illustration has its reserved size");
+    assert.match(scene.text, /Representative photo of this stage, not the actual vessel, vehicle or facility\.|3D illustration of a typical pallet of parcels/);
+    assert.ok(scene.h > 100, "picture has its reserved size");
     const head = await page.textContent(".hx-progress-head");
     assert.match(head, /Stage \d of \d/); assert.ok(!head.includes("%"), "no percentage");
     assert.equal(await page.locator(".hx-step.current[aria-current='step']").count(), 1);
@@ -606,7 +606,7 @@ test("tracking result with reduced motion: every block visible at once, illustra
   await page.waitForSelector(".hx-route");
   const ops = await page.$$eval(".hx-tracker > *, .hx-route .hx-rs, .hx-scene", (els) => els.map((e) => getComputedStyle(e).opacity));
   assert.ok(ops.every((o) => o === "1"), `hidden blocks: ${ops}`);
-  assert.equal(await page.$eval(".hx-scene-subject", (g) => getComputedStyle(g).animationName), "none");
+  assert.equal(await page.locator(".hx-scene-photo img").count(), 1, "a still photo, nothing animated");
   await ctx.close();
 });
 
@@ -695,10 +695,10 @@ test("stage photo, recorded checkpoints over the ship and the explorable 3D mode
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.hub);
   assert.deepEqual(await page.$eval(".hx-scene", (f) => [f.dataset.photo, f.dataset.scene]), ["aerial", "facility"]);
   await page.waitForSelector(".hx-scene.is-3d .hx-3d-canvas", { timeout: 20000 });
-  // an in-transit courier shipment with no recorded mode: the drawing as poster and the neutral scene, no vehicle
+  // an in-transit courier shipment with no recorded mode: the warehouse photo as poster and the neutral scene, no vehicle
   await page.fill("#trackingInput", codes.good); await page.keyboard.press("Enter");
   await page.waitForFunction((c) => document.querySelector(".hx-code")?.textContent === c, codes.good);
-  assert.equal(await page.locator(".hx-scene .hx-scene-svg").count(), 1);
+  assert.equal(await page.$eval(".hx-scene", (f) => f.dataset.photo), "dock");
   assert.equal(await page.$eval(".hx-scene", (f) => f.dataset.scene), "neutral");
   assert.deepEqual(errors, []);
   await ctx.close();

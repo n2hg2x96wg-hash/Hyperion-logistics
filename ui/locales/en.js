@@ -402,6 +402,8 @@ export default {
   "stagePhoto.campus": "Photo: customs officers inspecting the seal of a cargo container",
   "stagePhoto.ship": "Photo: a container ship at sea",
   "stagePhoto.dusk": "Photo: a delivery van being unloaded at the kerb",
+  "stagePhoto.air": "Photo: a cargo aircraft coming in to land",
+  "stagePhoto.road": "Photo: a truck with a box trailer on a highway",
   "scene3d.caption": "3D illustration of {what} for this stage — not the actual facility, vehicle or parcel.",
   "scene3d.note.held": "Shown without movement while the shipment is on hold.",
   "scene3d.note.cancelled": "Shown without movement: the shipment is cancelled.",

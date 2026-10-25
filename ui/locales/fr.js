@@ -409,6 +409,8 @@ export default {
   "stagePhoto.campus": "Photo : des agents des douanes inspectent le scellé d’un conteneur",
   "stagePhoto.ship": "Photo : un porte-conteneurs en mer",
   "stagePhoto.dusk": "Photo : une camionnette de livraison déchargée au bord du trottoir",
+  "stagePhoto.air": "Photo : un avion cargo en approche pour l’atterrissage",
+  "stagePhoto.road": "Photo : un camion avec une remorque fourgon sur une autoroute",
   "scene3d.caption": "Illustration 3D de cette étape : {what}. Il ne s’agit pas du site, du véhicule ni du colis réels.",
   "scene3d.note.held": "Affichée sans mouvement tant que l’envoi est en attente.",
   "scene3d.note.cancelled": "Affichée sans mouvement : l’envoi est annulé.",

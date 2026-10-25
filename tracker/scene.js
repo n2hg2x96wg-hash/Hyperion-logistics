@@ -117,24 +117,29 @@ export function routeStops(view) {
 
 // ---------- stage photographs (assets/stages, licences in CREDITS.md) and the optional 3D model per stage ----------
 // Real photographs of the kind of place or vehicle for the recorded stage; the caption says they are representative and
-// never the actual facility, vessel or parcel. Stages without a fitting photo keep the drawn illustration above.
+// never the actual facility, vessel or parcel. Every recorded status has one; an unknown status keeps the drawing above.
 // (The keys are the stage slots used across the tracker and its translations, kept from the earlier pictures.)
 const PHOTOS = {
   dock: { file: "stage-warehouse", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a warehouse aisle lined with wrapped pallets" },
   aerial: { file: "stage-facility", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a forklift moving a pallet in a distribution centre" },
   campus: { file: "stage-customs", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: customs officers inspecting the seal of a cargo container" },
   ship: { file: "stage-sea", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a container ship at sea" },
+  air: { file: "stage-air", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a cargo aircraft coming in to land" },
+  road: { file: "stage-road", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a truck with a box trailer on a highway" },
   dusk: { file: "stage-delivery", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a delivery van being unloaded at the kerb" }
 };
-const PHOTO_BY_STATUS = { CREATED: "dock", PROCESSING: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus", OUT_FOR_DELIVERY: "dusk" };
+// picked up and delivered: the delivery van at the kerb (hand-over); delayed, on hold and cancelled: the warehouse where shipments wait (the status badge and
+// notice say which); in transit with no recorded mode: also the warehouse, so no vehicle is implied
+const PHOTO_BY_STATUS = { CREATED: "dock", PROCESSING: "dock", PICKED_UP: "dusk", IN_TRANSIT: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus",
+  OUT_FOR_DELIVERY: "dusk", DELIVERED: "dusk", DELAYED: "dock", EXCEPTION: "aerial", CANCELLED: "dock" };
+const PHOTO_BY_MODE = { ship: "ship", plane: "air", truck: "road" };
 
 /** Photo for the recorded stage, or null when the drawn illustration should be used. */
 export function stagePhoto(view) {
   const code = view?.status?.code;
   const { stage, mode } = presentation(view);
   let key = PHOTO_BY_STATUS[code] || null;
-  if (stage === "transit" && mode === "ship") key = "ship";
-  // air freight keeps the drawn aircraft: no suitable unbranded, licensed photo of a civilian freighter yet
+  if (stage === "transit" && code !== "PICKED_UP" && PHOTO_BY_MODE[mode]) key = PHOTO_BY_MODE[mode]; // collection shows the van
   return key ? { key, ...PHOTOS[key], alt: t(`stagePhoto.${key}`, null, PHOTOS[key].alt) } : null;
 }
 

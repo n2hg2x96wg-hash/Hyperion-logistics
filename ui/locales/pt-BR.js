@@ -410,6 +410,8 @@ export default {
   "stagePhoto.campus": "Foto: agentes da alfândega inspecionando o lacre de um contêiner de carga",
   "stagePhoto.ship": "Foto: um navio porta-contêineres no mar",
   "stagePhoto.dusk": "Foto: uma van de entregas sendo descarregada junto à calçada",
+  "stagePhoto.air": "Foto: um avião cargueiro se aproximando para pousar",
+  "stagePhoto.road": "Foto: um caminhão com baú em uma rodovia",
   "scene3d.caption": "Ilustração 3D de {what} para esta fase — não é a unidade, o veículo nem o pacote reais.",
   "scene3d.note.held": "Exibida sem movimento enquanto a remessa está em espera.",
   "scene3d.note.cancelled": "Exibida sem movimento: a remessa foi cancelada.",
