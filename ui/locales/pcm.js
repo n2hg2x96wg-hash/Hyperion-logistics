@@ -412,7 +412,6 @@ export default {
   "stagePhoto.dusk": "Photo: delivery van wey dem dey offload for roadside",
   "stagePhoto.air": "Photo: cargo plane wey dey come land",
   "stagePhoto.road": "Photo: trailer wey get box dey move for highway",
-  "stagePhoto.delivered": "Photo: package wey dem drop for front door",
   "scene3d.caption": "3D drawing of {what} for this stage — no be the real place, vehicle or parcel.",
   "scene3d.note.held": "E no dey move because the package dey on hold.",
   "scene3d.note.cancelled": "E no dey move: dem don cancel the package.",

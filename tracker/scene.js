@@ -126,13 +126,12 @@ const PHOTOS = {
   ship: { file: "stage-sea", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a container ship at sea" },
   air: { file: "stage-air", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a cargo aircraft coming in to land" },
   road: { file: "stage-road", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a truck with a box trailer on a highway" },
-  dusk: { file: "stage-delivery", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a delivery van being unloaded at the kerb" },
-  delivered: { file: "stage-delivered", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a parcel left at a front door" }
+  dusk: { file: "stage-delivery", widths: [720, 1280], w: 1280, h: 800, alt: "Photo: a delivery van being unloaded at the kerb" }
 };
-// picked up: the collection van; delayed, on hold and cancelled: the warehouse where shipments wait (the status badge and
+// picked up and delivered: the delivery van at the kerb (hand-over); delayed, on hold and cancelled: the warehouse where shipments wait (the status badge and
 // notice say which); in transit with no recorded mode: also the warehouse, so no vehicle is implied
 const PHOTO_BY_STATUS = { CREATED: "dock", PROCESSING: "dock", PICKED_UP: "dusk", IN_TRANSIT: "dock", AT_FACILITY: "aerial", CUSTOMS: "campus",
-  OUT_FOR_DELIVERY: "dusk", DELIVERED: "delivered", DELAYED: "dock", EXCEPTION: "aerial", CANCELLED: "dock" };
+  OUT_FOR_DELIVERY: "dusk", DELIVERED: "dusk", DELAYED: "dock", EXCEPTION: "aerial", CANCELLED: "dock" };
 const PHOTO_BY_MODE = { ship: "ship", plane: "air", truck: "road" };
 
 /** Photo for the recorded stage, or null when the drawn illustration should be used. */

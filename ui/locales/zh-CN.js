@@ -403,7 +403,6 @@ export default {
   "stagePhoto.dusk": "照片：一辆送货车正在路边卸货",
   "stagePhoto.air": "照片：一架正在降落的货运飞机",
   "stagePhoto.road": "照片：一辆厢式挂车卡车行驶在高速公路上",
-  "stagePhoto.delivered": "照片：放在家门口的包裹",
   "scene3d.caption": "本阶段的 3D 示意图，展示的是{what}，并非实际的场站、车辆或包裹。",
   "scene3d.note.held": "货件暂停期间，画面保持静止。",
   "scene3d.note.cancelled": "画面保持静止：货件已取消。",

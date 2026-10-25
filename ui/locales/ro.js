@@ -412,7 +412,6 @@ export default {
   "stagePhoto.dusk": "Fotografie: o dubă de livrări descărcată la marginea trotuarului",
   "stagePhoto.air": "Fotografie: un avion cargo în apropiere de aterizare",
   "stagePhoto.road": "Fotografie: un camion cu semiremorcă tip dubă pe o autostradă",
-  "stagePhoto.delivered": "Fotografie: un colet lăsat la ușa de la intrare",
   "scene3d.caption": "Ilustrație 3D pentru această etapă: {what}. Nu este centrul logistic, vehiculul sau coletul real.",
   "scene3d.note.held": "Afișată fără mișcare cât timp expedierea este în așteptare.",
   "scene3d.note.cancelled": "Afișată fără mișcare: expedierea este anulată.",

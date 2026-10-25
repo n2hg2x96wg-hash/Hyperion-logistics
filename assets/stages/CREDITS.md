@@ -17,7 +17,7 @@ wide in AVIF, WebP and JPEG, metadata stripped, never upscaled.
 | `stage-sea-*` | In transit by sea (with the recorded checkpoints drawn over it) | [Nordica (ship, 2011) (IMO 9483695, MMSI 244201000) Container Ship approaching Port of Rotterdam photo 7.jpg](https://commons.wikimedia.org/wiki/File:Nordica_(ship,_2011)_(IMO_9483695,_MMSI_244201000)_Container_Ship_approaching_Port_of_Rotterdam_photo_7.jpg) | Alf van Beem | CC0 1.0 |
 | `stage-air-*` | In transit by air | [McDonnell Douglas DC-8-62H(F) Silverback Cargo Freighters landing at Bruxelles.jpg](https://commons.wikimedia.org/wiki/File:McDonnell_Douglas_DC-8-62H(F)_Silverback_Cargo_Freighters_landing_at_Bruxelles.jpg) | Alf van Beem | CC0 1.0 |
 | `stage-road-*` | In transit by road | [Highway 395, Indio, United States (Unsplash).jpg](https://commons.wikimedia.org/wiki/File:Highway_395,_Indio,_United_States_(Unsplash).jpg) | Robson Hatsukami Morgan | CC0 1.0 |
-| `stage-delivery-*` | Picked up, Out for delivery | [Great Plates food delivery in Sacramento 02.jpg](https://commons.wikimedia.org/wiki/File:Great_Plates_food_delivery_in_Sacramento_02.jpg) | US Congress | Public domain (US Congress image) |
+| `stage-delivery-*` | Picked up, Out for delivery, Delivered | [Great Plates food delivery in Sacramento 02.jpg](https://commons.wikimedia.org/wiki/File:Great_Plates_food_delivery_in_Sacramento_02.jpg) | US Congress | Public domain (US Congress image) |
 
 Carrier names on containers or vessels in these photos remain trademarks of their owners. Stage photos and carrier-card
 photos (`assets/carriers/`) are separate files; a carrier's own photo never stands in for a stage picture.

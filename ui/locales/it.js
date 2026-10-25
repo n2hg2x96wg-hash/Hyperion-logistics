@@ -410,7 +410,6 @@ export default {
   "stagePhoto.dusk": "Foto: un furgone per le consegne scaricato a bordo strada",
   "stagePhoto.air": "Foto: un aereo cargo in fase di atterraggio",
   "stagePhoto.road": "Foto: un camion con semirimorchio furgonato in autostrada",
-  "stagePhoto.delivered": "Foto: un pacco lasciato davanti alla porta d’ingresso",
   "scene3d.caption": "Illustrazione 3D di {what} per questa fase: non si tratta della struttura, del veicolo o del pacco reali.",
   "scene3d.note.held": "Mostrata senza movimento mentre la spedizione è in sospeso.",
   "scene3d.note.cancelled": "Mostrata senza movimento: la spedizione è annullata.",

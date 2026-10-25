@@ -412,7 +412,6 @@ export default {
   "stagePhoto.dusk": "Fotografia: uma carrinha de entregas a ser descarregada junto ao passeio",
   "stagePhoto.air": "Fotografia: um avião de carga a aproximar-se para aterrar",
   "stagePhoto.road": "Fotografia: um camião com semirreboque de caixa numa autoestrada",
-  "stagePhoto.delivered": "Fotografia: uma encomenda deixada à porta de entrada",
   "scene3d.caption": "Ilustração 3D de {what} para esta fase — não é a instalação, o veículo nem a encomenda reais.",
   "scene3d.note.held": "Apresentada sem movimento enquanto o envio está em espera.",
   "scene3d.note.cancelled": "Apresentada sem movimento: o envio foi cancelado.",

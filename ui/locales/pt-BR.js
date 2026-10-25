@@ -412,7 +412,6 @@ export default {
   "stagePhoto.dusk": "Foto: uma van de entregas sendo descarregada junto à calçada",
   "stagePhoto.air": "Foto: um avião cargueiro se aproximando para pousar",
   "stagePhoto.road": "Foto: um caminhão com baú em uma rodovia",
-  "stagePhoto.delivered": "Foto: um pacote deixado na porta de entrada",
   "scene3d.caption": "Ilustração 3D de {what} para esta fase — não é a unidade, o veículo nem o pacote reais.",
   "scene3d.note.held": "Exibida sem movimento enquanto a remessa está em espera.",
   "scene3d.note.cancelled": "Exibida sem movimento: a remessa foi cancelada.",

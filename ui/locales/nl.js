@@ -411,7 +411,6 @@ export default {
   "stagePhoto.dusk": "Foto: een bestelbus wordt langs de stoep uitgeladen",
   "stagePhoto.air": "Foto: een vrachtvliegtuig in de landing",
   "stagePhoto.road": "Foto: een vrachtwagen met gesloten oplegger op de snelweg",
-  "stagePhoto.delivered": "Foto: een pakket bij een voordeur",
   "scene3d.caption": "3D-illustratie voor deze fase: {what} — niet het echte gebouw, voertuig of pakket.",
   "scene3d.note.held": "Zonder beweging getoond zolang de zending in de wacht staat.",
   "scene3d.note.cancelled": "Zonder beweging getoond: de zending is geannuleerd.",
