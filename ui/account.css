@@ -1,0 +1,133 @@
+/* "My account" page and the customer notification center. Uses the shared tokens (ui/tokens.css), so both themes work. */
+
+/* ---------- page ---------- */
+.acct-main { padding: 40px 0 72px; min-height: 62vh; }
+.acct-main > .wrap { max-width: 920px; }
+.acct-loading { color: var(--hy-muted); padding: 40px 0; }
+.acct-lead { color: var(--hy-text-2); margin: 6px 0 0; font-size: 16px; line-height: 1.55; max-width: 60ch; }
+.acct-h2 { font-size: 18px; margin: 0; color: var(--hy-text); letter-spacing: -0.01em; }
+
+/* sign in */
+.acct-signin { max-width: 440px; margin: 12px auto 0; padding: 28px; border-radius: var(--hy-radius-l); background: var(--hy-surface-strong);
+  border: 1px solid var(--hy-line); box-shadow: var(--hy-shadow); }
+.acct-signin h1 { font-size: clamp(26px, 5vw, 32px); margin: 0; letter-spacing: -0.02em; color: var(--hy-text); }
+.acct-form { display: grid; gap: 8px; margin-top: 22px; }
+.acct-form label { font-weight: 700; font-size: 14px; color: var(--hy-text-2); margin-top: 6px; }
+.acct-form input { height: 50px; padding: 0 14px; border-radius: 12px; font: inherit; font-size: 16px; color: var(--hy-text);
+  background: var(--hy-bg-1); border: 1px solid var(--hy-line-strong); }
+.acct-form input:focus-visible { outline: 3px solid #93c5fd; outline-offset: 1px; border-color: var(--hy-blue); }
+.acct-submit, .acct-retry, .nc-retry { height: 50px; margin-top: 10px; border: 0; border-radius: 12px; font: inherit; font-weight: 800; font-size: 16px; color: #fff;
+  background: var(--hy-blue); cursor: pointer; }
+.acct-retry, .nc-retry { height: 44px; padding: 0 20px; margin-top: 12px; font-size: 15px; }
+.acct-submit:disabled { opacity: .7; cursor: progress; }
+.acct-submit:focus-visible, .acct-retry:focus-visible, .nc-retry:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.acct-error { min-height: 1.4em; margin: 6px 0 0; color: var(--hy-bad); font-weight: 600; font-size: 14px; }
+.acct-error:empty { min-height: 0; margin: 0; }
+.acct-note { margin: 16px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(251, 191, 36, 0.12); color: var(--hy-text); font-size: 14px; }
+.acct-help { margin: 16px 0 0; font-size: 14px; color: var(--hy-muted); line-height: 1.5; overflow-wrap: anywhere; }
+.acct-help a, .acct-empty a { color: var(--hy-blue-2); font-weight: 700; }
+
+/* signed in */
+.acct-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.acct-top h1 { font-size: clamp(28px, 5vw, 38px); margin: 0; letter-spacing: -0.02em; color: var(--hy-text); }
+.acct-signout, .acct-close { flex: none; height: 40px; padding: 0 16px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+  color: var(--hy-text-2); background: transparent; border: 1px solid var(--hy-line-strong); }
+.acct-signout:hover, .acct-close:hover { color: var(--hy-text); }
+.acct-signout:focus-visible, .acct-close:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.acct-ships { margin-top: 12px; }
+.acct-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.acct-ship { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px 18px; padding: 16px 18px; text-align: start;
+  font: inherit; color: inherit; cursor: pointer; border-radius: var(--hy-radius); background: var(--hy-surface); border: 1px solid var(--hy-line); }
+.acct-ship:hover { border-color: var(--hy-line-strong); }
+.acct-ship.is-open { border-color: var(--hy-blue); box-shadow: var(--hy-glow); }
+.acct-ship:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.acct-ship-code { white-space: nowrap; font-weight: 800; font-size: 16px; color: var(--hy-text); font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+.acct-ship-route { color: var(--hy-text-2); font-size: 15px; min-width: 0; overflow-wrap: anywhere; }
+.acct-pill { padding: 6px 12px; font-size: 13px; justify-self: end; white-space: nowrap; }
+.acct-empty { padding: 24px; border-radius: var(--hy-radius); border: 1px dashed var(--hy-line-strong); color: var(--hy-text-2); }
+.acct-empty p { margin: 0 0 8px; } .acct-empty-title { font-weight: 800; color: var(--hy-text); }
+.acct-skel { display: grid; gap: 10px; }
+.acct-skel span, .nc-skel span { display: block; height: 64px; border-radius: var(--hy-radius); background: linear-gradient(90deg, var(--hy-bg-1), var(--hy-bg-2), var(--hy-bg-1));
+  background-size: 200% 100%; animation: acct-shimmer 1.4s linear infinite; }
+@keyframes acct-shimmer { to { background-position: -200% 0; } }
+.acct-details { margin-top: 32px; scroll-margin-top: calc(var(--hy-nav-h) + 12px); }
+.acct-details-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+@media (max-width: 640px) {
+  .acct-main { padding-top: 24px; }
+  .acct-signin { padding: 22px 18px; }
+  .acct-top { flex-direction: column; margin-bottom: 20px; }
+  .acct-ship { grid-template-columns: minmax(0, 1fr) auto; padding: 14px; }
+  .acct-ship-route { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------- notification center ---------- */
+.nc { position: relative; flex: none; margin-inline-start: auto; }
+.nc + .lang-pick, .nc ~ .lang-pick { margin-inline-start: 0; }
+@media (min-width: 901px) { .acct-link + .nc { margin-inline-start: 0; } }
+.nc-bell { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+  background: transparent; color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.28); }
+.nc-bell:hover, .nc-bell[aria-expanded="true"] { color: #fff; border-color: rgba(148, 163, 184, 0.55); }
+.nc-bell:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.nc-badge { position: absolute; top: -6px; inset-inline-end: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; display: grid; place-items: center;
+  background: #ef4444; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; border: 2px solid var(--hy-bg-0); font-variant-numeric: tabular-nums; }
+.nc-badge[hidden] { display: none; }
+html[data-theme="light"] .nc-bell { color: #1e293b; border-color: #cbd5e1; }
+@media (max-width: 900px) { .nc-bell { width: 44px; height: 44px; } }
+/* with the bell, the phone header holds five controls: tighter gaps and a text-only language button keep them all on screen */
+@media (max-width: 480px) {
+  .site-nav > .wrap:has(.nc) { gap: 8px; }
+  .site-nav:has(.nc) .lang-pick svg { display: none; }
+  .site-nav:has(.nc) .lang-pick { padding: 0 8px; }
+  .site-nav:has(.nc) .brand { font-size: 16px; gap: 8px; }
+}
+@media (max-width: 359px) { .site-nav:has(.nc) .brand > span:last-child { display: none; } } /* logo mark only on the narrowest phones */
+
+.nc-panel { position: fixed; top: calc(var(--hy-nav-h) + 8px); left: 12px; z-index: 70; /* placed under the bell by notification-center.js */ width: min(400px, calc(100vw - 24px)); max-height: min(560px, calc(100dvh - var(--hy-nav-h) - 24px));
+  display: flex; flex-direction: column; border-radius: var(--hy-radius); background: var(--hy-bg-2); border: 1px solid var(--hy-line-strong); box-shadow: var(--hy-shadow); overflow: hidden; }
+.nc-panel[hidden], .nc-scrim[hidden] { display: none; }
+.nc-scrim { display: none; }
+.nc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--hy-line); }
+.nc-head h2 { margin: 0; font-size: 17px; color: var(--hy-text); outline: none; }
+.nc-all { border: 0; background: none; padding: 8px 4px; font: inherit; font-weight: 700; font-size: 14px; color: var(--hy-blue-2); cursor: pointer; border-radius: 8px; }
+.nc-all:focus-visible { outline: 3px solid #93c5fd; }
+.nc-all:disabled { opacity: .6; }
+.nc-body { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; min-width: 0; }
+.nc-head > * { min-width: 0; }
+.nc-list { list-style: none; margin: 0; padding: 0; }
+/* each notification: a status-coloured rail on the start side, like the tracking timeline */
+.nc-item { position: relative; display: flex; align-items: flex-start; gap: 4px; border-bottom: 1px solid var(--hy-line); --rail: var(--hy-info); }
+.nc-item:last-child { border-bottom: 0; }
+.nc-item::before { content: ""; position: absolute; inset-block: 12px; inset-inline-start: 0; width: 3px; border-radius: 0 3px 3px 0; background: var(--rail); opacity: .35; }
+.nc-item.is-unread::before { opacity: 1; }
+.nc-item.is-unread { background: color-mix(in srgb, var(--hy-blue) 8%, transparent); }
+.nc-item.tone-success { --rail: var(--hy-ok); } .nc-item.tone-warn { --rail: var(--hy-warn); } .nc-item.tone-danger { --rail: var(--hy-bad); } .nc-item.tone-neutral { --rail: var(--hy-muted); }
+.nc-open { flex: 1; min-width: 0; display: grid; gap: 3px; padding: 14px 8px 14px 18px; text-align: start; font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.nc-open:disabled { cursor: default; }
+.nc-open:focus-visible { outline: 3px solid #93c5fd; outline-offset: -3px; border-radius: 6px; }
+.nc-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; color: var(--hy-text-2); }
+.nc-item.is-unread .nc-title { font-weight: 800; color: var(--hy-text); }
+.nc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--hy-blue); }
+.nc-msg { font-size: 14px; color: var(--hy-text-2); line-height: 1.45; overflow-wrap: anywhere; }
+.nc-time { font-size: 12.5px; color: var(--hy-muted); }
+.nc-read { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin: 10px 8px 0 0; border-radius: 10px; cursor: pointer;
+  color: var(--hy-text-2); background: transparent; border: 1px solid var(--hy-line-strong); }
+.nc-read:hover { color: var(--hy-text); border-color: var(--hy-blue); }
+.nc-read:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.nc-read:disabled { opacity: .5; }
+.nc-state { padding: 32px 24px; text-align: center; color: var(--hy-text-2); }
+.nc-state p { margin: 0 0 6px; line-height: 1.5; }
+.nc-state-title { font-weight: 800; color: var(--hy-text); }
+.nc-state-ico { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; margin-bottom: 10px; color: var(--hy-blue-2); background: color-mix(in srgb, var(--hy-blue) 14%, transparent); }
+.nc-inline-err { margin: 0; padding: 10px 16px; font-size: 14px; color: var(--hy-bad); border-bottom: 1px solid var(--hy-line); }
+.nc-inline-err .nc-retry { height: 34px; margin: 0 0 0 8px; padding: 0 12px; font-size: 13px; }
+.nc-skel { display: grid; gap: 1px; padding: 8px; } .nc-skel span { height: 72px; border-radius: 10px; }
+.nc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* phones: a sheet under the header (header controls stay visible) with a scrim behind it */
+@media (max-width: 640px) {
+  .nc { position: static; }
+  .nc-panel { top: calc(var(--hy-nav-h) + 6px) !important; left: 8px !important; right: 8px; width: calc(100vw - 16px); max-height: calc(100dvh - var(--hy-nav-h) - 18px); }
+  .nc-scrim { display: block; position: fixed; inset: var(--hy-nav-h) 0 0 0; z-index: 65; background: rgba(2, 6, 23, 0.55); }
+  html.nc-open { overflow: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { .acct-skel span, .nc-skel span { animation: none; } }

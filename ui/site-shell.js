@@ -21,6 +21,10 @@ function mountLanguageSelector(header) {
     document.head.appendChild(css);
   }
   header.querySelector("[data-theme-toggle]")?.insertAdjacentHTML("beforebegin", langSelect("hxLang", "lang-pick"));
+  // "My account" on desktop: a person icon next to the language button (phones use the menu item instead)
+  if (header.querySelector('.nav-menu a[href="/account.html"]')) {
+    header.querySelector(".lang-pick")?.insertAdjacentHTML("beforebegin", `<a class="acct-link" href="/account.html" data-i18n-attr="aria-label:nav.account; title:nav.account" aria-label="My account" title="My account"${location.pathname === "/account.html" ? ' aria-current="page"' : ""}><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></a>`);
+  }
   header.querySelector(".nav-panel")?.insertAdjacentHTML("beforeend", langSelect("hxLangMenu", "lang-row"));
   header.querySelectorAll("[data-lang-select]").forEach((sel) => {
     sel.value = getLang();

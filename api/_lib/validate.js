@@ -30,6 +30,17 @@ export function parseEmail(value, field = "notifyEmail") {
   return text;
 }
 
+/**
+ * Optional customer account linked to a shipment (the client's account id, i.e. their Firebase Auth uid).
+ * "" unlinks. Shape only: whether the account exists is checked by the service.
+ */
+export function parseCustomerId(value, field = "customerId") {
+  const text = cleanText(value, { max: 128, field });
+  if (!text) return "";
+  if (!/^[A-Za-z0-9_-]{6,128}$/.test(text)) throw new ValidationError("Choose a customer account from the list", field);
+  return text;
+}
+
 /** Tracking code: trim, uppercase, strip whitespace. Returns null when it cannot be valid. */
 export function normalizeTrackingCode(input) {
   if (typeof input !== "string") return null;

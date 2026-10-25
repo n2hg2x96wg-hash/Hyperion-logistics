@@ -17,6 +17,7 @@ export function createMemoryStore(seed = {}) {
   const portfolioHistory = new Map(Object.entries(seed.portfolioHistory || {}).map(([k, v]) => [k, new Map(Object.entries(clone(v)))]));
   const authUsers = new Map(Object.entries(seed.authUsers || {}).map(([k, v]) => [k, clone(v)]));
   const idTokens = new Map(Object.entries(seed.idTokens || {}));
+  const notifications = new Map(); // customer uid -> Map(id -> notification)
   const deletedClients = new Map(); // recovery copies of permanently deleted clients (admin-only)
   const faults = new Set(); // test hook: simulate failures ("clientDeleteBatch")
   const bus = new EventEmitter();
@@ -32,7 +33,7 @@ export function createMemoryStore(seed = {}) {
       const current = shipments.get(code) ? clone(shipments.get(code)) : null;
       const result = fn(current);
       if (!result) return null;
-      const written = { events: [], locations: [] };
+      const written = { events: [], locations: [], notifications: [] };
       shipments.set(code, clone({ ...result.next, id: code }));
       for (const e of result.events || []) {
         const m = sub(events, code);
@@ -41,6 +42,11 @@ export function createMemoryStore(seed = {}) {
       for (const l of result.locations || []) {
         const m = sub(locations, code);
         if (!m.has(l.id)) { m.set(l.id, clone(l)); written.locations.push(clone(l)); }
+      }
+      const newEvents = new Set(written.events.map((e) => e.id));
+      for (const n of result.notifications || []) {
+        const m = sub(notifications, n.customerId);
+        if (newEvents.has(n.eventId) && !m.has(n.id)) { m.set(n.id, clone(n)); written.notifications.push(clone(n)); }
       }
       for (const a of result.audit || []) audit.push({ id: crypto.randomUUID(), ...clone(a) });
       bus.emit(`ship:${code}`, clone(shipments.get(code)));
@@ -214,6 +220,40 @@ export function createMemoryStore(seed = {}) {
     __fault(name, on = true) { if (on) faults.add(name); else faults.delete(name); },
 
     async verifyIdToken(token) { return idTokens.get(token) || null; },
-    __dump() { return { shipments, events, locations, audit, clients, portfolioHistory, authUsers, couriers, deletedClients }; }
+
+    // ---------- customer accounts: their shipments and in-app notifications ----------
+    async verifyCustomerToken(token) {
+      const claims = idTokens.get(token) || null;
+      if (claims && authUsers.get(claims.uid)?.disabled) throw Object.assign(new Error("disabled"), { code: "auth/user-disabled" });
+      return claims;
+    },
+    /** Dev/test sign-in (memory store only): email + password -> a short-lived ID token, like Firebase Auth issues. */
+    __issueCustomerToken(email, password) {
+      const r = this.__clientSignIn(email, password);
+      if (r.error) return r;
+      const token = `dev_${crypto.randomBytes(18).toString("hex")}`;
+      idTokens.set(token, { uid: r.uid, email });
+      return { token, uid: r.uid };
+    },
+    async listCustomerShipments(uid, limit = 50) {
+      return [...shipments.values()].filter((s) => s.customerId === uid && s.archived !== true).slice(0, limit).map(clone);
+    },
+    async listCustomerNotifications(uid, limit = 50) {
+      const all = [...(notifications.get(uid)?.values() || [])];
+      return { items: all.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)).slice(0, limit).map(clone),
+        unread: all.filter((n) => !n.readAt).length };
+    },
+    async markCustomerNotificationRead(uid, id, at) {
+      const n = notifications.get(uid)?.get(id);
+      if (!n) return { found: false };
+      if (!n.readAt) n.readAt = at;
+      return { found: true };
+    },
+    async markAllCustomerNotificationsRead(uid, at) {
+      let changed = 0;
+      for (const n of notifications.get(uid)?.values() || []) if (!n.readAt) { n.readAt = at; changed += 1; }
+      return { changed };
+    },
+    __dump() { return { shipments, events, locations, audit, clients, portfolioHistory, authUsers, couriers, deletedClients, notifications }; }
   };
 }

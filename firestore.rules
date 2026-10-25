@@ -16,6 +16,12 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow read: if isAdmin() || isClient(clientId);
       allow create, update, delete: if isAdmin();
+
+      // In-app customer notifications: read and marked read ONLY through the server API (/api/customer), which
+      // verifies the customer's sign-in and scopes every query to their own account. No direct browser access.
+      match /notifications/{notificationId} {
+        allow read, write: if false;
+      }
     }
 
     match /portfolio_history/{clientId}/history/{dateId} {

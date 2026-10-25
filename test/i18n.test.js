@@ -74,7 +74,8 @@ test("i18n: Portuguese for Portugal and Brazil are separate translations", async
 
 test("i18n: every key used by the pages and scripts exists in English", () => {
   const files = ["ui/site-shell.js", "ui/theme.js", "ui/carriers.js", "ui/status-text.js", "ui/network-globe.js", "ui/globe/command-center.js",
-    "tracker/tracker.js", "tracker/scene.js", "tracker/map.js", "index.html", "track.html", "tracking-enhanced.html", "carriers.html"];
+    "tracker/tracker.js", "tracker/scene.js", "tracker/map.js", "index.html", "track.html", "tracking-enhanced.html", "carriers.html",
+    "account.html", "ui/account.js", "ui/notification-center.js"];
   const PREFIX = /^(lang|meta|nav|cta|theme|foot|common|track|trackpage|home|svc|cc|map|route|status|event|exception|source|loc|help|eta|time|tr|stage|mode|stagePhoto|scene3d|view3d|support|carriers|carrier|region)\.[A-Za-z0-9_.-]+$/;
   const missing = [];
   for (const f of files) {

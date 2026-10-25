@@ -909,6 +909,11 @@
               <input id="notifyEmail" type="email" inputmode="email" autocomplete="off" maxlength="254" placeholder="customer@example.com" aria-describedby="notifyEmailHint">
               <p class="field-hint" id="notifyEmailHint">Only used to email this customer when a milestone is recorded. Never shown on the tracking page.</p>
             </div>
+            <div class="form-group" data-needs="clients" hidden>
+              <label for="customerId">Customer account (in-app notifications)</label>
+              <select id="customerId" aria-describedby="customerIdHint"><option value="">No customer account</option></select>
+              <p class="field-hint" id="customerIdHint">Optional. The customer sees this shipment and its status updates in their account on the website.</p>
+            </div>
           </div>
 
           <div class="section-label">🚚 Courier Information</div>
@@ -1433,6 +1438,7 @@
           <div class="form-group"><label for="shipmentServiceInput">Service type</label><input id="shipmentServiceInput" type="text" maxlength="80"></div>
           <div class="form-group"><label for="shipmentClientRefInput">Client / account reference</label><input id="shipmentClientRefInput" type="text" maxlength="120"></div>
           <div class="form-group"><label for="shipmentNotifyEmailInput">Customer email for notifications (optional)</label><input id="shipmentNotifyEmailInput" type="email" inputmode="email" autocomplete="off" maxlength="254" aria-describedby="shipmentNotifyEmailHint"><p class="field-hint" id="shipmentNotifyEmailHint">Only used to email this customer when a milestone is recorded. Never shown on the tracking page.</p></div>
+          <div class="form-group" data-needs="clients" hidden><label for="shipmentCustomerInput">Customer account (in-app notifications)</label><select id="shipmentCustomerInput" aria-describedby="shipmentCustomerHint"><option value="">No customer account</option></select><p class="field-hint" id="shipmentCustomerHint">The customer sees this shipment and gets a notification for each new status. Changing it does not resend past updates.</p></div>
         </div>
 
         <div class="section-label">🚚 Courier Information</div>

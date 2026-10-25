@@ -7,7 +7,7 @@ import {
   STATUS, STATUS_META, MANUAL_SOURCES, EXCEPTION_TYPES, resolveShipmentStatus, resolveVisibility, VISIBILITY_KEYS, normalizeStatus
 } from "../../shared/status.js";
 import {
-  ValidationError, cleanText, parseEmail, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
+  ValidationError, cleanText, parseEmail, parseCustomerId, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
   parseDateOnly, parseExceptionType, parseVisibility, parsePackage, parseCoordinatePair, parsePastTimestamp
 } from "./validate.js";
 import { buildClientView } from "./client-view.js";
@@ -46,6 +46,7 @@ export function parsePatch(input = {}) {
   }
   if ("location" in input) p.location = cleanText(input.location, { max: 160, field: "location" });
   if ("notifyEmail" in input) p.notifyEmail = parseEmail(input.notifyEmail); // optional, admin-only, never shown to clients
+  if ("customerId" in input) p.customerId = parseCustomerId(input.customerId); // optional customer account for in-app notifications
   for (const [k, kind] of [["latitude", "latitude"], ["longitude", "longitude"], ["originLat", "latitude"], ["originLng", "longitude"],
     ["destinationLat", "latitude"], ["destinationLng", "longitude"]]) {
     if (k in input) p[k] = parseCoordinate(input[k], kind);
@@ -80,7 +81,7 @@ export function parsePatch(input = {}) {
 }
 
 const TRACKED = ["courier", "courierTrackingNumber", "serviceType", "clientRef", "origin", "destination", "distance", "fee", "notes",
-  "internalNotes", "notifyEmail", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package"];
+  "internalNotes", "notifyEmail", "customerId", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package"];
 
 /**
  * Pure: given the current document and a validated patch, compute the next document plus the events,
@@ -230,7 +231,27 @@ export function computeChange(current, patch, ctx) {
 
   next.rev = rev; next.updatedAt = now; next.updatedBy = actor;
   Object.assign(next, derivedFields(next));
-  return { next, events, locations, audit };
+  return { next, events, locations, audit, notifications: customerNotifications(next, events, now) };
+}
+
+/**
+ * In-app notifications for the customer account linked to the shipment (shipment.customerId), one per customer-visible
+ * status milestone written in the same transaction. The id is derived from the customer and the event id, and the store
+ * writes a notification only when that id does not exist yet, so retries and repeated saves can never duplicate it.
+ * Only milestones the customer's tracking page would show are notified; location-only updates are not.
+ */
+export function customerNotifications(shipment, events, now) {
+  const customerId = shipment?.customerId;
+  if (!customerId || !events?.length) return [];
+  const vis = resolveVisibility(shipment.visibility);
+  return events
+    .filter((e) => e.statusCode && STATUS_META[e.statusCode] && e.clientVisible !== false && e.kind !== "location"
+      && (e.kind === "manual" ? vis.events : vis.timeline))
+    .map((e) => ({
+      id: `nt_${sha(`${customerId}|${shipment.id}|${e.id}`)}`, customerId, shipmentId: shipment.id, eventId: e.id,
+      type: "shipment.status", statusCode: e.statusCode, title: e.title || STATUS_META[e.statusCode].event,
+      createdAt: now, readAt: null
+    }));
 }
 
 function cleanNote(v) { return typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, 600) : ""; }
@@ -239,6 +260,13 @@ function cleanNote(v) { return typeof v === "string" ? v.replace(/\s+/g, " ").tr
 
 function ctxFor(identity, extra = {}) {
   return { actor: identity.sub, role: identity.role, via: identity.via || "admin", now: new Date().toISOString(), ...extra };
+}
+
+/** A shipment can be linked only to an existing customer account (never to an admin account). */
+async function assertCustomerAccount(store, customerId) {
+  if (!customerId) return;
+  const rec = store.getClientRecord ? await store.getClientRecord(customerId) : null;
+  if (!rec || rec.auth?.admin) throw new ValidationError("This customer account does not exist. Refresh the list and choose again.", "customerId");
 }
 
 async function resolveCode(input) {
@@ -257,6 +285,7 @@ export async function createShipment(identity, input) {
   const patch = parsePatch(input);
   if (!patch.origin) throw new ValidationError("Origin is required", "origin");
   if (!patch.destination) throw new ValidationError("Destination is required", "destination");
+  await assertCustomerAccount(store, patch.customerId);
 
   // coordinates: only geocode when admin did not supply them (geocoded values are labelled as such)
   const geo = {};
@@ -297,6 +326,7 @@ export async function updateShipment(identity, codeInput, input, opts = {}) {
   // Geocode origin/destination when the text changed and no explicit coordinates were provided.
   const existing = await store.getShipment(code);
   if (!existing) throw new ServiceError("not_found", "Shipment not found", 404);
+  if (patch.customerId && patch.customerId !== existing.customerId) await assertCustomerAccount(store, patch.customerId);
   if (patch.origin && patch.origin !== existing.origin && !("originLat" in patch)) {
     const g = await geocode(patch.origin); if (g) { patch.originLat = g.lat; patch.originLng = g.lng; patch.__originGeo = true; }
   }
@@ -395,7 +425,7 @@ export async function addTrackingEvent(identity, codeInput, input) {
       }
       Object.assign(next, derivedFields(next));
     }
-    return { next, events: [event], locations, audit };
+    return { next, events: [event], locations, audit, notifications: customerNotifications({ ...next, id: code }, [event], now) };
   });
   if (!result.written.events.length) return { duplicate: true, id }; // lost a race with an identical submission
   await finish(store, result, code);

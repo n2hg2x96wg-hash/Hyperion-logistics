@@ -75,3 +75,23 @@ html[dir="rtl"] .hx-progress-bar, html[dir="rtl"] .hx-rsum-line, html[dir="rtl"]
 /* maps and the globe keep their own (geographic) left-to-right layout */
 html[dir="rtl"] .hx-map, html[dir="rtl"] .cc-map, html[dir="rtl"] .ng-globe, html[dir="rtl"] .hx-scene-stage { direction: ltr; }
 html[dir="rtl"] .hx-map .hx-popup, html[dir="rtl"] .leaflet-tooltip { direction: rtl; text-align: right; }
+
+/* "My account": a person icon beside the language button on desktop; a normal menu item on phones */
+.acct-link { display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 10px; color: #cbd5e1; text-decoration: none;
+  border: 1px solid rgba(148, 163, 184, 0.28); }
+.acct-link:hover, .acct-link[aria-current="page"] { color: #fff; border-color: rgba(148, 163, 184, 0.55); }
+.acct-link:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+html[data-theme="light"] .acct-link { color: #1e293b; border-color: #cbd5e1; }
+@media (min-width: 901px) {
+  .nav-menu li:has(> a[href="/account.html"]) { display: none; }
+  .acct-link { margin-inline-start: auto; } .acct-link + .lang-pick { margin-inline-start: 0; }
+}
+@media (max-width: 900px) { .acct-link { display: none; } }
+/* narrow desktops / landscape tablets (just above the phone menu): tighter header spacing so every control fits */
+@media (min-width: 901px) and (max-width: 1080px) {
+  .site-nav > .wrap { gap: 10px; }
+  .nav-panel { gap: 8px; }
+  .nav-menu a { padding: 8px 7px; font-size: 13.5px; }
+  .nav-cta { padding: 0 12px; font-size: 13.5px; }
+  .lang-pick { padding: 0 8px; } .lang-pick svg { display: none; }
+}

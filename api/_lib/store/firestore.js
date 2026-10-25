@@ -7,6 +7,8 @@
 //   shipments/{code}/locations/{locationId}  location history (source-tagged)
 //   audit_logs/{id}                          admin-only audit trail
 //   notification_log/{key}                   notification de-duplication markers
+//   clients/{uid}/notifications/{id}         in-app customer notifications (server-only; written in the shipment
+//                                            transaction, deterministic ids => no duplicates)
 import { initializeApp, cert, getApps, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldPath } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
@@ -49,8 +51,9 @@ export function createFirestoreStore() {
         if (!result) return null;
         const evRefs = (result.events || []).map((e) => ref.collection("events").doc(e.id));
         const locRefs = (result.locations || []).map((l) => ref.collection("locations").doc(l.id));
-        const existing = await Promise.all([...evRefs, ...locRefs].map((r) => tx.get(r)));
-        const written = { events: [], locations: [] };
+        const ntRefs = (result.notifications || []).map((n) => db.collection("clients").doc(n.customerId).collection("notifications").doc(n.id));
+        const existing = await Promise.all([...evRefs, ...locRefs, ...ntRefs].map((r) => tx.get(r)));
+        const written = { events: [], locations: [], notifications: [] };
         const { id: _drop, ...nextData } = result.next;
         tx.set(ref, nextData);
         (result.events || []).forEach((e, i) => {
@@ -58,6 +61,13 @@ export function createFirestoreStore() {
         });
         (result.locations || []).forEach((l, i) => {
           if (!existing[evRefs.length + i].exists) { tx.set(locRefs[i], l); written.locations.push(l); }
+        });
+        // a notification belongs to a milestone that is new in this transaction, and is never written twice
+        const newEvents = new Set(written.events.map((e) => e.id));
+        (result.notifications || []).forEach((n, i) => {
+          if (newEvents.has(n.eventId) && !existing[evRefs.length + locRefs.length + i].exists) {
+            const { id: _nid, ...data } = n; tx.set(ntRefs[i], data); written.notifications.push(n);
+          }
         });
         for (const a of result.audit || []) tx.set(db.collection("audit_logs").doc(), a);
         return { shipment: { ...nextData, id: code }, written };
@@ -349,6 +359,44 @@ export function createFirestoreStore() {
       return { removed, authDeleted, authDisabled: !!user?.disabled || disabledNow, authError: authDeleted ? null : authError, authExisted: !!user };
     },
 
-    async verifyIdToken(token) { return getAuth(app).verifyIdToken(token); }
+    async verifyIdToken(token) { return getAuth(app).verifyIdToken(token); },
+
+    // ---------- customer accounts: their shipments and in-app notifications (server-only) ----------
+    /** Verifies a customer's Firebase ID token, rejecting revoked tokens and disabled accounts. */
+    async verifyCustomerToken(token) { return getAuth(app).verifyIdToken(token, true); },
+    async listCustomerShipments(uid, limit = 50) {
+      const q = await shipments.where("customerId", "==", uid).limit(limit).get();
+      return q.docs.map(stripId).filter((s) => s.archived !== true);
+    },
+    async listCustomerNotifications(uid, limit = 50) {
+      const col = db.collection("clients").doc(uid).collection("notifications");
+      const [items, unread] = await Promise.all([
+        col.orderBy("createdAt", "desc").limit(limit).get(),
+        col.where("readAt", "==", null).count().get()
+      ]);
+      return { items: items.docs.map(stripId), unread: unread.data().count };
+    },
+    /** Marks one of THIS customer's notifications read. The path is built from the verified uid, so another customer's id is simply not found. */
+    async markCustomerNotificationRead(uid, id, at) {
+      const ref = db.collection("clients").doc(uid).collection("notifications").doc(id);
+      return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) return { found: false };
+        if (!snap.data().readAt) tx.update(ref, { readAt: at });
+        return { found: true };
+      });
+    },
+    async markAllCustomerNotificationsRead(uid, at) {
+      const col = db.collection("clients").doc(uid).collection("notifications");
+      let changed = 0;
+      for (;;) { // in pages of 400 (a write batch holds at most 500 writes)
+        const snap = await col.where("readAt", "==", null).limit(400).get();
+        if (snap.empty) break;
+        const batch = db.batch(); snap.docs.forEach((d) => batch.update(d.ref, { readAt: at }));
+        await batch.commit(); changed += snap.size;
+        if (snap.size < 400) break;
+      }
+      return { changed };
+    }
   };
 }
