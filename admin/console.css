@@ -422,3 +422,33 @@ html[data-theme="light"] body.console details.more summary { color: #1d4ed8; }
   body.console .clients-table button, body.console .couriers-table button, body.console table button { min-height: 44px; }
   body.console :is(.ops-list-head, .ops-timeline small, .kpi .kpi-label small, .kpi.attention .kpi-label small) { font-size: 13px; }
 }
+
+/* ---------- "Get the admin app" (admin/install.js) ---------- */
+body.console .toggle-btn.get-admin-app { margin-top: 10px; color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.07); }
+body.console .toggle-btn.get-admin-app[hidden] { display: none; }
+.aa-dialog { width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 0; background: transparent; color: #e2e8f0; overflow: auto; }
+.aa-dialog::backdrop { background: rgba(2, 6, 23, 0.65); backdrop-filter: blur(3px); }
+.aa-card { padding: 20px; border-radius: 18px; background: #0b1530; border: 1px solid rgba(120, 160, 230, 0.22); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.6); }
+.aa-head { display: flex; align-items: center; gap: 14px; }
+.aa-head img { flex: none; width: 56px; height: 56px; border-radius: 14px; }
+.aa-head h2 { margin: 0; font-size: 18px; color: #f8fafc; }
+.aa-head p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: #94a3b8; }
+.aa-card h3 { margin: 18px 0 0; font-size: 14px; color: #cbd5e1; }
+.aa-steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; counter-reset: aa; }
+.aa-steps li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #08122a; border: 1px solid rgba(120, 160, 230, 0.16); counter-increment: aa; }
+.aa-ico { flex: none; position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: #0b1530; background: #f59e0b; }
+.aa-ico::after { content: counter(aa); position: absolute; top: -6px; left: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; font-size: 11px; font-weight: 800;
+  line-height: 16px; text-align: center; color: #f8fafc; background: #0b1530; border: 1px solid rgba(120, 160, 230, 0.35); }
+.aa-text { display: grid; gap: 2px; min-width: 0; font-size: 15px; line-height: 1.4; }
+.aa-text strong { color: #f8fafc; }
+.aa-text small { color: #8394b4; font-size: 13px; }
+.aa-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+.aa-actions > button { min-height: 44px; }
+.aa-close { padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 15px; color: #cbd5e1; background: transparent; border: 1px solid rgba(120, 160, 230, 0.3); cursor: pointer; }
+@media (max-width: 640px) { .aa-actions > button { flex: 1; } }
+html[data-theme="light"] .aa-card { background: #fff; border-color: #dbe3f0; }
+html[data-theme="light"] .aa-head h2, html[data-theme="light"] .aa-text strong { color: #0f172a; }
+html[data-theme="light"] .aa-steps li { background: #f4f7fc; border-color: #dbe3f0; }
+html[data-theme="light"] .aa-ico::after { color: #0f172a; background: #fff; border-color: #cbd5e1; }
+html[data-theme="light"] .aa-close { color: #334155; border-color: #cbd5e1; }
+html[data-theme="light"] body.console .toggle-btn.get-admin-app { color: #b45309; }

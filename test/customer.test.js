@@ -191,6 +191,17 @@ test("installable app: valid manifest with real icons, linked from the public pa
   const sw = fs.readFileSync(new URL("sw.js", root), "utf8");
   assert.doesNotMatch(sw, /cache\.put|\.put\(/, "responses are never written to a cache");
   assert.match(sw, /req\.method !== "GET"/);
+  // the admin console is its own app: own id, name, icons and scope; the customer pages never link it
+  const a = JSON.parse(fs.readFileSync(new URL("admin.webmanifest", root), "utf8"));
+  assert.equal(a.id, "/admin.html"); assert.equal(a.scope, "/admin"); assert.match(a.start_url, /^\/admin\.html/); assert.notEqual(a.id, m.id);
+  for (const icon of a.icons) {
+    const png = fs.readFileSync(new URL(icon.src.slice(1), root));
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], icon.sizes.split("x").map(Number), icon.src);
+  }
+  const adminHtml = fs.readFileSync(new URL("admin.html", root), "utf8");
+  assert.match(adminHtml, /<link rel="manifest" href="\/admin\.webmanifest">/);
+  assert.doesNotMatch(adminHtml, /manifest\.webmanifest/);
+  for (const page of ["index.html", "track.html", "account.html"]) assert.doesNotMatch(fs.readFileSync(new URL(page, root), "utf8"), /admin\.webmanifest/, page);
   const res = await fetch(`${base}/manifest.webmanifest`);
   assert.equal(res.headers.get("content-type"), "application/manifest+json");
 });

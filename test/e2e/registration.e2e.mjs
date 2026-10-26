@@ -143,3 +143,20 @@ for (const [w, h] of [[390, 844], [1280, 900]]) {
     await cctx.close();
   });
 }
+
+test("admin app: 'Get the admin app' in the phone menu opens install steps that fit the screen; the admin manifest is linked", async () => {
+  const { ctx, page, errors } = await adminPage(390, 844);
+  assert.equal(await page.getAttribute('link[rel="manifest"]', "href"), "/admin.webmanifest");
+  await page.click('#tabBar [data-tab="more"]'); // phones open the console menu from the tab bar
+  await page.click("#btnGetAdminApp");
+  await page.waitForSelector("dialog.aa-dialog[open] .aa-steps");
+  // a browser that is neither iPhone nor Android: both sets of steps
+  assert.equal(await page.locator("dialog.aa-dialog[open] .aa-steps li").count(), 6);
+  assert.match(await page.textContent("dialog.aa-dialog"), /Add to Home Screen/);
+  assert.ok(await page.evaluate(() => { const r = document.querySelector("dialog.aa-dialog").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), "dialog fits the screen");
+  await shot(page, "admin-get-app-390");
+  await page.click("dialog.aa-dialog [data-close]");
+  assert.equal(await page.locator("dialog.aa-dialog[open]").count(), 0);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
