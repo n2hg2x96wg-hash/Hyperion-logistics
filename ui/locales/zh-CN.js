@@ -466,6 +466,11 @@ export default {
   "support.button": "联系客户支持",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "安装 Hyperion 应用",
+  "app.install.body": "将 Hyperion 添加到主屏幕，轻点一下即可全屏查看您的货件。",
+  "app.install.button": "安装应用",
+  "app.install.ios": "在 iPhone 或 iPad 上，轻点“共享”按钮，然后选择“添加到主屏幕”。之后轻点一下即可全屏查看您的货件。",
+  "app.install.dismiss": "以后再说",
   "acct.title": "您的账户",
   "acct.hello": "您好，{name}",
   "acct.lead": "您的货件及其最新更新。",

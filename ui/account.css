@@ -131,3 +131,22 @@ html[data-theme="light"] .nc-bell { color: #1e293b; border-color: #cbd5e1; }
   html.nc-open { overflow: hidden; }
 }
 @media (prefers-reduced-motion: reduce) { .acct-skel span, .nc-skel span { animation: none; } }
+
+/* ---------- add to home screen (ui/app-install.js) ---------- */
+.app-install { margin: 28px 0 0; padding: 18px 20px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  gap: 14px 18px; border-radius: var(--hy-radius-l); background: var(--hy-surface-strong); border: 1px solid var(--hy-line); box-shadow: var(--hy-shadow); }
+.app-install-icon { width: 56px; height: 56px; border-radius: 14px; }
+.app-install h2 { margin: 0; font-size: 17px; color: var(--hy-text); letter-spacing: -0.01em; }
+.app-install p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--hy-text-2); }
+.app-install-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.app-install-go, .app-install-later { height: 42px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.app-install-go { color: #fff; background: var(--hy-blue); border: 0; }
+.app-install-later { color: var(--hy-text-2); background: transparent; border: 1px solid var(--hy-line-strong); }
+.app-install-go:focus-visible, .app-install-later:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .app-install { grid-template-columns: auto minmax(0, 1fr); }
+  .app-install-actions { grid-column: 1 / -1; justify-content: stretch; }
+  .app-install-actions > button { flex: 1; }
+}
+/* installed app: room for the iPhone home indicator */
+@media (display-mode: standalone) { .site-footer { padding-bottom: calc(24px + env(safe-area-inset-bottom)); } }

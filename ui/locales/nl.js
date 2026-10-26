@@ -474,6 +474,11 @@ export default {
   "support.button": "Contact met klantenservice",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Installeer de Hyperion-app",
+  "app.install.body": "Zet Hyperion op je beginscherm om je zendingen met één tik op volledig scherm te openen.",
+  "app.install.button": "App installeren",
+  "app.install.ios": "Tik op iPhone of iPad op de deelknop en daarna op Zet op beginscherm. Je zendingen openen dan met één tik op volledig scherm.",
+  "app.install.dismiss": "Niet nu",
   "acct.title": "Je account",
   "acct.hello": "Hallo, {name}",
   "acct.lead": "Je zendingen en hun laatste updates.",

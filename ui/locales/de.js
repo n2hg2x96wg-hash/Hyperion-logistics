@@ -474,6 +474,11 @@ export default {
   "support.button": "Kundenservice kontaktieren",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Hyperion als App",
+  "app.install.body": "Fügen Sie Hyperion zu Ihrem Home-Bildschirm hinzu, um Ihre Sendungen mit einem Tippen im Vollbild zu öffnen.",
+  "app.install.button": "App installieren",
+  "app.install.ios": "Auf iPhone oder iPad tippen Sie auf Teilen und dann auf Zum Home-Bildschirm. Ihre Sendungen öffnen sich dann mit einem Tippen im Vollbild.",
+  "app.install.dismiss": "Nicht jetzt",
   "acct.title": "Ihr Konto",
   "acct.hello": "Hallo {name}",
   "acct.lead": "Ihre Sendungen und deren neueste Aktualisierungen.",

@@ -474,6 +474,11 @@ export default {
   "support.button": "Contacter le service client",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Installez l’app Hyperion",
+  "app.install.body": "Ajoutez Hyperion à votre écran d’accueil pour ouvrir vos envois d’un geste, en plein écran.",
+  "app.install.button": "Installer l’app",
+  "app.install.ios": "Sur iPhone ou iPad, touchez le bouton Partager, puis Sur l’écran d’accueil. Vos envois s’ouvrent alors d’un geste, en plein écran.",
+  "app.install.dismiss": "Plus tard",
   "acct.title": "Votre compte",
   "acct.hello": "Bonjour {name}",
   "acct.lead": "Vos envois et leurs dernières mises à jour.",

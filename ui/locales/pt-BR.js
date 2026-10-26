@@ -477,6 +477,11 @@ export default {
   "support.button": "Falar com o Atendimento ao Cliente",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Instale o app da Hyperion",
+  "app.install.body": "Adicione a Hyperion à sua tela de início para abrir suas remessas com um toque, em tela cheia.",
+  "app.install.button": "Instalar app",
+  "app.install.ios": "No iPhone ou iPad, toque no botão Compartilhar e depois em Adicionar à Tela de Início. Suas remessas abrem com um toque, em tela cheia.",
+  "app.install.dismiss": "Agora não",
   "acct.title": "Sua conta",
   "acct.hello": "Olá, {name}",
   "acct.lead": "Suas remessas e as atualizações mais recentes de cada uma.",

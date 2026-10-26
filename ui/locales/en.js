@@ -467,6 +467,11 @@ export default {
   "support.button": "Contact Customer Support",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Get the Hyperion app",
+  "app.install.body": "Add Hyperion to your home screen to open your shipments in one tap, full screen.",
+  "app.install.button": "Install app",
+  "app.install.ios": "On iPhone or iPad, tap the Share button, then Add to Home Screen. Your shipments then open in one tap, full screen.",
+  "app.install.dismiss": "Not now",
   "acct.title": "Your account",
   "acct.hello": "Hello, {name}",
   "acct.lead": "Your shipments and their latest updates.",
