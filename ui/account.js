@@ -88,6 +88,7 @@ let signedOutReason = null;
 function showSignedOut(reason = null) {
   signedOutReason = reason; view = "signin";
   center?.destroy(); center = null; tracker?.destroy(); tracker = null; me = null; shipments = []; openCode = null;
+  document.documentElement.classList.remove("acct-sheet-open");
   render();
 }
 
@@ -141,11 +142,15 @@ function renderDashboard() {
     </div>
     <h2 class="acct-h2">${esc(t("acct.shipments"))}</h2>
     <div class="acct-ships" aria-live="polite">${shipmentsHtml()}</div>
-    <div id="acctDetails" class="acct-details"${openCode ? "" : " hidden"}><div class="acct-details-head"><h2 class="acct-h2">${esc(t("acct.details"))}</h2>
-      <button type="button" class="acct-close">${esc(t("acct.closeDetails"))}</button></div><div id="acctTracker"></div></div>
+    <div id="acctDetails" class="acct-details${openCode && sheetMode() ? " is-sheet" : ""}"${openCode ? "" : " hidden"} role="region" aria-labelledby="acctDetailsTitle">
+      <div class="acct-details-head">
+        <button type="button" class="acct-back" aria-label="${esc(t("acct.backToShipments"))}"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+        <div class="acct-details-titles"><h2 class="acct-h2" id="acctDetailsTitle" tabindex="-1">${esc(t("acct.details"))}</h2><p class="acct-details-code" dir="ltr">${esc(openCode || "")}</p></div>
+        <button type="button" class="acct-close">${esc(t("acct.closeDetails"))}</button></div><div id="acctTracker"></div></div>
   </section>`;
   root.querySelector(".acct-signout").addEventListener("click", () => auth.signOut().then(() => showSignedOut(null)));
   root.querySelector(".acct-close").addEventListener("click", () => closeShipment());
+  root.querySelector(".acct-back").addEventListener("click", () => closeShipment());
   root.querySelector(".acct-ships").addEventListener("click", (e) => {
     const b = e.target.closest("[data-code]"); if (b) (b.dataset.code === openCode ? closeShipment() : openShipment(b.dataset.code));
     if (e.target.closest("[data-act=retry-ships]")) loadShipments();
@@ -162,19 +167,34 @@ function shipmentsHtml() {
   if (!shipments.length) return `<div class="acct-empty"><p class="acct-empty-title">${esc(t("acct.noShipments"))}</p><p>${esc(t("acct.noShipmentsBody"))}</p><a href="/track.html">${esc(t("acct.trackByNumber"))}</a></div>`;
   return `<ul class="acct-list">${shipments.map(shipmentRow).join("")}</ul>`;
 }
-async function loadShipments() {
-  shipState = "loading"; refreshList();
+async function loadShipments({ quiet = false } = {}) {
+  if (!quiet || shipState !== "ready") { shipState = "loading"; refreshList(); } // a quiet reload keeps the list on screen
   try { shipments = (await call("shipments")).shipments || []; shipState = "ready"; }
   catch (err) { if (err.status === 401 || err.status === 403) return; shipState = "error"; }
   refreshList();
 }
 function refreshList() { const el = root.querySelector(".acct-ships"); if (el) el.innerHTML = shipmentsHtml(); }
 
+// Phones: the details open as a full screen over the list, like an app screen, with a back button; the phone's own back
+// gesture/button closes it too (one history entry while it is open). Wider screens keep them below the list.
+const sheetQuery = matchMedia("(max-width: 640px)");
+const sheetMode = () => sheetQuery.matches;
+let sheetEntry = false; // a history entry was added for the open sheet
+addEventListener("popstate", () => { if (sheetEntry) { sheetEntry = false; closeShipment({ fromHistory: true }); } });
+sheetQuery.addEventListener?.("change", () => { const box = root.querySelector("#acctDetails"); if (box && openCode) setSheet(box, sheetMode()); });
+function setSheet(box, on) {
+  box.classList.toggle("is-sheet", on);
+  document.documentElement.classList.toggle("acct-sheet-open", on);
+}
+
 /** Opens a shipment from the list or a notification. The server returns it only if it is linked to this account. */
 function openShipment(code) {
   openCode = code; refreshList();
   const box = root.querySelector("#acctDetails"); if (!box) return;
   box.hidden = false;
+  box.querySelector(".acct-details-code").textContent = code;
+  setSheet(box, sheetMode());
+  if (sheetMode() && !sheetEntry) { history.pushState({ acctSheet: code }, ""); sheetEntry = true; }
   if (!tracker) {
     tracker = createTracker(trackerEl, {
       realtime: false,
@@ -185,24 +205,30 @@ function openShipment(code) {
     });
   }
   tracker.track(code);
-  box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  if (sheetMode()) { box.scrollTop = 0; box.querySelector("#acctDetailsTitle")?.focus({ preventScroll: true }); }
+  else box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
-function closeShipment() {
+function closeShipment({ fromHistory = false } = {}) {
+  const was = openCode;
   openCode = null; tracker?.clear(); refreshList();
-  const box = root.querySelector("#acctDetails"); if (box) box.hidden = true;
+  const box = root.querySelector("#acctDetails");
+  if (box) { box.hidden = true; setSheet(box, false); }
+  if (sheetEntry && !fromHistory) { sheetEntry = false; history.back(); }
+  if (was) root.querySelector(`[data-code="${CSS.escape(was)}"]`)?.focus({ preventScroll: true });
 }
 
 async function showSignedIn() {
   view = "dashboard"; shipState = "loading"; render();
   try { me = await call("me"); } catch { return; }
   render();
-  if (!center) center = createNotificationCenter({ mount: header, before: header.querySelector(".lang-pick") || header.querySelector("[data-theme-toggle]"), call, onOpenShipment: openShipment });
+  if (!center) center = createNotificationCenter({ mount: header, before: header.querySelector(".lang-pick") || header.querySelector("[data-theme-toggle]"), call, onOpenShipment: openShipment,
+    shipmentInfo: (code) => shipments.find((x) => x.code === code) || null, refreshShipments: () => loadShipments({ quiet: true }) });
   loadShipments();
 }
 
 // ---------- start ----------
 render();
-onLang(() => { if (view !== "dashboard") render(); else { const keep = openCode; render(); refreshList(); if (keep) root.querySelector("#acctDetails").hidden = false; } applyI18n(root); });
+onLang(() => { if (view !== "dashboard") render(); else { const keep = openCode; render(); refreshList(); if (keep) { const box = root.querySelector("#acctDetails"); box.hidden = false; setSheet(box, sheetMode()); } } applyI18n(root); });
 makeAuth().then((a) => {
   auth = a;
   a.watch((signedIn, reason) => { if (signedIn) showSignedIn(); else showSignedOut(reason || signedOutReason); });

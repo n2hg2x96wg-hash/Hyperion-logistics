@@ -538,6 +538,17 @@ export default {
   "notif.errorTitle": "Benachrichtigungen konnten nicht geladen werden",
   "notif.errorBody": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "notif.retry": "Erneut versuchen",
+  "notif.tabAll": "Alle",
+  "notif.close": "Benachrichtigungen schließen",
+  "notif.back": "Zurück",
+  "notif.today": "Heute",
+  "notif.yesterday": "Gestern",
+  "notif.earlier": "Früher",
+  "notif.noUnread": "Keine ungelesenen Benachrichtigungen.",
+  "notif.shipment": "Sendung",
+  "notif.currentStatus": "Aktueller Status",
+  "notif.viewShipment": "Sendung ansehen",
+  "acct.backToShipments": "Zurück zu Ihren Sendungen",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Versanddienstleister",

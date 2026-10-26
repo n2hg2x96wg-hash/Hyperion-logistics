@@ -531,6 +531,17 @@ export default {
   "notif.errorTitle": "Notifications could not be loaded",
   "notif.errorBody": "Check your connection and try again.",
   "notif.retry": "Try again",
+  "notif.tabAll": "All",
+  "notif.close": "Close notifications",
+  "notif.back": "Back",
+  "notif.today": "Today",
+  "notif.yesterday": "Yesterday",
+  "notif.earlier": "Earlier",
+  "notif.noUnread": "No unread notifications.",
+  "notif.shipment": "Shipment",
+  "notif.currentStatus": "Current status",
+  "notif.viewShipment": "View shipment",
+  "acct.backToShipments": "Back to your shipments",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Carriers",

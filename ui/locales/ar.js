@@ -554,6 +554,17 @@ export default {
   "notif.errorTitle": "تعذّر تحميل الإشعارات",
   "notif.errorBody": "تحقّق من اتصالك ثم حاول مرة أخرى.",
   "notif.retry": "حاول مرة أخرى",
+  "notif.tabAll": "الكل",
+  "notif.close": "إغلاق الإشعارات",
+  "notif.back": "رجوع",
+  "notif.today": "اليوم",
+  "notif.yesterday": "أمس",
+  "notif.earlier": "سابقًا",
+  "notif.noUnread": "لا توجد إشعارات غير مقروءة.",
+  "notif.shipment": "الشحنة",
+  "notif.currentStatus": "الحالة الحالية",
+  "notif.viewShipment": "عرض الشحنة",
+  "acct.backToShipments": "العودة إلى شحناتك",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "شركات النقل",

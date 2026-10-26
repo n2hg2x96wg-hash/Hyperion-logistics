@@ -541,6 +541,17 @@ export default {
   "notif.errorTitle": "Notificările nu au putut fi încărcate",
   "notif.errorBody": "Verificați conexiunea și încercați din nou.",
   "notif.retry": "Încercați din nou",
+  "notif.tabAll": "Toate",
+  "notif.close": "Închideți notificările",
+  "notif.back": "Înapoi",
+  "notif.today": "Astăzi",
+  "notif.yesterday": "Ieri",
+  "notif.earlier": "Mai devreme",
+  "notif.noUnread": "Nicio notificare necitită.",
+  "notif.shipment": "Expediere",
+  "notif.currentStatus": "Stare actuală",
+  "notif.viewShipment": "Vedeți expedierea",
+  "acct.backToShipments": "Înapoi la expedierile dumneavoastră",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Transportatori",

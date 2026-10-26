@@ -539,6 +539,17 @@ export default {
   "notif.errorTitle": "Notifications no gree load",
   "notif.errorBody": "Abeg check your connection and try again.",
   "notif.retry": "Try again",
+  "notif.tabAll": "All",
+  "notif.close": "Close notifications",
+  "notif.back": "Back",
+  "notif.today": "Today",
+  "notif.yesterday": "Yesterday",
+  "notif.earlier": "Before",
+  "notif.noUnread": "No unread notification.",
+  "notif.shipment": "Shipment",
+  "notif.currentStatus": "Status now",
+  "notif.viewShipment": "See shipment",
+  "acct.backToShipments": "Go back to your shipments",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Carriers",
