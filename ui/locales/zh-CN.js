@@ -529,6 +529,17 @@ export default {
   "notif.errorTitle": "无法加载通知",
   "notif.errorBody": "请检查网络连接后重试。",
   "notif.retry": "重试",
+  "notif.tabAll": "全部",
+  "notif.close": "关闭通知",
+  "notif.back": "返回",
+  "notif.today": "今天",
+  "notif.yesterday": "昨天",
+  "notif.earlier": "更早",
+  "notif.noUnread": "没有未读通知。",
+  "notif.shipment": "货件",
+  "notif.currentStatus": "当前状态",
+  "notif.viewShipment": "查看货件",
+  "acct.backToShipments": "返回您的货件",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "承运商",

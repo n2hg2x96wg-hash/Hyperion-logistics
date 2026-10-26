@@ -542,6 +542,17 @@ export default {
   "notif.errorTitle": "Não foi possível carregar as notificações",
   "notif.errorBody": "Verifique sua conexão e tente novamente.",
   "notif.retry": "Tentar novamente",
+  "notif.tabAll": "Todas",
+  "notif.close": "Fechar notificações",
+  "notif.back": "Voltar",
+  "notif.today": "Hoje",
+  "notif.yesterday": "Ontem",
+  "notif.earlier": "Anteriores",
+  "notif.noUnread": "Nenhuma notificação não lida.",
+  "notif.shipment": "Remessa",
+  "notif.currentStatus": "Status atual",
+  "notif.viewShipment": "Ver remessa",
+  "acct.backToShipments": "Voltar para suas remessas",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Transportadoras",

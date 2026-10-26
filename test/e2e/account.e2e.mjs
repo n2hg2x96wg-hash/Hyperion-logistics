@@ -67,6 +67,8 @@ const storedUnread = (page) => page.evaluate(async () => {
   return (await r.json()).unread;
 });
 const badge = async (page) => ((await page.locator(".nc-badge").isHidden()) ? 0 : Number((await page.textContent(".nc-badge")).replace("+", "")));
+// waits until opening/closing animations have finished, so boxes are measured where they come to rest
+const settle = (page) => page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity));
 const noOverflow = (page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
 
 test("sign-in: wrong password is explained; the right one opens the account with the customer's shipments only", async () => {
@@ -146,6 +148,15 @@ test("a new status saved by an admin appears; saving it again adds nothing; open
   const first = page.locator(".nc-item").first();
   assert.match(await first.textContent(), /Out for Delivery/);
   await first.locator(".nc-open").click();
+  // the detail screen: status, message, the shipment's route and current status; Back returns to the list
+  await page.waitForSelector(".nc-view-detail:not([hidden]) .nc-hero-title");
+  assert.equal((await page.textContent(".nc-hero-title")).trim(), "Out for Delivery");
+  assert.match(await page.textContent(".nc-ship"), new RegExp(codes.a));
+  assert.match(await page.textContent(".nc-ship-now"), /Out for Delivery/);
+  await page.click(".nc-back");
+  await page.waitForSelector(".nc-view-list:not([hidden]) .nc-item");
+  await first.locator(".nc-open").click();
+  await page.click(".nc-primary"); // View shipment
   await page.waitForSelector(".hx-header .hx-pill");
   assert.equal(await page.textContent(".hx-code"), codes.a, "the notification opened its own shipment");
   assert.equal((await page.textContent(".hx-header .hx-pill")).trim(), "Out for Delivery");
@@ -207,7 +218,7 @@ test("layout: phone and desktop, panel inside the screen, header controls never 
     const toggle = width <= 900 ? ".nav-toggle" : ".nav-cta";
     const box = await page.locator(toggle).boundingBox();
     assert.ok(box && box.x + box.width <= width + 0.5, `${width}: ${toggle} fully visible`);
-    await page.click(".nc-bell"); await page.waitForSelector(".nc-item");
+    await page.click(".nc-bell"); await page.waitForSelector(".nc-item"); await settle(page);
     const p = await page.locator("#ncPanel").boundingBox();
     assert.ok(p.x >= 0 && p.x + p.width <= width + 0.5 && p.y + p.height <= height + 0.5, `${width}: panel within the screen ${JSON.stringify(p)}`);
     const bell = await page.locator(".nc-bell").boundingBox();
@@ -354,6 +365,51 @@ test("Android without a browser prompt: the card shows the menu steps; 'Get the 
   // the menu item is a phone-menu entry only
   await page.setViewportSize({ width: 1280, height: 900 });
   assert.equal(await page.isVisible("[data-get-app]"), false);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("app feel on a phone: All/Unread tabs and day groups; a notification opens its own screen; shipment details open full screen and the phone's back closes them", async () => {
+  const { ctx, page, errors } = await customerPage({ width: 390, height: 844 });
+  await signIn(page, "cara@test.example");
+  await page.waitForSelector(".acct-ship"); await page.waitForSelector(".nc-bell");
+  // a fresh update, so there is something unread today
+  assert.equal((await admin({ action: "update", code: codes.a, changes: { statusCode: "IN_TRANSIT" } })).status, 200);
+  await page.click(".nc-bell"); await page.waitForSelector(".nc-item.is-unread");
+  assert.match(await page.textContent(".nc-group"), /Today/);
+  const total = await page.locator(".nc-item").count();
+  await page.click('.nc-tab[data-filter="unread"]');
+  assert.equal(await page.locator(".nc-item").count(), await page.locator(".nc-item.is-unread").count(), "Unread shows only unread");
+  await page.click('.nc-tab[data-filter="all"]');
+  assert.equal(await page.locator(".nc-item").count(), total);
+  // the sheet fills the screen under the header
+  await settle(page);
+  const p = await page.locator("#ncPanel").boundingBox();
+  assert.ok(p.width >= 389 && p.y + p.height >= 843, `sheet fills the screen ${JSON.stringify(p)}`);
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/nc-list-390.png` });
+  await page.locator(".nc-item .nc-open").first().click();
+  await page.waitForSelector(".nc-view-detail:not([hidden]) .nc-hero"); await settle(page);
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/nc-detail-390.png` });
+  await page.keyboard.press("Escape"); // back to the list first
+  await page.waitForSelector(".nc-view-list:not([hidden])");
+  await page.click(".nc-x");
+  assert.equal(await page.isHidden("#ncPanel"), true);
+  // shipment details: a full screen with a back button; the phone's back gesture closes it
+  await page.locator(".acct-ship").first().click();
+  await page.waitForSelector("#acctDetails.is-sheet .hx-header"); await settle(page);
+  const d = await page.locator("#acctDetails").boundingBox();
+  assert.ok(d.width >= 389 && d.y + d.height >= 843, "details fill the screen");
+  assert.ok(await page.isVisible(".acct-back"));
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/acct-sheet-390.png` });
+  await page.goBack();
+  await page.waitForFunction(() => document.getElementById("acctDetails").hidden);
+  assert.equal(new URL(page.url()).pathname, "/account.html", "still on the account page");
+  // and the back button in the screen
+  await page.locator(".acct-ship").first().click();
+  await page.waitForSelector("#acctDetails.is-sheet:not([hidden])");
+  await page.click(".acct-back");
+  await page.waitForFunction(() => document.getElementById("acctDetails").hidden && !document.documentElement.classList.contains("acct-sheet-open"));
+  assert.ok(await noOverflow(page));
   assert.deepEqual(errors, []);
   await ctx.close();
 });

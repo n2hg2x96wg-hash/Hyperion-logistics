@@ -538,6 +538,17 @@ export default {
   "notif.errorTitle": "Impossibile caricare le notifiche",
   "notif.errorBody": "Controlla la connessione e riprova.",
   "notif.retry": "Riprova",
+  "notif.tabAll": "Tutte",
+  "notif.close": "Chiudi notifiche",
+  "notif.back": "Indietro",
+  "notif.today": "Oggi",
+  "notif.yesterday": "Ieri",
+  "notif.earlier": "Precedenti",
+  "notif.noUnread": "Nessuna notifica da leggere.",
+  "notif.shipment": "Spedizione",
+  "notif.currentStatus": "Stato attuale",
+  "notif.viewShipment": "Vedi spedizione",
+  "acct.backToShipments": "Torna alle tue spedizioni",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Vettori",

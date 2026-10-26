@@ -538,6 +538,17 @@ export default {
   "notif.errorTitle": "Meldingen konden niet worden geladen",
   "notif.errorBody": "Controleer je verbinding en probeer het opnieuw.",
   "notif.retry": "Opnieuw proberen",
+  "notif.tabAll": "Alle",
+  "notif.close": "Meldingen sluiten",
+  "notif.back": "Terug",
+  "notif.today": "Vandaag",
+  "notif.yesterday": "Gisteren",
+  "notif.earlier": "Eerder",
+  "notif.noUnread": "Geen ongelezen meldingen.",
+  "notif.shipment": "Zending",
+  "notif.currentStatus": "Huidige status",
+  "notif.viewShipment": "Zending bekijken",
+  "acct.backToShipments": "Terug naar je zendingen",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Vervoerders",

@@ -539,6 +539,17 @@ export default {
   "notif.errorTitle": "No se pudieron cargar las notificaciones",
   "notif.errorBody": "Compruebe su conexión e inténtelo de nuevo.",
   "notif.retry": "Intentar de nuevo",
+  "notif.tabAll": "Todas",
+  "notif.close": "Cerrar notificaciones",
+  "notif.back": "Atrás",
+  "notif.today": "Hoy",
+  "notif.yesterday": "Ayer",
+  "notif.earlier": "Anteriores",
+  "notif.noUnread": "No hay notificaciones sin leer.",
+  "notif.shipment": "Envío",
+  "notif.currentStatus": "Estado actual",
+  "notif.viewShipment": "Ver envío",
+  "acct.backToShipments": "Volver a sus envíos",
 
   // ---------- carrier directory ----------
   "carriers.kicker": "Transportistas",
