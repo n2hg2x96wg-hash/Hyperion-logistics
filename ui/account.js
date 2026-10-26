@@ -49,7 +49,17 @@ async function makeAuth() {
     signIn: (email, password) => fb.login(email, password),
     signOut: () => fb.logout(),
     watch(cb) {
-      fb.monitorAuth({ onAuthorized: () => cb(true), onUnauthorized: (reason) => cb(false, reason ? "inactive" : null), onTimeout: () => cb(false, "timeout") });
+      fb.monitorAuth({
+        onAuthorized: () => cb(true), onTimeout: () => cb(false, "timeout"),
+        onUnauthorized: (reason) => cb(false, reason === "error" ? "error" : reason ? "inactive" : null),
+        // the server checks the account (active profile, not disabled), so nothing depends on browser database access
+        verifyProfile: async (user) => {
+          const res = await fetch("/api/customer", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` }, body: JSON.stringify({ action: "me" }) });
+          if (res.ok) return { status: "active" };
+          if (res.status === 401 || res.status === 403) return null; // not a customer account, or not active
+          throw new Error(`account check failed (${res.status})`);
+        }
+      });
     }
   };
 }
@@ -88,7 +98,7 @@ function render() {
 }
 
 function renderSignIn() {
-  const note = signedOutReason === "expired" || signedOutReason === "timeout" ? t("acct.note.expired") : signedOutReason === "inactive" ? t("acct.err.inactive") : "";
+  const note = signedOutReason === "expired" || signedOutReason === "timeout" ? t("acct.note.expired") : signedOutReason === "inactive" ? t("acct.err.inactive") : signedOutReason === "error" ? t("acct.err.network") : "";
   root.innerHTML = `<section class="acct-signin" aria-labelledby="acctSignInTitle">
     <h1 id="acctSignInTitle">${esc(t("acct.signIn.title"))}</h1>
     <p class="acct-lead">${esc(t("acct.signIn.lead"))}</p>

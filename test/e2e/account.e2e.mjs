@@ -238,3 +238,51 @@ test("admin: the customer picker links a shipment from the edit form; the accoun
   assert.equal(await badge(cp), 0, "linking alone does not resend past updates");
   await ctx.close(); await page.close();
 });
+
+test("Firebase sign-in (as on the live site): the account check goes to the server, so a blocked browser database read can't leave it stuck on 'Signing in…'", async () => {
+  // Firebase Auth SDK stand-in: sign-in succeeds; any browser Firestore read never answers (what happened live)
+  const sdk = {
+    app: "export const initializeApp=()=>({}),getApps=()=>[];",
+    auth: `let user=null;const subs=[];const notify=()=>subs.forEach((f)=>f(user));
+      export const getAuth=()=>({get currentUser(){return user;}}),browserSessionPersistence={},setPersistence=async()=>{};
+      export const signInWithEmailAndPassword=async(a,email,pw)=>{ if(pw!=="secret-123") throw Object.assign(new Error("bad"),{code:"auth/invalid-credential"});
+        user={uid:"uid_fb_test",email,getIdToken:async()=>"fb-test-token"}; setTimeout(notify,0); return {user}; };
+      export const signOut=async()=>{user=null;setTimeout(notify,0);};
+      export const onAuthStateChanged=(a,cb)=>{subs.push(cb);setTimeout(()=>cb(user),0);return()=>{};};`,
+    firestore: "export const getFirestore=()=>({}),doc=()=>({}),getDoc=()=>new Promise(()=>{});"
+  };
+  for (const [scenario, meStatus, expect] of [["active account", 200, "dashboard"], ["inactive account", 403, "inactive"], ["server error", 500, "error"]]) {
+    const { ctx, page, errors } = await customerPage({ width: 390, height: 844 });
+    await ctx.route(/gstatic\.com\/firebasejs\/[^/]+\/firebase-(app|auth|firestore)\.js/, (r) => {
+      const kind = /firebase-(app|auth|firestore)\.js/.exec(r.request().url())[1];
+      return r.fulfill({ status: 200, contentType: "text/javascript", body: sdk[kind] });
+    });
+    const seen = [];
+    await ctx.route("**/api/customer", async (r) => {
+      const body = JSON.parse(r.request().postData() || "{}"); seen.push(body.action);
+      const json = (status, data) => r.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
+      if (body.action === "mode") return json(200, { signIn: "firebase" });
+      assert.equal(r.request().headers().authorization, "Bearer fb-test-token", "the Firebase ID token is sent");
+      if (body.action === "me") return meStatus === 200 ? json(200, { name: "Violet Test", email: "violet@test.example" }) : json(meStatus, { error: "x" });
+      if (body.action === "shipments") return json(200, { shipments: [] });
+      if (body.action === "notifications") return json(200, { items: [], unread: 0 });
+      return json(404, {});
+    });
+    await page.goto(`${base}/account.html`);
+    await page.waitForSelector("#acctEmail");
+    await page.fill("#acctEmail", "violet@test.example"); await page.fill("#acctPassword", "secret-123");
+    await page.click(".acct-submit");
+    if (expect === "dashboard") {
+      await page.waitForSelector(".acct-signout", { timeout: 8000 });
+      assert.match(await page.textContent("#acctTitle"), /Violet/);
+    } else {
+      // back on the sign-in form with a clear message, never stuck on "Signing in…"
+      await page.waitForFunction(() => document.querySelector(".acct-note")?.textContent.trim(), null, { timeout: 8000 });
+      assert.match(await page.textContent(".acct-note"), expect === "inactive" ? /not active/i : /reach the server/i, scenario);
+      assert.ok(!(await page.textContent("body")).includes("Signing in…"), scenario);
+    }
+    assert.ok(seen.includes("me"), `${scenario}: checked on the server`);
+    assert.deepEqual(errors, [], scenario);
+    await ctx.close();
+  }
+});
