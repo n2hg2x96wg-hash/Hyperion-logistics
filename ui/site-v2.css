@@ -451,3 +451,31 @@ html.hx-motion .journey-frame.is-visible .journey-media img { transform: scale(1
 @media (max-width: 640px) { .freight-network { border-radius: 18px; padding: 16px 12px 14px; } .ng-globe { margin: -6px -4px 0; width: calc(100% + 8px); max-width: none; }
   .ng-card { padding: 14px; min-height: 132px; } .ng-city strong { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .ng-card, .ng-globe canvas { transition: none; } }
+
+/* ---------- add to home screen (ui/app-install.js): My account card, "Get the app" dialog ---------- */
+.app-install { margin: 28px 0 0; padding: 20px; border-radius: var(--hy-radius-l); background: var(--hy-surface-strong);
+  border: 1px solid var(--hy-line); box-shadow: var(--hy-shadow); color: var(--hy-text); }
+.app-install-head { display: flex; align-items: center; gap: 14px; }
+.app-install-icon { flex: none; width: 56px; height: 56px; border-radius: 14px; }
+.app-install h2 { margin: 0; font-size: 18px; color: var(--hy-text); letter-spacing: -0.01em; }
+.app-install h3 { margin: 18px 0 0; font-size: 14px; color: var(--hy-text-2); }
+.app-install-text p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--hy-text-2); }
+.app-steps { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 10px; counter-reset: app-step; }
+.app-steps li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--hy-bg-1); border: 1px solid var(--hy-line); counter-increment: app-step; }
+.app-step-ico { flex: none; position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: #fff; background: var(--hy-blue); }
+.app-step-ico::after { content: counter(app-step); position: absolute; top: -6px; inset-inline-start: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px;
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; color: var(--hy-text); background: var(--hy-surface-strong); border: 1px solid var(--hy-line-strong); }
+.app-step-text { display: grid; gap: 2px; min-width: 0; font-size: 15px; line-height: 1.4; }
+.app-step-text strong { color: var(--hy-text); font-weight: 700; }
+.app-step-text small { color: var(--hy-muted); font-size: 13px; }
+.app-install-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 16px; }
+.app-install-go, .app-install-later { height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.app-install-go { color: #fff; background: var(--hy-blue); border: 0; }
+.app-install-later { color: var(--hy-text-2); background: transparent; border: 1px solid var(--hy-line-strong); }
+.app-install-go:focus-visible, .app-install-later:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+@media (max-width: 640px) { .app-install-actions > button { flex: 1; } }
+.app-dialog { width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 0; background: transparent; color: inherit; overflow: auto; }
+.app-dialog::backdrop { background: rgba(2, 6, 23, 0.6); backdrop-filter: blur(3px); }
+.app-dialog .app-install { margin: 0; }
+/* "Get the app" lives in the phone menu; the desktop header has no room for it */
+@media (min-width: 901px) { .nav-menu .nav-app { display: none; } }
