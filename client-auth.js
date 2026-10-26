@@ -50,14 +50,27 @@ export function createClientAuth(firebaseConfig, { sessionTimeoutMs = 30 * 60 * 
     return { id: profileSnap.id, ...profileSnap.data() };
   }
 
-  function monitorAuth({ onAuthorized, onUnauthorized, onTimeout }) {
+  /**
+   * verifyProfile(user) -> profile | null lets the caller check the account with its own server instead of reading
+   * Firestore from the browser (which depends on the deployed security rules). Any failure ends in onUnauthorized
+   * ("error"), never in a sign-in that waits forever.
+   */
+  function monitorAuth({ onAuthorized, onUnauthorized, onTimeout, verifyProfile }) {
     return onAuthStateChanged(auth, async (user) => {
       if (!user) {
         if (typeof onUnauthorized === "function") onUnauthorized();
         return;
       }
 
-      const profile = await getClientProfile(user.uid);
+      let profile;
+      try {
+        const check = verifyProfile ? verifyProfile(user) : getClientProfile(user.uid);
+        profile = await Promise.race([check, new Promise((_, reject) => setTimeout(() => reject(new Error("profile check timed out")), 15000))]);
+      } catch (err) {
+        await signOut(auth).catch(() => {});
+        if (typeof onUnauthorized === "function") onUnauthorized("error");
+        return;
+      }
       if (!profile || profile.status !== "active") {
         await signOut(auth);
         if (typeof onUnauthorized === "function") onUnauthorized("Account inactive or unavailable.");
