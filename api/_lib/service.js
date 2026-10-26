@@ -8,8 +8,7 @@ import {
 } from "../../shared/status.js";
 import {
   ValidationError, cleanText, parseEmail, parseCustomerId, normalizeTrackingCode, parseCoordinate, parseStatus, parseIsoDateTime,
-  parseDateOnly, parseExceptionType, parseVisibility, parsePackage, parseCoordinatePair, parsePastTimestamp
-} from "./validate.js";
+  parseDateOnly, parseExceptionType, parseVisibility, parsePackage, parseCoordinatePair, parsePastTimestamp, parseCharges } from "./validate.js";
 import { buildClientView } from "./client-view.js";
 import { notifyEvents } from "./notifications.js";
 import { geocode } from "./geocode.js";
@@ -35,7 +34,8 @@ export function generateTrackingCode(prefix = "HY") {
 
 const SIMPLE_TEXT = {
   courier: 60, courierTrackingNumber: 80, serviceType: 80, clientRef: 120, origin: 160, destination: 160,
-  distance: 40, fee: 40, notes: 1000, internalNotes: 2000, eta: 80
+  distance: 40, fee: 40, notes: 1000, internalNotes: 2000, eta: 80,
+  pickupAddress: 300, deliveryAddress: 300 // full street addresses: admin-only, never in the tracking view
 };
 
 /** Validate an untrusted patch into normalized field changes. Only known fields survive. */
@@ -64,6 +64,7 @@ export function parsePatch(input = {}) {
   if (p.etaWindowStart && p.etaWindowEnd && p.etaWindowEnd < p.etaWindowStart) throw new ValidationError("ETA window end must be after start", "etaWindowEnd");
   if (!!p.etaWindowStart !== !!p.etaWindowEnd && ("etaWindowStart" in p) && ("etaWindowEnd" in p)) throw new ValidationError("Provide both ETA window start and end", "etaWindowStart");
   if ("package" in input) p.package = parsePackage(input.package);
+  if ("charges" in input) p.charges = parseCharges(input.charges);
   if ("visibility" in input) p.visibility = parseVisibility(input.visibility);
   if ("publicMap" in input) {
     if (typeof input.publicMap !== "boolean") throw new ValidationError("publicMap must be true or false", "publicMap");
@@ -81,7 +82,8 @@ export function parsePatch(input = {}) {
 }
 
 const TRACKED = ["courier", "courierTrackingNumber", "serviceType", "clientRef", "origin", "destination", "distance", "fee", "notes",
-  "internalNotes", "notifyEmail", "customerId", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package"];
+  "internalNotes", "notifyEmail", "customerId", "eta", "originLat", "originLng", "destinationLat", "destinationLng", "etaDate", "etaWindowStart", "etaWindowEnd", "package",
+  "charges", "pickupAddress", "deliveryAddress"];
 
 /**
  * Pure: given the current document and a validated patch, compute the next document plus the events,
@@ -327,6 +329,10 @@ export async function updateShipment(identity, codeInput, input, opts = {}) {
   const existing = await store.getShipment(code);
   if (!existing) throw new ServiceError("not_found", "Shipment not found", 404);
   if (patch.customerId && patch.customerId !== existing.customerId) await assertCustomerAccount(store, patch.customerId);
+  // moving a shipment from one customer to another must be deliberate
+  if (patch.customerId && existing.customerId && patch.customerId !== existing.customerId && input.confirmReassign !== true) {
+    throw new ServiceError("reassign_confirm", "This shipment belongs to another customer. Confirm that you want to move it to the selected customer.", 409);
+  }
   if (patch.origin && patch.origin !== existing.origin && !("originLat" in patch)) {
     const g = await geocode(patch.origin); if (g) { patch.originLat = g.lat; patch.originLng = g.lng; patch.__originGeo = true; }
   }

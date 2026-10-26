@@ -14,10 +14,11 @@ import { listProviders } from "./_lib/providers/index.js";
 import { resolveMapConfig } from "./_lib/map-config.js";
 import * as couriers from "./_lib/couriers.js";
 import * as clients from "./_lib/clients.js";
+import { registerShipment } from "./_lib/registration.js";
 
 const PERMISSION = {
   me: "read", logout: "read", stats: "read", list: "read", get: "read", preview: "read", audit: "read", settings: "read",
-  create: "write", update: "write", updateLocation: "location", addEvent: "event", setVisibility: "visibility",
+  create: "write", registerShipment: "write", update: "write", updateLocation: "location", addEvent: "event", setVisibility: "visibility",
   archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate",
   globalMap: "read", locationHealth: "read", backup: "migrate", backupDone: "migrate",
   listCouriers: "read", saveCourier: "couriers", setCourierState: "couriers",
@@ -77,6 +78,12 @@ export default async function handler(req, res) {
         const shipment = { ...(body.shipment || {}) };
         if ("customerId" in shipment && !can(identity.role, "clients")) delete shipment.customerId; // linking a customer account needs client access
         return send(res, 200, { shipment: await svc.createShipment(identity, shipment) });
+      }
+      case "registerShipment": {
+        // choosing or creating a customer account needs client access; without it only an unlinked shipment can be saved
+        const mode = body.customer?.mode || "none";
+        if (mode !== "none" && !can(identity.role, "clients")) return send(res, 403, { error: "forbidden", message: "Your role can't choose or create customer accounts." });
+        return send(res, 200, await registerShipment(identity, body));
       }
       case "update": {
         const patch = { ...(body.changes || {}) };

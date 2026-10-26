@@ -15,16 +15,21 @@ export default async function handler(req, res) {
     courierWebhook: env("PROVIDER_GENERIC_SECRET")
   };
   const map = resolveMapConfig();
-  let database = "unknown";
+  let database = "unknown"; let clientSignIn = "unknown";
   try {
     const store = await getStore();
     await Promise.race([store.getShipment("HEALTHCHECK-PROBE"), new Promise((_, r) => setTimeout(() => r(new Error("timeout")), 5000))]);
     database = `ok (${store.kind})`;
+    // client accounts (admin Clients tab, customer sign-in) need Firebase Authentication with Email/Password enabled
+    const auth = await Promise.race([store.clientSignInStatus?.() ?? "unknown", new Promise((r) => setTimeout(() => r("timeout"), 5000))]);
+    clientSignIn = auth === "ok" ? "ok" : auth === "not_configured"
+      ? "not configured - enable Authentication > Sign-in method > Email/Password in the Firebase console" : `unavailable (${auth})`;
   } catch { database = "unreachable - check FIREBASE_SERVICE_ACCOUNT"; }
   const ready = checks.firebaseServiceAccount && checks.adminPassword && checks.sessionSecret && database.startsWith("ok");
   send(res, ready ? 200 : 503, {
     ready,
     database,
+    clientSignIn,
     required: { FIREBASE_SERVICE_ACCOUNT: checks.firebaseServiceAccount, ADMIN_PASSWORD: checks.adminPassword, SESSION_SECRET_16plus_chars: checks.sessionSecret },
     map: { provider: map.label, keyConfigured: map.keyConfigured, issues: map.issues },
     optional: { MAP_PROVIDER_or_MAP_TILE_URL: map.primary !== "osm", NOTIFY_WEBHOOK_URL: checks.notifications, RESEND_API_KEY_and_NOTIFY_EMAIL_FROM: checks.emailNotifications, PROVIDER_GENERIC_SECRET: checks.courierWebhook },

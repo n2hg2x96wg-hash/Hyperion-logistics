@@ -449,7 +449,7 @@ test("clients: admin-only list, deactivate/restore, permanent delete scoped to o
   assert.equal(r.status, 200);
   const ada = r.json.clients.find((c) => c.id === "uidClientAaaa");
   assert.equal(ada.email, "ada@client.test"); assert.equal(ada.registeredAt, "2026-08-01T10:00:00.000Z"); assert.equal(ada.lastActivityAt, "2026-09-30T09:00:00.000Z");
-  assert.equal(ada.shipments.linked, false);
+  assert.equal(ada.shipments.linked, true); assert.equal(ada.shipments.count, 0, "shipments are counted by their customer link");
   assert.ok(!JSON.stringify(r.json).includes("legacy-hash"), "password hashes are never returned");
   assert.ok(r.json.deletionPolicy.keeps.some((k) => /shipments/i.test(k)));
   assert.equal(r.json.accountsWithoutProfile, 0, "every sign-in account in the seed has a client profile");

@@ -37,8 +37,16 @@ export function setupAdminClients({ api, showToast }) {
   let loading = false;
   let deleting = null; // client being deleted (prevents duplicate requests)
 
-  const statusOption = $("clientStatus");
-  if (statusOption) { statusOption.options[0].textContent = "Active"; statusOption.options[1].textContent = "Deactivated"; }
+  const STATUS_LABEL = { active: "Active", pending: "Pending", suspended: "Suspended" };
+  const statusOf = (c) => (c.status === "active" || c.status === "pending" ? c.status : "suspended");
+  const formErr = $("clientFormErr");
+  function showFormError(message, field) {
+    form.querySelectorAll("[aria-invalid]").forEach((el) => el.removeAttribute("aria-invalid"));
+    formErr.textContent = message || ""; formErr.hidden = !message;
+    const input = field && { name: "clientName", email: "clientEmail", password: "clientPassword", phone: "clientPhone", status: "clientStatus", adminNotes: "clientAdminNotes",
+      xrp_holdings: "clientXrpHoldings", tsla_holdings: "clientTslaHoldings", max_xrp: "clientMaxXrp", max_tsla: "clientMaxTsla" }[field];
+    if (input && $(input)) { $(input).setAttribute("aria-invalid", "true"); $(input).focus(); }
+  }
 
   function calculatePortfolioValue(client) {
     const holdings = client.portfolios || {};
@@ -46,12 +54,13 @@ export function setupAdminClients({ api, showToast }) {
   }
 
   function renderSummary() {
-    const activeCount = clients.filter((client) => client.status === "active").length;
+    const by = (st) => clients.filter((client) => statusOf(client) === st).length;
     const totalValue = clients.reduce((acc, client) => acc + calculatePortfolioValue(client), 0);
     stats.innerHTML = `
       <div class="courier-stat"><span>Total Clients</span><strong>${clients.length}</strong></div>
-      <div class="courier-stat"><span>Active</span><strong>${activeCount}</strong></div>
-      <div class="courier-stat"><span>Deactivated</span><strong>${clients.length - activeCount}</strong></div>
+      <div class="courier-stat"><span>Active</span><strong>${by("active")}</strong></div>
+      <div class="courier-stat"><span>Pending</span><strong>${by("pending")}</strong></div>
+      <div class="courier-stat"><span>Suspended</span><strong>${by("suspended")}</strong></div>
       <div class="courier-stat"><span>Portfolio Value</span><strong>$${totalValue.toFixed(2)}</strong></div>
     `;
   }
@@ -60,7 +69,7 @@ export function setupAdminClients({ api, showToast }) {
     const q = ($("clientSearch")?.value || "").trim().toLowerCase();
     const st = $("clientStatusFilter")?.value || "all";
     const sort = $("clientSort")?.value || "registered-desc";
-    const rows = clients.filter((c) => (st === "all" || c.status === st) && (!q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)));
+    const rows = clients.filter((c) => (st === "all" || statusOf(c) === st) && (!q || c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.phone || "").includes(q)));
     const t = (c) => (c.registeredAt ? Date.parse(c.registeredAt) : 0);
     rows.sort(sort === "name-asc" ? (a, b) => a.name.localeCompare(b.name) : sort === "registered-asc" ? (a, b) => t(a) - t(b) : (a, b) => t(b) - t(a));
     return rows;
@@ -75,14 +84,15 @@ export function setupAdminClients({ api, showToast }) {
     }
     table.innerHTML = rows.map((client) => {
       const id = safeText(client.id);
-      const active = client.status === "active";
+      const active = client.status === "active"; const st = statusOf(client);
+      const count = client.shipments?.count;
       return `
         <tr data-client="${id}">
           <td class="client-name" data-label="Name">${safeText(client.name || "--")}</td>
           <td data-label="Email">${safeText(client.email || "--")}</td>
           <td data-label="Registered">${safeText(fmtDate(client.registeredAt))}</td>
-          <td data-label="Status"><span class="client-state ${active ? "active" : "inactive"}">${active ? "Active" : "Deactivated"}</span></td>
-          <td data-label="Shipments"><span title="Shipments are not linked to client accounts in the current data model">Not linked</span></td>
+          <td data-label="Status"><span class="client-state ${st === "active" ? "active" : st === "pending" ? "pending" : "inactive"}">${STATUS_LABEL[st]}</span></td>
+          <td data-label="Shipments">${count == null ? "—" : count}</td>
           <td data-label="Last activity">${safeText(fmtDateTime(client.lastActivityAt))}</td>
           <td data-label="Portfolio">$${calculatePortfolioValue(client).toFixed(2)}</td>
           <td data-label="Actions">
@@ -90,7 +100,7 @@ export function setupAdminClients({ api, showToast }) {
               <button type="button" class="btn-action" data-action="view" data-id="${id}">View</button>
               <button type="button" class="btn-action" data-action="edit" data-id="${id}">Edit</button>
               <button type="button" class="btn-action" data-action="quick" data-id="${id}">Quick Edit</button>
-              <button type="button" class="btn-action" data-action="toggle" data-id="${id}">${active ? "Deactivate" : "Restore"}</button>
+              <button type="button" class="btn-action" data-action="toggle" data-id="${id}">${active ? "Suspend" : "Activate"}</button>
               <button type="button" class="btn-action btn-delete-client" data-action="delete" data-id="${id}">Delete Client</button>
             </div>
           </td>
@@ -129,8 +139,11 @@ export function setupAdminClients({ api, showToast }) {
     $("clientName").value = selected.name || "";
     $("clientEmail").value = selected.email || "";
     $("clientPassword").value = "";
-    $("clientPassword").placeholder = "New password (leave blank to keep)";
-    $("clientStatus").value = selected.status || "active";
+    $("clientPasswordLabel").textContent = "New password (leave blank to keep the current one)";
+    $("clientStatus").value = statusOf(selected);
+    $("clientPhone").value = selected.phone || "";
+    $("clientAdminNotes").value = selected.adminNotes || "";
+    showFormError("");
     $("clientXrpHoldings").value = toNumber(selected.portfolios?.xrp_holdings);
     $("clientTslaHoldings").value = toNumber(selected.portfolios?.tsla_holdings);
     $("clientMaxXrp").value = toNumber(selected.restrictions?.max_xrp);
@@ -146,8 +159,9 @@ export function setupAdminClients({ api, showToast }) {
     submitBtn.innerText = "Save Client";
     cancelBtn.style.display = "none";
     $("clientEmail").readOnly = false;
-    $("clientPassword").placeholder = "Password (required for new)";
+    $("clientPasswordLabel").textContent = "Initial password * (6+ characters)";
     $("clientStatus").value = "active";
+    showFormError("");
   }
 
   async function refreshPrices() {
@@ -165,12 +179,19 @@ export function setupAdminClients({ api, showToast }) {
     event.preventDefault();
     const client = {
       name: $("clientName").value.trim(), email: $("clientEmail").value.trim().toLowerCase(), password: $("clientPassword").value,
-      status: $("clientStatus").value, xrp_holdings: toNumber($("clientXrpHoldings").value), tsla_holdings: toNumber($("clientTslaHoldings").value),
+      status: $("clientStatus").value, phone: $("clientPhone").value.trim(), adminNotes: $("clientAdminNotes").value.trim(),
+      xrp_holdings: toNumber($("clientXrpHoldings").value), tsla_holdings: toNumber($("clientTslaHoldings").value),
       max_xrp: toNumber($("clientMaxXrp").value), max_tsla: toNumber($("clientMaxTsla").value)
     };
-    if (!client.name || (!editingClientId && !client.email)) { showToast("Client name and email are required", "error"); return; }
-    if (!editingClientId && !client.password) { showToast("Password is required for new clients", "error"); return; }
-    const btn = form.querySelector('button[type="submit"]'); btn.disabled = true;
+    // the same checks the server makes, so mistakes show before sending (the server still checks everything)
+    if (!client.name) { showFormError("Enter the customer's full name.", "name"); return; }
+    if (!editingClientId && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(client.email)) { showFormError("Enter a valid email address.", "email"); return; }
+    if (!editingClientId && !client.password) { showFormError("Set an initial password for the new customer.", "password"); return; }
+    if (client.password && client.password.length < 6) { showFormError("The password needs at least 6 characters.", "password"); return; }
+    if (client.phone && !/^\+?[0-9 ()./-]{6,24}$/.test(client.phone)) { showFormError("Enter the phone number with digits only (spaces, +, - and brackets allowed).", "phone"); return; }
+    showFormError("");
+    const btn = form.querySelector('button[type="submit"]'); if (btn.disabled) return;
+    btn.disabled = true; const label = submitBtn.innerText; submitBtn.innerText = "Saving…";
     try {
       await refreshPrices();
       const res = await api("saveClient", editingClientId
@@ -180,9 +201,14 @@ export function setupAdminClients({ api, showToast }) {
       resetForm();
       await loadClients({ quiet: true });
     } catch (error) {
-      if (!error.silent) showToast(`Client save failed: ${error.message}`, "error");
+      // keep everything typed so far; say what went wrong and point at the field when the server named one
+      if (!error.silent) {
+        const msg = error.code === "network" ? "The connection dropped before the client was saved. Check your connection and try again; nothing you typed was lost." : error.message;
+        showFormError(`Client not saved: ${msg}`, error.field);
+        showToast(`Client not saved: ${msg}`, "error");
+      }
     } finally {
-      btn.disabled = false;
+      btn.disabled = false; submitBtn.innerText = label;
     }
   }
 
@@ -208,8 +234,8 @@ export function setupAdminClients({ api, showToast }) {
   async function toggleStatus(clientId) {
     const selected = clients.find((client) => client.id === clientId);
     if (!selected) return;
-    const next = selected.status === "active" ? "inactive" : "active";
-    if (next === "inactive" && !confirm(`Deactivate ${selected.name || selected.email}? They will be signed out and unable to sign in until restored. Nothing is deleted.`)) return;
+    const next = selected.status === "active" ? "suspended" : "active";
+    if (next === "suspended" && !confirm(`Suspend ${selected.name || selected.email}? They will be signed out and unable to sign in until activated again. Nothing is deleted.`)) return;
     try {
       const res = await api("setClientStatus", { id: clientId, status: next });
       showToast(res.message, "success");
@@ -229,12 +255,13 @@ export function setupAdminClients({ api, showToast }) {
     if (!c) return;
     $("clientViewTitle").textContent = c.name || c.email;
     const rows = [
-      ["Email", c.email], ["Status", c.status === "active" ? "Active" : "Deactivated (cannot sign in)"],
+      ["Email", c.email], ["Phone", c.phone || "—"], ["Status", statusOf(c) === "active" ? "Active (can sign in)" : `${STATUS_LABEL[statusOf(c)]} (cannot sign in)`],
       ["Registered", fmtDateTime(c.registeredAt)], ["Last activity", fmtDateTime(c.lastActivityAt)], ["Last sign-in", fmtDateTime(c.lastSignInAt)],
       ["Sign-in account", c.hasSignIn ? (c.signInDisabled ? "Exists (disabled)" : "Exists (enabled)") : "Not found"],
       ["XRP holdings", toNumber(c.portfolios?.xrp_holdings).toFixed(4)], ["TSLA holdings", toNumber(c.portfolios?.tsla_holdings).toFixed(4)],
       ["Limits", `XRP ${toNumber(c.restrictions?.max_xrp).toFixed(2)} · TSLA ${toNumber(c.restrictions?.max_tsla).toFixed(2)}`],
-      ["Portfolio value", `$${calculatePortfolioValue(c).toFixed(2)}`], ["Shipments", "Not linked to client accounts"], ["Client ID", c.id]
+      ["Portfolio value", `$${calculatePortfolioValue(c).toFixed(2)}`], ["Shipments", c.shipments?.count == null ? "—" : String(c.shipments.count)],
+      ["Admin notes", c.adminNotes || "—"], ["Client ID", c.id]
     ];
     $("clientViewBody").innerHTML = rows.map(([k, v]) => `<dt>${safeText(k)}</dt><dd>${safeText(v)}</dd>`).join("");
     openModal("clientViewModal");
@@ -306,8 +333,8 @@ export function setupAdminClients({ api, showToast }) {
     if (!clients.length) { showToast("No clients to export", "error"); return; }
     const cell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const csv = [
-      "Client ID,Name,Email,Status,Registered,Last activity,XRP Holdings,TSLA Holdings,Max XRP,Max TSLA,Portfolio Value",
-      ...clients.map((c) => [c.id, c.name, c.email, c.status, c.registeredAt || "", c.lastActivityAt || "", toNumber(c.portfolios?.xrp_holdings), toNumber(c.portfolios?.tsla_holdings),
+      "Client ID,Name,Email,Phone,Status,Shipments,Registered,Last activity,XRP Holdings,TSLA Holdings,Max XRP,Max TSLA,Portfolio Value",
+      ...clients.map((c) => [c.id, c.name, c.email, c.phone || "", statusOf(c), c.shipments?.count ?? "", c.registeredAt || "", c.lastActivityAt || "", toNumber(c.portfolios?.xrp_holdings), toNumber(c.portfolios?.tsla_holdings),
         toNumber(c.restrictions?.max_xrp), toNumber(c.restrictions?.max_tsla), calculatePortfolioValue(c).toFixed(2)].map(cell).join(","))
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

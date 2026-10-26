@@ -130,3 +130,42 @@ export function parsePackage(input) {
     pieces: cleanText(input.pieces, { max: 10, field: "package pieces" })
   };
 }
+
+// ---------- shipment charges ----------
+// Amounts are kept as whole cents (integers), so totals never pick up floating-point error. One currency per shipment:
+// nothing is converted, and the total is always computed here from the lines (never taken from the client).
+export const CHARGE_LINES = ["shipping", "customs", "handling", "insurance", "other"];
+export const PAYMENT_STATUSES = ["unpaid", "partial", "paid"];
+const CURRENCIES = (() => { try { return new Set(Intl.supportedValuesOf("currency")); } catch { return null; } })();
+const MAX_CENTS = 100_000_000_000; // 1,000,000,000.00
+
+/** "1,234.5" / 1234.5 / "" -> cents (integer) or 0. At most 2 decimals; never negative. */
+export function parseMoney(value, field) {
+  if (value == null || value === "") return 0;
+  const text = String(value).replace(/[\s,]/g, "");
+  const m = /^(\d{1,12})(?:\.(\d{0,2}))?$/.exec(text);
+  if (!m) throw new ValidationError("Enter an amount like 1250 or 1250.50 (no currency symbols, at most 2 decimals)", field);
+  const cents = Number(m[1]) * 100 + Number((m[2] || "").padEnd(2, "0"));
+  if (cents > MAX_CENTS) throw new ValidationError("Amount is too large", field);
+  return cents;
+}
+
+/** Validated charges, or null to clear them. */
+export function parseCharges(input) {
+  if (input == null) return null;
+  if (typeof input !== "object") throw new ValidationError("charges must be an object", "charges");
+  const lines = Object.fromEntries(CHARGE_LINES.map((k) => [k, parseMoney(input[k], `fee_${k}`)]));
+  const total = CHARGE_LINES.reduce((sum, k) => sum + lines[k], 0);
+  const currency = cleanText(input.currency, { max: 3, field: "currency" }).toUpperCase();
+  if (total > 0 && !currency) throw new ValidationError("Choose the currency for these charges", "currency");
+  if (currency && (!/^[A-Z]{3}$/.test(currency) || (CURRENCIES && !CURRENCIES.has(currency)))) throw new ValidationError("Choose a valid currency code, e.g. USD, EUR or NGN", "currency");
+  const paymentStatus = input.paymentStatus == null || input.paymentStatus === "" ? "unpaid" : String(input.paymentStatus);
+  if (!PAYMENT_STATUSES.includes(paymentStatus)) throw new ValidationError("Choose Unpaid, Partially paid or Paid", "paymentStatus");
+  const otherLabel = cleanText(input.otherLabel, { max: 80, field: "other charge description" });
+  if (lines.other > 0 && !otherLabel) throw new ValidationError("Describe the other charge", "otherLabel");
+  return { currency: currency || null, ...lines, otherLabel: lines.other > 0 ? otherLabel : "", total, paymentStatus,
+    note: cleanText(input.note, { max: 500, field: "fee note" }) };
+}
+
+/** cents -> "1234.50" (plain, for forms and exports). */
+export const centsToAmount = (cents) => `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, "0")}`;

@@ -305,6 +305,19 @@ export function createTracker(root, opts = {}) {
     return `<div class="hx-fact hx-fact-eta ${cls}"><div class="hx-fact-label">${ICON.clock} ${esc(label)}</div><div class="hx-fact-value">${main}</div>${sub ? `<div class="hx-fact-sub">${esc(sub)}</div>` : ""}</div>`;
   }
 
+  /** Itemised fees in the shipment's own currency (never converted); amounts arrive as whole cents. */
+  function chargesItem(ch, attrs) {
+    const fmt = (c) => {
+      const n = c / 100;
+      try { if (ch.currency) return new Intl.NumberFormat(document.documentElement.lang || "en", { style: "currency", currency: ch.currency }).format(n); } catch { /* unknown currency code */ }
+      return `${ch.currency ? `${ch.currency} ` : ""}${n.toFixed(2)}`;
+    };
+    const lines = (ch.lines || []).map((l) => `<li><span>${esc(l.type === "other" && l.label ? l.label : t(`tr.charge.${l.type === "other" ? "misc" : l.type}`))}</span><bdi>${esc(fmt(l.cents))}</bdi></li>`).join("");
+    const pay = `<span class="hx-pay is-${esc(ch.paymentStatus)}">${esc(t(`tr.pay.${ch.paymentStatus}`))}</span>`;
+    return `<div class="hx-info hx-charges" ${attrs}><div class="hx-info-label">${ICON.money} ${esc(t("tr.charges"))}</div>
+      <div class="hx-info-value"><bdi>${esc(fmt(ch.totalCents))}</bdi> ${pay}</div>${lines ? `<ul class="hx-charge-lines">${lines}</ul>` : ""}</div>`;
+  }
+
   function infoItem(icon, label, value, extra = "", attrs = "") {
     if (!value) return "";
     return `<div class="hx-info" ${attrs}><div class="hx-info-label">${icon} ${esc(label)}</div><div class="hx-info-value">${value}</div>${extra}</div>`;
@@ -380,7 +393,7 @@ export function createTracker(root, opts = {}) {
           ${infoItem(ICON.route, t("route.destination"), v.destination ? esc(v.destination) : "", "", R())}
           ${infoItem(ICON.truck, t("tr.carrier"), carrierBits, carrierExtra, R())}
           ${infoItem(ICON.box, t("tr.package"), pkgText, pkg?.distance ? `<div class="hx-info-sub">${esc(t("tr.distance", { km: pkg.distance }))}</div>` : "", R())}
-          ${infoItem(ICON.money, t("tr.fee"), v.fee ? `<bdi>${esc(v.fee)}</bdi>` : "", "", R())}
+          ${v.charges ? chargesItem(v.charges, R()) : infoItem(ICON.money, t("tr.fee"), v.fee ? `<bdi>${esc(v.fee)}</bdi>` : "", "", R())}
         </div>
       </section>
       ${v.notes ? `<section class="hx-card" ${R()}><h3 class="hx-h">${ICON.note} ${esc(t("tr.notes"))}</h3><p class="hx-notes">${esc(v.notes)}</p></section>` : ""}
