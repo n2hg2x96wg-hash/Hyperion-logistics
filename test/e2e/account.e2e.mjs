@@ -318,13 +318,42 @@ test("install card on iPhone: Share → Add to Home Screen steps (Safari has no 
   await ctx.route(/(fonts\.|tawk\.to|gstatic\.com|tile\.|arcgisonline|cdn\.jsdelivr\.net)/, (r) => r.abort());
   const page = await ctx.newPage(); const errors = []; page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(`${base}/account.html`); await page.waitForSelector(".app-install");
-  assert.match(await page.textContent(".app-install"), /Add to Home Screen/);
+  // three numbered steps with icons: Share, Add to Home Screen, Add
+  assert.equal(await page.locator(".app-install .app-steps li").count(), 3);
+  assert.match(await page.textContent(".app-install .app-steps"), /Share.*Add to Home Screen.*Add/s);
+  assert.equal(await page.locator(".app-install .app-step-ico svg").count(), 3);
   assert.equal(await page.locator(".app-install-go").count(), 0);
   if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/install-iphone.png`, fullPage: true });
   // in Spanish too
   await page.click(".nav-toggle"); await page.selectOption("#hxLangMenu", "es");
   await page.waitForFunction(() => /Añadir a pantalla de inicio/.test(document.querySelector(".app-install")?.textContent || ""));
   assert.ok(await noOverflow(page));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("Android without a browser prompt: the card shows the menu steps; 'Get the app' in the phone menu opens them on any page, even after 'Not now'", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Mobile Safari/537.36" });
+  await ctx.addInitScript(() => { window.HX_3D_PERF_CHECK = false; });
+  await ctx.route(/(fonts\.|tawk\.to|gstatic\.com|tile\.|arcgisonline|cdn\.jsdelivr\.net)/, (r) => r.abort());
+  const page = await ctx.newPage(); const errors = []; page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${base}/account.html`); await page.waitForSelector(".app-install .app-steps");
+  assert.match(await page.textContent(".app-install .app-steps"), /browser menu.*Install app.*Install/s);
+  await page.click(".app-install-later");
+  assert.equal(await page.locator(".app-install").count(), 0);
+  // another page: the menu item still opens the steps
+  await page.goto(`${base}/track.html`);
+  await page.click(".nav-toggle"); await page.click("[data-get-app]");
+  await page.waitForSelector("dialog.app-dialog[open] .app-steps");
+  assert.equal(await page.locator("dialog.app-dialog[open] .app-steps li").count(), 3);
+  assert.ok(await page.evaluate(() => { const r = document.querySelector("dialog.app-dialog").getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), "dialog fits the screen");
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/get-app-dialog-android.png` });
+  await page.click("dialog.app-dialog [data-close]");
+  assert.equal(await page.locator("dialog.app-dialog[open]").count(), 0);
+  // the menu item is a phone-menu entry only
+  await page.setViewportSize({ width: 1280, height: 900 });
+  assert.equal(await page.isVisible("[data-get-app]"), false);
   assert.deepEqual(errors, []);
   await ctx.close();
 });
