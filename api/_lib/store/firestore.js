@@ -330,12 +330,14 @@ export function createFirestoreStore() {
     },
     async completeRegistration(id, result) { await db.collection("registrations").doc(id).set({ state: "done", result, at: new Date().toISOString() }); },
     async releaseRegistration(id) { await db.collection("registrations").doc(id).delete(); },
-    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
+    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled, email, previousEmail } = {}) {
       const ref = db.collection("clients").doc(uid);
       if (!(await ref.get()).exists) throw Object.assign(new Error("missing"), { code: "client_missing" });
       const auth = getAuth(app);
-      if (password || disabled !== undefined) {
-        await auth.updateUser(uid, { ...(password ? { password } : {}), ...(disabled !== undefined ? { disabled } : {}) }).catch((err) => { if (err?.code !== "auth/user-not-found") throw err; });
+      if (password || disabled !== undefined || email) {
+        // a new sign-in email is checked by Firebase (unique, valid) before the profile changes
+        await auth.updateUser(uid, { ...(password ? { password } : {}), ...(disabled !== undefined ? { disabled } : {}), ...(email ? { email } : {}) })
+          .catch((err) => { if (err?.code !== "auth/user-not-found") throw err; });
       }
       const batch = db.batch();
       const { admin_notes: notes, ...pub } = patch; // admin notes go to the admin-only client_private/{uid}
@@ -345,8 +347,10 @@ export function createFirestoreStore() {
       if (auditEntry) batch.set(db.collection("audit_logs").doc(), auditEntry);
       try { await batch.commit(); }
       catch (err) {
-        // the profile did not change: put sign-in back the way it was, so status and sign-in never disagree
-        if (disabled !== undefined) await auth.updateUser(uid, { disabled: !disabled }).catch(() => {});
+        // the profile did not change: put sign-in back the way it was, so status, email and sign-in never disagree
+        if (disabled !== undefined || (email && previousEmail)) {
+          await auth.updateUser(uid, { ...(disabled !== undefined ? { disabled: !disabled } : {}), ...(email && previousEmail ? { email: previousEmail } : {}) }).catch(() => {});
+        }
         throw err;
       }
     },

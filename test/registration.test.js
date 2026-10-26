@@ -199,3 +199,24 @@ test("register: refused without an admin session; existing data untouched", asyn
   const list = await admin({ action: "list", limit: 100 });
   assert.ok(list.json.items.length >= 1);
 });
+
+test("clients: the sign-in email can be corrected; the client then signs in with the new one; duplicates and invalid emails are refused", async () => {
+  let r = await admin({ action: "saveClient", mode: "create", client: { name: "Vera Typo", email: "vera@gmil.com", password: "secret-123", status: "active" } });
+  assert.equal(r.status, 200); const id = r.json.client.id;
+  assert.equal((await signIn("vera@gmil.com", "secret-123")).status, 200);
+  r = await admin({ action: "saveClient", mode: "update", id, client: { name: "Vera Typo", email: "Vera@Gmail.com", status: "active" } });
+  assert.equal(r.status, 200, JSON.stringify(r.json)); assert.match(r.json.message, /vera@gmail\.com/);
+  assert.equal((await admin({ action: "getClient", id })).json.client.email, "vera@gmail.com");
+  assert.equal((await signIn("vera@gmail.com", "secret-123")).status, 200, "new email works, same password");
+  assert.equal((await signIn("vera@gmil.com", "secret-123")).status, 401, "old email no longer works");
+  // another client's email is refused, nothing changes
+  const other = await admin({ action: "saveClient", mode: "create", client: { name: "Walt", email: "walt@test.example", password: "secret-123", status: "active" } });
+  r = await admin({ action: "saveClient", mode: "update", id: other.json.client.id, client: { name: "Walt", email: "vera@gmail.com", status: "active" } });
+  assert.equal(r.status, 409);
+  assert.equal((await admin({ action: "getClient", id: other.json.client.id })).json.client.email, "walt@test.example");
+  r = await admin({ action: "saveClient", mode: "update", id, client: { name: "Vera Typo", email: "not-an-email", status: "active" } });
+  assert.equal(r.status, 400); assert.equal(r.json.field, "email");
+  // leaving the email out (e.g. Quick Edit) keeps it
+  r = await admin({ action: "saveClient", mode: "update", id, client: { name: "Vera Typo", status: "active", xrp_holdings: 1 } });
+  assert.equal(r.status, 200); assert.equal((await admin({ action: "getClient", id })).json.client.email, "vera@gmail.com");
+});

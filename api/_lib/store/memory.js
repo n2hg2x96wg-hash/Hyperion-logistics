@@ -188,9 +188,11 @@ export function createMemoryStore(seed = {}) {
       if (auditEntry) audit.push({ ...clone(auditEntry), client: uid });
       return uid;
     },
-    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled } = {}) {
+    async updateClientRecord(uid, patch, { password, history, auditEntry, disabled, email } = {}) {
       if (!clients.has(uid)) throw Object.assign(new Error("missing"), { code: "client_missing" });
       const u = authUsers.get(uid);
+      if (email && [...authUsers.entries()].some(([id, x]) => id !== uid && x.email === email)) throw Object.assign(new Error("exists"), { code: "auth/email-already-exists" });
+      if (u && email) u.email = email;
       if ((password || disabled !== undefined) && faults.has("authNotConfigured")) throw Object.assign(new Error("There is no configuration corresponding to the provided identifier."), { code: "auth/configuration-not-found" });
       if (u && password) u.password = password;
       if (u && disabled !== undefined) u.disabled = disabled;

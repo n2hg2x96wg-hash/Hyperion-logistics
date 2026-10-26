@@ -158,7 +158,7 @@ export async function createClient(identity, c, { history = null, signInEnabled 
   return { uid, profile: { ...profile, email } };
 }
 
-/** Create (mode "create") or edit (mode "update"). Email is the sign-in identity and is fixed after creation. */
+/** Create (mode "create") or edit (mode "update"). Editing the email changes the client's sign-in email too. */
 export async function saveClient(identity, input = {}) {
   const store = await getStore();
   const c = input.client || {};
@@ -172,13 +172,25 @@ export async function saveClient(identity, input = {}) {
   const uid = parseUid(input.id);
   const existing = await store.getClientRecord(uid);
   if (!existing) throw new ServiceError("not_found", "This client no longer exists. The list has been refreshed.", 404);
+  // the sign-in email can be corrected: it changes in Firebase Authentication and in the profile together
+  let email;
+  if (c.email !== undefined && String(c.email).trim().toLowerCase() !== String(existing.email || "").toLowerCase()) {
+    email = String(c.email).trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) throw new ValidationError("A valid email address is required.", "email");
+    if ((await store.listClientRecords()).some((r) => r.id !== uid && String(r.email || "").toLowerCase() === email)) {
+      throw new ServiceError("duplicate", "Another client already uses this email.", 409);
+    }
+  }
   const wasActive = normalizeClientStatus(existing.status) === "active"; const isActive = profile.status === "active";
-  await withAuthErrors(() => store.updateClientRecord(uid, profile, {
+  await withAuthErrors(() => store.updateClientRecord(uid, { ...profile, ...(email ? { email } : {}) }, {
     password: password || undefined, history: historyFrom(input),
     disabled: wasActive !== isActive ? !isActive : undefined,
-    auditEntry: audit(identity, "client.updated", uid, { email: existing.email || null, next: { status: profile.status, ...(password ? { password: "changed" } : {}) } })
+    email, previousEmail: email ? existing.email || undefined : undefined,
+    auditEntry: audit(identity, "client.updated", uid, { email: existing.email || null,
+      next: { status: profile.status, ...(email ? { email } : {}), ...(password ? { password: "changed" } : {}) } })
   }));
-  return { client: view({ ...existing, ...profile, id: uid }), message: "Client updated successfully." };
+  return { client: view({ ...existing, ...profile, ...(email ? { email } : {}), id: uid }),
+    message: email ? `Client updated. They now sign in with ${email}.` : "Client updated successfully." };
 }
 
 /** Deactivate (sign-in disabled, profile kept) or restore. Reversible. */
