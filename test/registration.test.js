@@ -220,3 +220,28 @@ test("clients: the sign-in email can be corrected; the client then signs in with
   r = await admin({ action: "saveClient", mode: "update", id, client: { name: "Vera Typo", status: "active", xrp_holdings: 1 } });
   assert.equal(r.status, 200); assert.equal((await admin({ action: "getClient", id })).json.client.email, "vera@gmail.com");
 });
+
+test("client profile: admin reads a client's shipments and received notifications (with read state); read-only; unknown or missing ids are refused", async () => {
+  const c = await admin({ action: "saveClient", mode: "create", client: { name: "Pia Profile", email: "pia@test.example", password: "secret-123", status: "active" } });
+  const id = c.json.client.id;
+  const s = await admin({ action: "create", shipment: shipmentInput({ customerId: id }) });
+  assert.equal(s.status, 200, JSON.stringify(s.json)); const code = s.json.shipment.id;
+  assert.equal((await admin({ action: "update", code, changes: { statusCode: "IN_TRANSIT" } })).status, 200);
+  // the client reads one notification on the website
+  const token = (await signIn("pia@test.example", "secret-123")).json.token;
+  const list = (await customer(token)({ action: "notifications" })).json;
+  assert.ok(list.items.length >= 1);
+  await customer(token)({ action: "markRead", id: list.items[0].id });
+  const before = JSON.stringify([...store.__dump().shipments.values()]);
+  const r = await admin({ action: "clientActivity", id });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.deepEqual(r.json.shipments.map((x) => x.code), [code]);
+  assert.equal(r.json.shipments[0].status.code, "IN_TRANSIT");
+  assert.equal(r.json.notifications.length, list.items.length);
+  const read = r.json.notifications.find((n) => n.id === list.items[0].id);
+  assert.equal(read.read, true); assert.match(read.readAt, /^\d{4}-/);
+  assert.equal(r.json.unread, list.items.length - 1);
+  assert.equal(JSON.stringify([...store.__dump().shipments.values()]), before, "nothing changed");
+  assert.equal((await admin({ action: "clientActivity", id: "no-such-client" })).status >= 400, true);
+  assert.equal((await admin({ action: "clientActivity", id }, false)).status, 401, "needs an admin session");
+});
