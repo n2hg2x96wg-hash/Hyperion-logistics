@@ -53,14 +53,30 @@ export async function markAllNotificationsRead(customer) {
   return listNotifications(customer);
 }
 
+const shipmentRow = (s) => {
+  const code = resolveShipmentStatus(s);
+  return { code: s.id, status: { code, label: statusLabel(code), tone: statusTone(code) }, origin: s.origin || null, destination: s.destination || null };
+};
+
 /** The customer's shipments: code, status and route only (details come from the visibility-filtered client view). */
 export async function listShipments(customer) {
   const store = await getStore();
   const rows = await store.listCustomerShipments(customer.uid, 50);
-  return rows.map((s) => {
-    const code = resolveShipmentStatus(s);
-    return { code: s.id, status: { code, label: statusLabel(code), tone: statusTone(code) }, origin: s.origin || null, destination: s.destination || null };
-  }).sort((a, b) => a.code.localeCompare(b.code));
+  return rows.map(shipmentRow).sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/**
+ * Admin, read-only: one client's linked shipments and the notifications they received (with when each was read), for
+ * the client profile in the console. The uid comes from a client record the caller has already looked up.
+ */
+export async function clientActivity(uid) {
+  const store = await getStore();
+  const [rows, notes] = await Promise.all([store.listCustomerShipments(uid, 50), store.listCustomerNotifications(uid, 50)]);
+  return {
+    shipments: rows.map(shipmentRow).sort((a, b) => a.code.localeCompare(b.code)),
+    notifications: notes.items.map((n) => ({ ...notificationView(n), readAt: n.readAt || null })),
+    unread: notes.unread
+  };
 }
 
 /** The same client view as the public tracking page, but only for a shipment linked to this customer. */

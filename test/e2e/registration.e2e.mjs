@@ -160,3 +160,52 @@ test("admin app: 'Get the admin app' in the phone menu opens install steps that 
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+for (const [w, h] of [[390, 844], [1280, 900]]) {
+  test(`client profile at ${w}px: tap a client → profile with actions, shipments and notifications; a notification opens its own screen; back closes`, async () => {
+    const { ctx, page, errors } = await adminPage(w, h);
+    const call = (b) => page.evaluate(async (b) => (await fetch("/api/admin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) })).json(), b);
+    const email = `profile${w}@test.example`;
+    const id = (await call({ action: "saveClient", mode: "create", client: { name: `Pat Profile ${w}`, email, phone: "+44 20 7946 0002", password: "secret-123", status: "active" } })).client.id;
+    const code = (await call({ action: "create", shipment: { courier: "dhl", origin: "Accra, Ghana", destination: "Berlin, Germany", customerId: id } })).shipment.id;
+    await call({ action: "update", code, changes: { statusCode: "CUSTOMS" } });
+    await go(page, "clients");
+    await page.waitForSelector(`tr[data-client="${id}"]`);
+    await page.click(`tr[data-client="${id}"] td.client-name`); // a tap on the row itself
+    await page.waitForSelector(".cp-layer:not([hidden]) .cp-row[data-act='note']");
+    assert.equal((await page.textContent(".cp-name")).trim(), `Pat Profile ${w}`);
+    assert.ok(await page.isVisible('.cp-act[href^="tel:"]'), "Call shown when there is a phone number");
+    assert.match(await page.textContent(".cp-sec .cp-list"), new RegExp(code));
+    assert.ok((await page.locator(".cp-note-row").count()) >= 2, "registration + customs notifications");
+    const box = await page.locator(".cp").boundingBox();
+    if (w < 500) assert.ok(box.width >= w - 1 && box.height >= h - 1, "full screen on a phone");
+    else assert.ok(box.width < w && box.x > 0, "a panel on a computer");
+    assert.ok(await noOverflow(page));
+    await page.waitForTimeout(300); await shot(page, `client-profile-${w}`);
+    // a notification's own screen
+    await page.locator(".cp-note-row").first().click();
+    await page.waitForSelector(".cp-note:not([hidden]) .cp-note-hero");
+    assert.match(await page.textContent(".cp-note"), /Not yet|Read by the client/);
+    await page.waitForTimeout(300); await shot(page, `client-notification-${w}`);
+    await page.keyboard.press("Escape"); // back to the profile
+    await page.waitForSelector(".cp-main:not([hidden])");
+    // a shipment opens the usual editor above the profile
+    await page.click(`.cp-row[data-act="ship"][data-code="${code}"]`);
+    await page.waitForSelector("#shipmentModal.show");
+    const top = await page.evaluate(() => document.elementFromPoint(innerWidth / 2, innerHeight / 2)?.closest("#shipmentModal") != null);
+    assert.ok(top, "the shipment editor is above the profile");
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => document.getElementById("shipmentModal").classList.remove("show"));
+    // closing: the back button on phones (and the phone's back gesture), the ✕ on computers
+    if (w < 500) {
+      await page.goBack();
+      await page.waitForFunction(() => document.querySelector(".cp-layer").hidden);
+      assert.match(page.url(), /admin\.html/);
+      await page.click(`tr[data-client="${id}"] td.client-name`); await page.waitForSelector(".cp-layer:not([hidden]) .cp-name");
+      await page.click(".cp-back");
+    } else await page.click(".cp-x");
+    await page.waitForFunction(() => document.querySelector(".cp-layer").hidden && !document.documentElement.classList.contains("cp-open"));
+    assert.deepEqual(errors, []);
+    await ctx.close();
+  });
+}

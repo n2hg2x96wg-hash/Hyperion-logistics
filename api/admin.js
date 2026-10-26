@@ -14,6 +14,7 @@ import { listProviders } from "./_lib/providers/index.js";
 import { resolveMapConfig } from "./_lib/map-config.js";
 import * as couriers from "./_lib/couriers.js";
 import * as clients from "./_lib/clients.js";
+import * as customers from "./_lib/customers.js";
 import { registerShipment } from "./_lib/registration.js";
 
 const PERMISSION = {
@@ -22,7 +23,7 @@ const PERMISSION = {
   archive: "archive", unarchive: "archive", delete: "delete", migrate: "migrate",
   globalMap: "read", locationHealth: "read", backup: "migrate", backupDone: "migrate",
   listCouriers: "read", saveCourier: "couriers", setCourierState: "couriers",
-  listClients: "clients", getClient: "clients", saveClient: "clients", setClientStatus: "clients", deleteClient: "clients"
+  listClients: "clients", getClient: "clients", clientActivity: "clients", saveClient: "clients", setClientStatus: "clients", deleteClient: "clients"
 };
 
 export default async function handler(req, res) {
@@ -109,6 +110,7 @@ export default async function handler(req, res) {
       case "setCourierState": return send(res, 200, await couriers.setCourierState(identity, body));
       case "listClients": return send(res, 200, { clients: await clients.listClients(), deletionPolicy: clients.deletionPolicy(), accountsWithoutProfile: await clients.accountsWithoutProfile() });
       case "getClient": return send(res, 200, { client: await clients.getClient(body.id) });
+      case "clientActivity": { const client = await clients.getClient(body.id); return send(res, 200, await customers.clientActivity(client.id)); }
       case "saveClient": return send(res, 200, await clients.saveClient(identity, body));
       case "setClientStatus": return send(res, 200, await clients.setClientStatus(identity, body));
       case "deleteClient": return send(res, 200, await clients.deleteClient(identity, body));

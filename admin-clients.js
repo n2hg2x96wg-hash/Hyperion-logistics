@@ -2,6 +2,8 @@
 // Every read and write goes through the authenticated server API (/api/admin → api/_lib/clients.js). The browser
 // previously wrote Firestore directly, which the security rules reject because the browser has no Firebase
 // admin sign-in. Deletion is permanent, keyed by the client's uid, and needs a typed "DELETE" confirmation.
+// Tapping a client opens their profile screen (admin/client-profile.js): account, quick actions, shipments, notifications.
+import { createClientProfile } from "./admin/client-profile.js";
 
 function toNumber(value) {
   const parsed = Number(value);
@@ -243,8 +245,12 @@ export function setupAdminClients({ api, showToast }) {
       const res = await api("setClientStatus", { id: clientId, status: next });
       showToast(res.message, "success");
       await loadClients({ quiet: true });
+      const updated = clients.find((c) => c.id === clientId) || null;
+      profile.update(updated);
+      return updated;
     } catch (error) {
       if (!error.silent) showToast(`Unable to update status: ${error.message}`, "error");
+      return null;
     }
   }
 
@@ -253,21 +259,33 @@ export function setupAdminClients({ api, showToast }) {
   function closeModal(id) { $(id).classList.remove("show"); }
   document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => closeModal(b.dataset.close)));
 
-  function viewClient(clientId) {
-    const c = clients.find((x) => x.id === clientId);
-    if (!c) return;
-    $("clientViewTitle").textContent = c.name || c.email;
-    const rows = [
-      ["Email", c.email], ["Phone", c.phone || "—"], ["Status", statusOf(c) === "active" ? "Active (can sign in)" : `${STATUS_LABEL[statusOf(c)]} (cannot sign in)`],
-      ["Registered", fmtDateTime(c.registeredAt)], ["Last activity", fmtDateTime(c.lastActivityAt)], ["Last sign-in", fmtDateTime(c.lastSignInAt)],
+  // ---------- client profile (tap a client) ----------
+  const profile = createClientProfile({
+    api,
+    statusInfo: (c) => ({ key: statusOf(c), label: STATUS_LABEL[statusOf(c)] }),
+    actions: {
+      edit: (id) => loadClientToForm(id),
+      toggle: (id) => toggleStatus(id),
+      newShipment: (id) => {
+        window.switchView?.("create");
+        const radio = document.querySelector('input[name="custMode"][value="existing"]');
+        if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+        const sel = $("customerId");
+        if (sel) { sel.value = id; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      }
+    },
+    extraRows: (c) => [
+      ["Last sign-in", fmtDateTime(c.lastSignInAt)],
       ["Sign-in account", c.hasSignIn ? (c.signInDisabled ? "Exists (disabled)" : "Exists (enabled)") : "Not found"],
       ["XRP holdings", toNumber(c.portfolios?.xrp_holdings).toFixed(4)], ["TSLA holdings", toNumber(c.portfolios?.tsla_holdings).toFixed(4)],
       ["Limits", `XRP ${toNumber(c.restrictions?.max_xrp).toFixed(2)} · TSLA ${toNumber(c.restrictions?.max_tsla).toFixed(2)}`],
-      ["Portfolio value", `$${calculatePortfolioValue(c).toFixed(2)}`], ["Shipments", c.shipments?.count == null ? "—" : String(c.shipments.count)],
+      ["Portfolio value", `$${calculatePortfolioValue(c).toFixed(2)}`],
       ["Admin notes", c.adminNotes || "—"], ["Client ID", c.id]
-    ];
-    $("clientViewBody").innerHTML = rows.map(([k, v]) => `<dt>${safeText(k)}</dt><dd>${safeText(v)}</dd>`).join("");
-    openModal("clientViewModal");
+    ]
+  });
+  function viewClient(clientId) {
+    const c = clients.find((x) => x.id === clientId);
+    if (c) profile.open(c);
   }
 
   // ---------- permanent delete ----------
@@ -349,7 +367,11 @@ export function setupAdminClients({ api, showToast }) {
 
   table.addEventListener("click", async (event) => {
     const button = event.target.closest("button[data-action]");
-    if (!button) return;
+    if (!button) { // a tap anywhere else on the client's row/card opens their profile
+      const row = event.target.closest("tr[data-client]");
+      if (row && !event.target.closest("a, input, select, textarea")) viewClient(row.dataset.client);
+      return;
+    }
     const { action, id } = button.dataset;
     if (action === "view") viewClient(id);
     if (action === "edit") loadClientToForm(id);
