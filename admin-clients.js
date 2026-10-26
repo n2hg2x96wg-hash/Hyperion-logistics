@@ -148,7 +148,7 @@ export function setupAdminClients({ api, showToast }) {
     $("clientTslaHoldings").value = toNumber(selected.portfolios?.tsla_holdings);
     $("clientMaxXrp").value = toNumber(selected.restrictions?.max_xrp);
     $("clientMaxTsla").value = toNumber(selected.restrictions?.max_tsla);
-    $("clientEmail").readOnly = true;
+    $("clientEmail").readOnly = false; // can be corrected; the client then signs in with the new email
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -185,7 +185,10 @@ export function setupAdminClients({ api, showToast }) {
     };
     // the same checks the server makes, so mistakes show before sending (the server still checks everything)
     if (!client.name) { showFormError("Enter the customer's full name.", "name"); return; }
-    if (!editingClientId && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(client.email)) { showFormError("Enter a valid email address.", "email"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(client.email)) { showFormError("Enter a valid email address.", "email"); return; }
+    const editingClient = editingClientId && clients.find((x) => x.id === editingClientId);
+    if (editingClient && client.email !== String(editingClient.email || "").toLowerCase()
+      && !confirm(`Change the sign-in email from ${editingClient.email} to ${client.email}?\n\nThe client must use the new email to sign in from now on. Their password stays the same.`)) return;
     if (!editingClientId && !client.password) { showFormError("Set an initial password for the new customer.", "password"); return; }
     if (client.password && client.password.length < 6) { showFormError("The password needs at least 6 characters.", "password"); return; }
     if (client.phone && !/^\+?[0-9 ()./-]{6,24}$/.test(client.phone)) { showFormError("Enter the phone number with digits only (spaces, +, - and brackets allowed).", "phone"); return; }
