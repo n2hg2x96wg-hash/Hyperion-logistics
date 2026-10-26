@@ -7,6 +7,13 @@
   <meta name="theme-color" content="#030712">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hyperion Admin - Advanced Shipment Management</title>
+  <link rel="icon" href="/assets/app/admin-icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/app/admin-favicon-48.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="/assets/app/admin-apple-touch-icon.png">
+  <link rel="manifest" href="/admin.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="HY Admin">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -784,6 +791,7 @@
   <link rel="stylesheet" href="ui/command-center.css">
   <link rel="stylesheet" href="ui/theme-light.css">
   <link rel="stylesheet" href="admin/console.css">
+  <script type="module" src="admin/install.js"></script>
   <link rel="stylesheet" href="admin/dashboard.css">
 </head>
 <body class="console">
@@ -837,6 +845,7 @@
         <button class="toggle-btn" id="btn-preview" onclick="switchView('preview')">Client View</button>
         <button class="toggle-btn" id="btn-audit" onclick="switchView('audit')">Activity Logs</button>
         <button class="toggle-btn" id="btn-settings" onclick="switchView('settings')">Settings &amp; Backup</button>
+        <button class="toggle-btn get-admin-app" type="button" id="btnGetAdminApp" hidden>Get the admin app</button>
       </div>
     </div>
 
