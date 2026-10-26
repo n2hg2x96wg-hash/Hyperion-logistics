@@ -473,6 +473,11 @@ export default {
   "support.button": "Contatta l'assistenza clienti",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Installa l’app Hyperion",
+  "app.install.body": "Aggiungi Hyperion alla schermata Home per aprire le tue spedizioni con un tocco, a schermo intero.",
+  "app.install.button": "Installa app",
+  "app.install.ios": "Su iPhone o iPad, tocca il pulsante Condividi, poi Aggiungi alla schermata Home. Le tue spedizioni si aprono con un tocco, a schermo intero.",
+  "app.install.dismiss": "Non ora",
   "acct.title": "Il tuo account",
   "acct.hello": "Ciao, {name}",
   "acct.lead": "Le tue spedizioni e i loro ultimi aggiornamenti.",

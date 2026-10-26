@@ -486,6 +486,11 @@ export default {
   "support.button": "تواصل مع دعم العملاء",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "ثبّت تطبيق Hyperion",
+  "app.install.body": "أضف Hyperion إلى شاشتك الرئيسية لفتح شحناتك بلمسة واحدة وبملء الشاشة.",
+  "app.install.button": "تثبيت التطبيق",
+  "app.install.ios": "على iPhone أو iPad، اضغط على زر المشاركة، ثم «إضافة إلى الشاشة الرئيسية». ستُفتح شحناتك بعدها بلمسة واحدة وبملء الشاشة.",
+  "app.install.dismiss": "ليس الآن",
   "acct.title": "حسابك",
   "acct.hello": "مرحبًا، {name}",
   "acct.lead": "شحناتك وآخر تحديثاتها.",

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030712">
+  <meta name="robots" content="noindex">
+  <title>No connection | Hyperion Logistics</title>
+  <link rel="icon" href="/assets/app/icon-192.png" type="image/png">
+  <style>
+    :root { color-scheme: dark; --bg: #030712; --text: #f8fafc; --muted: #94a3b8; --accent: #2588ff; }
+    @media (prefers-color-scheme: light) { :root { color-scheme: light; --bg: #f8fafc; --text: #0f172a; --muted: #475569; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: center; }
+    main { max-width: 360px; }
+    img { width: 72px; height: 72px; border-radius: 18px; }
+    h1 { font-size: 1.35rem; margin: 20px 0 8px; }
+    p { color: var(--muted); margin: 0 0 24px; }
+    button { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 12px; padding: 12px 28px; cursor: pointer; }
+    button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/assets/app/icon-192.png" alt="">
+    <h1>You're offline</h1>
+    <p>Hyperion Logistics needs an internet connection to show your shipments. Check your connection and try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+  <script>addEventListener("online", function () { location.reload(); });</script>
+</body>
+</html>

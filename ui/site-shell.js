@@ -1,6 +1,7 @@
 // Shared public header behaviour (homepage + tracking pages): the mobile menu, the language selector, and same-page
 // section links.
 import "./theme.js";
+import "./app-install.js";
 import { LANGUAGES, initI18n, setLang, getLang, t, onLang } from "./i18n.js";
 
 // ---------- language selector ----------

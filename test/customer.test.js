@@ -171,3 +171,26 @@ test("data model: additive only (existing shipment fields and records untouched)
   assert.ok(dump.notifications.get(ana.uid).size >= 5);
   for (const n of dump.notifications.get(ana.uid).values()) assert.match(n.id, /^nt_[0-9a-f]{24}$/);
 });
+
+test("installable app: valid manifest with real icons, linked from the public pages; the service worker never caches data", async () => {
+  const fs = await import("node:fs");
+  const root = new URL("../", import.meta.url);
+  const m = JSON.parse(fs.readFileSync(new URL("manifest.webmanifest", root), "utf8"));
+  assert.equal(m.display, "standalone"); assert.equal(m.scope, "/"); assert.match(m.start_url, /^\/account\.html/);
+  for (const size of ["192x192", "512x512"]) for (const purpose of ["any", "maskable"]) assert.ok(m.icons.some((i) => i.sizes === size && i.purpose === purpose), `${size} ${purpose}`);
+  for (const icon of [...m.icons, ...m.shortcuts.flatMap((s) => s.icons)]) {
+    const png = fs.readFileSync(new URL(icon.src.slice(1), root));
+    const [w, h] = icon.sizes.split("x").map(Number);
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [w, h], icon.src);
+  }
+  for (const page of ["index.html", "track.html", "tracking-enhanced.html", "carriers.html", "account.html"]) {
+    const html = fs.readFileSync(new URL(page, root), "utf8");
+    assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest">/, page);
+    assert.match(html, /<link rel="apple-touch-icon" href="\/assets\/app\/apple-touch-icon\.png">/, page);
+  }
+  const sw = fs.readFileSync(new URL("sw.js", root), "utf8");
+  assert.doesNotMatch(sw, /cache\.put|\.put\(/, "responses are never written to a cache");
+  assert.match(sw, /req\.method !== "GET"/);
+  const res = await fetch(`${base}/manifest.webmanifest`);
+  assert.equal(res.headers.get("content-type"), "application/manifest+json");
+});

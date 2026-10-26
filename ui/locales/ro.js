@@ -475,6 +475,11 @@ export default {
   "support.button": "Contactați asistența clienți",
 
   // ---------- customer account ("My account") ----------
+  "app.install.title": "Instalați aplicația Hyperion",
+  "app.install.body": "Adăugați Hyperion pe ecranul principal pentru a vă deschide expedierile cu o atingere, pe tot ecranul.",
+  "app.install.button": "Instalați aplicația",
+  "app.install.ios": "Pe iPhone sau iPad, atingeți butonul Partajați, apoi Adăugați pe ecranul principal. Expedierile se deschid apoi cu o atingere, pe tot ecranul.",
+  "app.install.dismiss": "Nu acum",
   "acct.title": "Contul dumneavoastră",
   "acct.hello": "Bună ziua, {name}",
   "acct.lead": "Expedierile dumneavoastră și cele mai recente actualizări ale acestora.",

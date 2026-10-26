@@ -1,0 +1,23 @@
+{
+  "id": "/account.html",
+  "name": "Hyperion Logistics",
+  "short_name": "Hyperion",
+  "description": "Your shipments, their latest status and notifications, from Hyperion Logistics.",
+  "start_url": "/account.html?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/assets/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/app/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Track a shipment", "short_name": "Track", "url": "/track.html?source=app", "icons": [{ "src": "/assets/app/shortcut-track.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "My shipments", "short_name": "Shipments", "url": "/account.html?source=app", "icons": [{ "src": "/assets/app/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

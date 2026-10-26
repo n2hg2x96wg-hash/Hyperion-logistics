@@ -286,3 +286,45 @@ test("Firebase sign-in (as on the live site): the account check goes to the serv
     await ctx.close();
   }
 });
+
+test("install card: shown when the browser offers an install; Install opens the browser's prompt; Not now hides it for good", async () => {
+  const { ctx, page, errors } = await customerPage({ width: 390, height: 844 });
+  await page.goto(`${base}/account.html`); await page.waitForSelector("#acctEmail");
+  assert.equal(await page.locator(".app-install").count(), 0, "nothing until the browser says the app can be installed");
+  // the browser's own install event (Chrome/Android), with a prompt we can observe
+  await page.evaluate(() => { const e = new Event("beforeinstallprompt", { cancelable: true });
+    e.prompt = async () => { window.__prompted = (window.__prompted || 0) + 1; }; e.userChoice = Promise.resolve({ outcome: "accepted" });
+    dispatchEvent(e); });
+  await page.waitForSelector(".app-install .app-install-go");
+  assert.match(await page.textContent(".app-install"), /Get the Hyperion app/);
+  assert.ok(await noOverflow(page), "no sideways scrolling on a phone");
+  await page.click(".app-install-go");
+  await page.waitForFunction(() => window.__prompted === 1 && !document.querySelector(".app-install"));
+  // offered again later, then dismissed: stays hidden after a reload
+  await page.evaluate(() => { const e = new Event("beforeinstallprompt"); e.prompt = async () => {}; e.userChoice = Promise.resolve({}); dispatchEvent(e); });
+  await page.click(".app-install-later");
+  assert.equal(await page.locator(".app-install").count(), 0);
+  await page.reload(); await page.waitForSelector("#acctEmail");
+  await page.evaluate(() => { const e = new Event("beforeinstallprompt"); e.prompt = async () => {}; e.userChoice = Promise.resolve({}); dispatchEvent(e); });
+  assert.equal(await page.locator(".app-install").count(), 0, "'Not now' is remembered");
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test("install card on iPhone: Share → Add to Home Screen steps (Safari has no install prompt)", async () => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1" });
+  await ctx.addInitScript(() => { window.HX_3D_PERF_CHECK = false; });
+  await ctx.route(/(fonts\.|tawk\.to|gstatic\.com|tile\.|arcgisonline|cdn\.jsdelivr\.net)/, (r) => r.abort());
+  const page = await ctx.newPage(); const errors = []; page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(`${base}/account.html`); await page.waitForSelector(".app-install");
+  assert.match(await page.textContent(".app-install"), /Add to Home Screen/);
+  assert.equal(await page.locator(".app-install-go").count(), 0);
+  if (process.env.SHOTS_DIR) await page.screenshot({ path: `${process.env.SHOTS_DIR}/install-iphone.png`, fullPage: true });
+  // in Spanish too
+  await page.click(".nav-toggle"); await page.selectOption("#hxLangMenu", "es");
+  await page.waitForFunction(() => /Añadir a pantalla de inicio/.test(document.querySelector(".app-install")?.textContent || ""));
+  assert.ok(await noOverflow(page));
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
